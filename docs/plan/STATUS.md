@@ -12,17 +12,17 @@ Live tracker. Status: todo / in progress / review / done.
 | T0.5 | Implement repositories, migrations, cascade | done | 7da0114 |
 | T0.6 | Seed default settings and sample plays | done | f8fcff1 |
 | T0.7 | Build app shell, theme, error boundary, autosave hook | done | 7e52444 |
-| C1 | Contracts phase 1 | in progress |  |
-| T1.1 | Implement flipPlay | todo | |
-| T1.2 | Implement strength, numbering, ReceiverRef binding | todo | |
-| T1.3 | Implement movement model, route follower, offense preview | todo | |
-| T1.4 | Implement formations and play validation | todo | |
-| T1.5 | Implement editor ops and store with undo | todo | |
-| T1.6 | Build Timeline and playback hook | todo | |
-| T1.7 | Build PlayerToken and RoutePath | todo | |
-| T1.8 | Build editor canvas and select/place/route tools | todo | |
-| T1.9 | Build editor page, new-play dialog, metadata, warnings | todo | |
-| T1.10 | Build offense panel and Chạy thử | todo | |
+| C1 | Contracts phase 1 | done | cc5c57b |
+| T1.1 | Implement flipPlay | done | 65a687c |
+| T1.2 | Implement strength, numbering, ReceiverRef binding | done | e444a72 |
+| T1.3 | Implement movement model, route follower, offense preview | done | db4023a |
+| T1.4 | Implement formations and play validation | done | 3dca0bd |
+| T1.5 | Implement editor ops and store with undo | done | 7252e5e |
+| T1.6 | Build Timeline and playback hook | done | 58418fc |
+| T1.7 | Build PlayerToken and RoutePath | done | 94b2b22 |
+| T1.8 | Build editor canvas and select/place/route tools | done | 4a760c4 |
+| T1.9 | Build editor page, new-play dialog, metadata, warnings | done | f03771b |
+| T1.10 | Build offense panel and Chạy thử | done | f2058aa |
 | C2 | Contracts phase 2 | todo | |
 | T2.1 | Implement zone presets, defense ops, auto-align | todo | |
 | T2.2 | Build ghost offense layer and man tool | todo | |

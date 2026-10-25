@@ -51,58 +51,52 @@ export interface FieldBounds {
 
 /** Sidelines relative to the ball: x ∈ [−W/2 − ballSpot.x, W/2 − ballSpot.x]. */
 export function sidelineBounds(field: FieldConfig, ballSpot: BallSpot): { minX: number; maxX: number } {
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  const half = field.width / 2;
+  return { minX: -half - ballSpot.x, maxX: half - ballSpot.x };
 }
 
 /** y of a yard line (yd from own goal line) relative to the LOS. */
 export function yardLineToY(ballSpot: BallSpot, yardLine: number): number {
-  void ballSpot;
-  void yardLine;
-  throw new Error('not implemented');
+  return yardLine - ballSpot.yardLine;
 }
 
 /** Inverse of yardLineToY. */
 export function yToYardLine(ballSpot: BallSpot, y: number): number {
-  void ballSpot;
-  void y;
-  throw new Error('not implemented');
+  return y + ballSpot.yardLine;
 }
 
 /** y of the opponent goal line relative to the LOS (= field.length − yardLine). */
 export function goalLineY(field: FieldConfig, ballSpot: BallSpot): number {
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  return field.length - ballSpot.yardLine;
 }
 
 /** Whole playable area incl. both end zones, ball-relative. */
 export function fieldBounds(field: FieldConfig, ballSpot: BallSpot): FieldBounds {
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  const { minX, maxX } = sidelineBounds(field, ballSpot);
+  return {
+    minX,
+    maxX,
+    minY: -ballSpot.yardLine - field.endZoneDepth,
+    maxY: goalLineY(field, ballSpot) + field.endZoneDepth,
+  };
 }
 
 /** True when p lies inside sidelines and end-zone backs (inclusive). */
 export function isInsideField(p: Point, field: FieldConfig, ballSpot: BallSpot): boolean {
-  void p;
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  const b = fieldBounds(field, ballSpot);
+  return p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY;
 }
 
 /** Clamp p into fieldBounds. */
 export function clampToField(p: Point, field: FieldConfig, ballSpot: BallSpot): Point {
-  void p;
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  const b = fieldBounds(field, ballSpot);
+  return {
+    x: Math.min(b.maxX, Math.max(b.minX, p.x)),
+    y: Math.min(b.maxY, Math.max(b.minY, p.y)),
+  };
 }
 
 /** True when ballSpot.yardLine lies inside any no-run zone (inclusive) → "Chỉ được chuyền" badge. */
 export function isInNoRunZone(field: FieldConfig, ballSpot: BallSpot): boolean {
-  void field;
-  void ballSpot;
-  throw new Error('not implemented');
+  return field.noRunZones.some((z) => z.from <= ballSpot.yardLine && ballSpot.yardLine <= z.to);
 }

@@ -115,6 +115,7 @@ const TokenView = memo(function TokenView({ slot, side, selected, progressionInd
       progressionIndex={progressionIndex}
       rusher={slot.actions.some((a) => a.type === 'rush')}
       leverage={slot.leverage}
+      insideSign={slot.start.x > 0 ? -1 : 1}
     />
   );
 });

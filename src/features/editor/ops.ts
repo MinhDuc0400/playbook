@@ -2,15 +2,117 @@
  * Pure play-editing recipes (D-14). Each takes a Play and returns a new Play (or the same object when
  * nothing changes). Used through `editorStore.apply(label, recipe)`. Never mutate the input.
  */
-import { notImplemented } from '@/domain/notImplemented';
-import type { RouteTemplateId } from '@/domain/routeTree';
-import type { ID, Play, Point, QbDropAction, Role, RouteAction, Strength } from '@/domain/types';
+import { flipPlay } from '@/domain/flip';
+import { nextDefaultLabel } from '@/domain/formations';
+import { alignedPlayers, computeStrength } from '@/domain/numbering';
+import { buildRoute, outwardSign, type RouteTemplateId } from '@/domain/routeTree';
+import type {
+  Action,
+  ID,
+  Play,
+  PlayerSlot,
+  Point,
+  QbDropAction,
+  Role,
+  RouteAction,
+  Strength,
+} from '@/domain/types';
 
 export type Recipe = (play: Play) => Play;
 
+// ---------- helpers ----------
+
+function clone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
+const translate = (pts: readonly Point[], dx: number, dy: number): Point[] =>
+  pts.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+
+/** Shift the geometry of an offense player's actions (route, option, motion); other actions are kept. */
+function translateActions(actions: readonly Action[], dx: number, dy: number): Action[] {
+  return actions.map((a): Action => {
+    switch (a.type) {
+      case 'route':
+      case 'motion':
+        return { ...a, path: translate(a.path, dx, dy) };
+      case 'option':
+        return {
+          ...a,
+          stem: translate(a.stem, dx, dy),
+          vsMan: translate(a.vsMan, dx, dy),
+          vsZone: translate(a.vsZone, dx, dy),
+        };
+      default:
+        return a;
+    }
+  });
+}
+
+function replaceSlot(play: Play, slotId: ID, fn: (s: PlayerSlot) => PlayerSlot): Play {
+  const i = play.players.findIndex((s) => s.id === slotId);
+  const cur = play.players[i];
+  if (i < 0 || !cur) return play;
+  const next = fn(cur);
+  if (next === cur) return play;
+  const players = play.players.slice();
+  players[i] = next;
+  return { ...play, players };
+}
+
+/** Recompute offense strength from alignment unless overridden; returns the same play when unchanged. */
+function withStrength(play: Play): Play {
+  if (play.side !== 'offense' || play.strengthOverridden) return play;
+  const strength = computeStrength(alignedPlayers(play));
+  return strength === play.strength ? play : { ...play, strength };
+}
+
+/** Index of the slot's first 'route' action (-1 when none). */
+function routeIndex(slot: PlayerSlot): number {
+  return slot.actions.findIndex((a) => a.type === 'route');
+}
+
+/** Replace/append/remove the slot's route-ish (route or option) action. */
+function putRoute(slot: PlayerSlot, route: RouteAction | null): PlayerSlot {
+  const i = slot.actions.findIndex((a) => a.type === 'route' || a.type === 'option');
+  if (route === null) {
+    if (i < 0) return slot;
+    return { ...slot, actions: slot.actions.filter((_, j) => j !== i) };
+  }
+  const actions = slot.actions.slice();
+  if (i < 0) actions.push(route);
+  else actions[i] = route;
+  return { ...slot, actions };
+}
+
+/** Edit the slot's first 'route' action; `fn` returns the same route (no-op), a new one, or null (remove). */
+function editRoute(slotId: ID, fn: (r: RouteAction) => RouteAction | null): Recipe {
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      const i = routeIndex(slot);
+      const route = slot.actions[i];
+      if (i < 0 || route?.type !== 'route') return slot;
+      const next = fn(route);
+      if (next === route) return slot;
+      const actions = slot.actions.slice();
+      if (next === null) actions.splice(i, 1);
+      else actions[i] = next;
+      return { ...slot, actions };
+    });
+}
+
+/** New route without templateId (manual edit). */
+function manual(route: RouteAction, patch: Partial<RouteAction>): RouteAction {
+  const next: RouteAction = { ...route, ...patch };
+  delete next.templateId;
+  return next;
+}
+
+// ---------- players ----------
+
 /** False when play already has `maxPlayers` players. */
 export function canAddPlayer(play: Play, maxPlayers: number): boolean {
-  return notImplemented(`canAddPlayer ${play.id}${maxPlayers}`);
+  return play.players.length < maxPlayers;
 }
 
 /**
@@ -19,7 +121,23 @@ export function canAddPlayer(play: Play, maxPlayers: number): boolean {
  * Recomputes strength (unless strengthOverridden).
  */
 export function addPlayer(role: Role, pos: Point, maxPlayers: number, idGen: () => ID): Recipe {
-  return notImplemented(`addPlayer ${role}${pos.x}${maxPlayers}${String(idGen)}`);
+  return (play) => {
+    if (!canAddPlayer(play, maxPlayers)) return play;
+    const actions: Action[] = [];
+    if (role === 'QB') actions.push({ type: 'qbDrop', depth: 2, style: 'shotgun' });
+    if (role === 'R') actions.push({ type: 'rush', path: [{ x: 0, y: -5 }], delay: 0 });
+    const slot: PlayerSlot = {
+      id: idGen(),
+      role,
+      label: nextDefaultLabel(
+        role,
+        play.players.map((s) => s.label),
+      ),
+      start: { x: pos.x, y: pos.y },
+      actions,
+    };
+    return withStrength({ ...play, players: [...play.players, slot] });
+  };
 }
 
 /**
@@ -27,53 +145,116 @@ export function addPlayer(role: Role, pos: Point, maxPlayers: number, idGen: () 
  * Defense: actions unchanged. Recomputes strength (unless strengthOverridden).
  */
 export function movePlayer(slotId: ID, pos: Point): Recipe {
-  return notImplemented(`movePlayer ${slotId}${pos.x}`);
+  return (play) => {
+    const moved = replaceSlot(play, slotId, (slot) => {
+      const dx = pos.x - slot.start.x;
+      const dy = pos.y - slot.start.y;
+      if (dx === 0 && dy === 0) return slot;
+      return {
+        ...slot,
+        start: { x: pos.x, y: pos.y },
+        actions: play.side === 'offense' ? translateActions(slot.actions, dx, dy) : slot.actions,
+      };
+    });
+    return moved === play ? play : withStrength(moved);
+  };
 }
 
 /** Remove players; also drops them from progression. Recomputes strength. */
 export function removePlayers(slotIds: readonly ID[]): Recipe {
-  return notImplemented(`removePlayers ${slotIds.length}`);
+  return (play) => {
+    const gone = new Set(slotIds);
+    const players = play.players.filter((s) => !gone.has(s.id));
+    if (players.length === play.players.length) return play;
+    const next: Play = { ...play, players };
+    if (play.progression) next.progression = play.progression.filter((id) => !gone.has(id));
+    return withStrength(next);
+  };
 }
 
 /** Copy a player (Ctrl+D) offset +1 yd in x with a new id and the next default label. No-op at max. */
 export function duplicatePlayer(slotId: ID, maxPlayers: number, idGen: () => ID): Recipe {
-  return notImplemented(`duplicatePlayer ${slotId}${maxPlayers}${String(idGen)}`);
+  return (play) => {
+    const src = play.players.find((s) => s.id === slotId);
+    if (!src || !canAddPlayer(play, maxPlayers)) return play;
+    const copy = clone(src);
+    copy.id = idGen();
+    copy.label = nextDefaultLabel(
+      src.role,
+      play.players.map((s) => s.label),
+    );
+    copy.start = { x: src.start.x + 1, y: src.start.y };
+    if (play.side === 'offense') copy.actions = translateActions(copy.actions, 1, 0);
+    return withStrength({ ...play, players: [...play.players, copy] });
+  };
 }
 
 export function setLabel(slotId: ID, label: string): Recipe {
-  return notImplemented(`setLabel ${slotId}${label}`);
+  return (play) => replaceSlot(play, slotId, (s) => (s.label === label ? s : { ...s, label }));
 }
+
+// ---------- routes ----------
 
 /** The slot's first 'route' action, if any. */
 export function getRoute(play: Play, slotId: ID): RouteAction | undefined {
-  return notImplemented(`getRoute ${play.id}${slotId}`);
+  const slot = play.players.find((s) => s.id === slotId);
+  return slot?.actions.find((a): a is RouteAction => a.type === 'route');
 }
 
 /** Replace the slot's route (first 'route' or 'option' action) with `route`; null removes it. */
 export function setRoute(slotId: ID, route: RouteAction | null): Recipe {
-  return notImplemented(`setRoute ${slotId}${String(route)}`);
+  return (play) => replaceSlot(play, slotId, (slot) => putRoute(slot, route));
 }
 
 export function moveRoutePoint(slotId: ID, index: number, pos: Point): Recipe {
-  return notImplemented(`moveRoutePoint ${slotId}${index}${pos.x}`);
+  return editRoute(slotId, (r) => {
+    const cur = r.path[index];
+    if (!cur || (cur.x === pos.x && cur.y === pos.y)) return r;
+    const path = r.path.slice();
+    path[index] = { x: pos.x, y: pos.y };
+    return manual(r, { path });
+  });
 }
 
 /** Insert pos at `index` in the path (0 = first point after the start). smooth[] stays aligned (new = false). */
 export function insertRoutePoint(slotId: ID, index: number, pos: Point): Recipe {
-  return notImplemented(`insertRoutePoint ${slotId}${index}${pos.x}`);
+  return editRoute(slotId, (r) => {
+    const at = Math.min(Math.max(Math.trunc(index), 0), r.path.length);
+    const path = r.path.slice();
+    path.splice(at, 0, { x: pos.x, y: pos.y });
+    const patch: Partial<RouteAction> = { path };
+    if (r.smooth) {
+      const smooth = r.path.map((_, i) => r.smooth?.[i] ?? false);
+      smooth.splice(at, 0, false);
+      patch.smooth = smooth;
+    }
+    return manual(r, patch);
+  });
 }
 
 /** Delete a point; an empty path removes the route. templateId is cleared on any manual point edit. */
 export function deleteRoutePoint(slotId: ID, index: number): Recipe {
-  return notImplemented(`deleteRoutePoint ${slotId}${index}`);
+  return editRoute(slotId, (r) => {
+    if (!r.path[index]) return r;
+    const path = r.path.filter((_, i) => i !== index);
+    if (path.length === 0) return null;
+    const patch: Partial<RouteAction> = { path };
+    if (r.smooth) patch.smooth = r.path.map((_, i) => r.smooth?.[i] ?? false).filter((_, i) => i !== index);
+    return manual(r, patch);
+  });
 }
 
 export function toggleRoutePointSmooth(slotId: ID, index: number): Recipe {
-  return notImplemented(`toggleRoutePointSmooth ${slotId}${index}`);
+  return editRoute(slotId, (r) => {
+    if (!r.path[index]) return r;
+    const smooth = r.path.map((_, i) => r.smooth?.[i] ?? false);
+    smooth[index] = !smooth[index];
+    return manual(r, { smooth });
+  });
 }
 
 export function setRouteEndBehavior(slotId: ID, endBehavior: 'stop' | 'continue'): Recipe {
-  return notImplemented(`setRouteEndBehavior ${slotId}${endBehavior}`);
+  return editRoute(slotId, (r) => (r.endBehavior === endBehavior ? r : { ...r, endBehavior }));
 }
 
 /**
@@ -81,41 +262,98 @@ export function setRouteEndBehavior(slotId: ID, endBehavior: 'stop' | 'continue'
  * outward = outwardSign(start, strong side of the play: play.strength left → 'left', else 'right').
  */
 export function applyRouteTemplate(slotId: ID, templateId: RouteTemplateId, depth?: number): Recipe {
-  return notImplemented(`applyRouteTemplate ${slotId}${templateId}${String(depth)}`);
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      const outward = outwardSign(slot.start, play.strength === 'left' ? 'left' : 'right');
+      return putRoute(slot, buildRoute(templateId, slot.start, { depth, outward }));
+    });
 }
+
+// ---------- QB, progression ----------
 
 /** Set (or add) the QB drop action. */
 export function setQbDrop(slotId: ID, depth: number, style: QbDropAction['style']): Recipe {
-  return notImplemented(`setQbDrop ${slotId}${depth}${style}`);
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      const drop: QbDropAction = { type: 'qbDrop', depth, style };
+      const i = slot.actions.findIndex((a) => a.type === 'qbDrop');
+      const cur = slot.actions[i];
+      if (cur?.type === 'qbDrop' && cur.depth === depth && cur.style === style) return slot;
+      const actions = slot.actions.slice();
+      if (i < 0) actions.push(drop);
+      else actions[i] = drop;
+      return { ...slot, actions };
+    });
 }
 
 /** FR-OFF-04 click order: append slotId to progression, or remove it if already present. QB is ignored. */
 export function toggleProgression(slotId: ID): Recipe {
-  return notImplemented(`toggleProgression ${slotId}`);
+  return (play) => {
+    const slot = play.players.find((s) => s.id === slotId);
+    if (!slot || slot.role === 'QB') return play;
+    const cur = play.progression ?? [];
+    const progression = cur.includes(slotId) ? cur.filter((id) => id !== slotId) : [...cur, slotId];
+    return { ...play, progression };
+  };
 }
 
 export function clearProgression(): Recipe {
-  return notImplemented('clearProgression');
+  return (play) => (play.progression && play.progression.length > 0 ? { ...play, progression: [] } : play);
 }
+
+// ---------- strength, meta, flip ----------
 
 /**
  * FR-OFF-05: 'auto' → strengthOverridden = false and strength = computeStrength(alignment);
  * otherwise strength = value and strengthOverridden = true. Offense only (defense: sets strength as is).
  */
 export function setStrength(value: Strength | 'auto'): Recipe {
-  return notImplemented(`setStrength ${value}`);
+  return (play) => {
+    if (play.side !== 'offense') {
+      if (value === 'auto' || value === play.strength) return play;
+      return { ...play, strength: value };
+    }
+    if (value === 'auto') {
+      const strength = computeStrength(alignedPlayers(play));
+      if (strength === play.strength && play.strengthOverridden === false) return play;
+      return { ...play, strength, strengthOverridden: false };
+    }
+    if (value === play.strength && play.strengthOverridden === true) return play;
+    return { ...play, strength: value, strengthOverridden: true };
+  };
 }
 
 /** Recompute offense strength from alignment unless strengthOverridden. */
 export function refreshStrength(): Recipe {
-  return notImplemented('refreshStrength');
+  return withStrength;
 }
 
 export function setMeta(patch: Partial<Pick<Play, 'name' | 'formation' | 'tags' | 'notes'>>): Recipe {
-  return notImplemented(`setMeta ${String(patch)}`);
+  return (play) => {
+    const next: Play = { ...play };
+    let changed = false;
+    if (patch.name !== undefined && patch.name !== play.name) {
+      next.name = patch.name;
+      changed = true;
+    }
+    if (patch.formation !== undefined && patch.formation !== play.formation) {
+      next.formation = patch.formation;
+      changed = true;
+    }
+    if ('notes' in patch && patch.notes !== play.notes) {
+      next.notes = patch.notes;
+      changed = true;
+    }
+    const tags = patch.tags;
+    if (tags && (tags.length !== play.tags.length || tags.some((t, i) => t !== play.tags[i]))) {
+      next.tags = tags.slice();
+      changed = true;
+    }
+    return changed ? next : play;
+  };
 }
 
 /** FR-FLP-02: flipPlay. */
 export function flip(): Recipe {
-  return notImplemented('flip');
+  return (play) => flipPlay(play);
 }

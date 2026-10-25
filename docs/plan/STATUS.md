@@ -28,13 +28,13 @@ Live tracker. Status: todo / in progress / review / done.
 | T2.2 | Build ghost offense layer and man tool | done | f466093 |
 | T2.3 | Build zone/rush tools and assignment rendering | done | 2c182aa |
 | T2.4 | Build defense panel | done | aa3ff43 |
-| C3 | Contracts phase 3 | todo | |
-| T3.1 | Implement RNG, ball flight, catch resolution | todo | |
-| T3.2 | Implement world history and perception | todo | |
-| T3.3 | Implement matchup prep: flips, binding, stats noise | todo | |
-| T3.4 | Implement receiver and rusher agents | todo | |
+| C3 | Contracts phase 3 | done | 14ffecf |
+| T3.1 | Implement RNG, ball flight, catch resolution | done | 1fb086a |
+| T3.2 | Implement world history and perception | done | 7d1c6a6 |
+| T3.3 | Implement matchup prep: flips, binding, stats noise | in progress (stopped, uncommitted WIP) |  |
+| T3.4 | Implement receiver and rusher agents | in progress (stopped, uncommitted WIP) |  |
 | T3.5 | Implement man and zone defenders | todo | |
-| T3.6 | Implement QB agent | todo | |
+| T3.6 | Implement QB agent | in progress (stopped, uncommitted WIP) |  |
 | T3.7 | Implement simulate loop and metrics | todo | |
 | T3.8 | Implement tuning benchmark runner | todo | |
 | T3.9 | Build matchup sim hook and store | todo | |
@@ -81,3 +81,9 @@ Live tracker. Status: todo / in progress / review / done.
 ## Open questions / blockers
 
 None.
+
+## Paused (usage limit, 2026-10-25)
+
+Stopped mid phase 3. Done: phases 0–2 (tagged), C3 contracts, T3.1, T3.2.
+T3.3, T3.4 and T3.6 were stopped mid-work; their files may hold uncommitted WIP: review or redo them.
+Next: T3.5, then T3.7 (simulate + T-ENG tests), T3.8 (benchmark + tuning), then the Matchup UI (T3.9–T3.12).

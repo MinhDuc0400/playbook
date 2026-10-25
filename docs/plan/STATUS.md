@@ -71,7 +71,7 @@ Live tracker. Status: todo / in progress / review / done.
 | Phase | Verifier | Report | Tag |
 | --- | --- | --- | --- |
 | 0 | PASS | phase-0-report.md | phase-0 |
-| 1 | todo | | |
+| 1 | PASS | phase-1-report.md | phase-1 |
 | 2 | todo | | |
 | 3 | todo | | |
 | 4 | todo | | |

@@ -135,7 +135,7 @@ describe('EditorPage: auto-save (FR-DAT-04)', () => {
 });
 
 describe('EditorPage: actions', () => {
-  it('Duplicate saves pending edits, creates a copy and navigates to it', async () => {
+  it('FR-ED-06 Duplicate saves pending edits, creates a copy and navigates to it', async () => {
     const play = await seed();
     const user = userEvent.setup();
     renderAt(`/play/${play.id}`);

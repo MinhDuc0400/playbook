@@ -394,7 +394,7 @@ describe('T-DOM-01 flipPlay is an involution', () => {
   });
 });
 
-describe('flipPlay table (SRS §6.4)', () => {
+describe('FR-FLP-01 flipPlay table (SRS §6.4)', () => {
   it('mirrors start and every path of Trips Flood, keeping y', () => {
     const f = flipPlay(tripsFlood);
     const z = f.players.find((s) => s.id === 'z')!;

@@ -1,7 +1,7 @@
 /** "Tự căn" (FR-DEF-05): place defenders by target receiver + leverage + cushion. Pure. */
-import { notImplemented } from '@/domain/notImplemented';
 import type { AlignedPlayer } from '@/domain/numbering';
-import type { ID, Play } from '@/domain/types';
+import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
+import type { ID, Leverage, Play, PlayerSlot } from '@/domain/types';
 
 /** Lateral offset (yd) toward the leverage side. */
 export const ALIGN_LEVERAGE_OFFSET = 1;
@@ -22,5 +22,34 @@ export const DEFAULT_CUSHION = 5;
  * when nothing moved.
  */
 export function autoAlign(play: Play, ghost: readonly AlignedPlayer[], slotIds?: readonly ID[]): Play {
-  return notImplemented(`autoAlign ${play.id}${ghost.length}${String(slotIds)}`);
+  const numbering = numberReceivers(ghost);
+  const only = slotIds ? new Set(slotIds) : null;
+  let changed = false;
+  const players = play.players.map((slot): PlayerSlot => {
+    if (only && !only.has(slot.id)) return slot;
+    const man = slot.actions.find((a) => a.type === 'man');
+    if (man?.type !== 'man') return slot;
+    const targetId = resolveReceiverRef(man.target, numbering);
+    const target = ghost.find((g) => g.id === targetId);
+    if (!target) return slot;
+    const start = {
+      x: target.pos.x + lateralOffset(target.pos.x, slot.leverage),
+      y: Math.max(0.5, target.pos.y + depthOff(man)),
+    };
+    if (start.x === slot.start.x && start.y === slot.start.y) return slot;
+    changed = true;
+    return { ...slot, start };
+  });
+  return changed ? { ...play, players } : play;
+}
+
+function lateralOffset(targetX: number, leverage: Leverage | undefined): number {
+  const s = Math.abs(targetX) < 0.25 ? 0 : Math.sign(targetX);
+  if (leverage === 'inside') return -s * ALIGN_LEVERAGE_OFFSET;
+  if (leverage === 'outside') return s * ALIGN_LEVERAGE_OFFSET;
+  return 0;
+}
+
+function depthOff(man: { technique: 'trail' | 'cushion'; cushion?: number }): number {
+  return man.technique === 'cushion' ? (man.cushion ?? DEFAULT_CUSHION) : TRAIL_DEPTH;
 }

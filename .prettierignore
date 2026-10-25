@@ -1,0 +1,9 @@
+dist
+coverage
+node_modules
+flagbook-kit
+pnpm-lock.yaml
+playwright-report
+test-results
+*.md
+.claude

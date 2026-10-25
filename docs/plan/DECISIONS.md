@@ -149,3 +149,18 @@ ones (marked "supersedes D-xx").
 - Playback picks the last engine frame ≤ t (`engine/frames.ts frameAt`); no UI interpolation (NFR-ARC-03).
 - Receiver tell: within `cutLoss × tellWindow` s of a sharp break (turn ≥ 30°, not smooth) desired speed
   drops to 0.5 × max; deceleration limit = 2 × acceleration limit.
+
+## D-19 Engine contract details (phase 3)
+- Agents return `AgentIntent` (extends the SRS `Intent`): optional state label, eyeTarget, throw, throwaway,
+  focus (man target for the leverage factor), events. The world, not the agent, stamps events, releases
+  the ball after `release` s, and decides sack/timeout.
+- Perception: other players at `t − effectiveDelay`, ball/QB flags at `t − reaction` taken from the earlier
+  snapshot (discrete state never leaks early). Leverage factor applies only to the man target while it
+  moves laterally ≥ 1 yd/s toward the defender's leverage side.
+- QB predicts its own receivers with the offense-only kinematic run (`previewOffense`) and defenders by
+  linear extrapolation of their perceived velocity.
+- Ball arrival uses the nearest receiver within catchRadius and nearest defender within contestRadius;
+  `resolveArrival` wraps `resolveContest` (D-11), no RNG draw when nobody arrives.
+- Noise: each stat × U[0.9, 1.1) from `forkRng(seed, 'noise:' + id)`; 0..1 stats clamped.
+- Simulation continues 0.5 s after the outcome so the animation shows the ball arrive.
+- Zone defenders apply QB-eye drift in phase 3; phase 5 gates it on anticipation > 0.

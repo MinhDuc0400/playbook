@@ -4,14 +4,14 @@ Live tracker. Status: todo / in progress / review / done.
 
 | Task | Title | Status | Commit |
 | --- | --- | --- | --- |
-| C0 | Contracts phase 0 | todo | |
-| T0.1 | Implement geometry and field helpers | todo | |
-| T0.2 | Implement route tree templates | todo | |
-| T0.3 | Implement presets, defaults and resolveStats | todo | |
-| T0.4 | Build viewport math and FieldSvg | todo | |
-| T0.5 | Implement repositories, migrations, cascade | todo | |
-| T0.6 | Seed default settings and sample plays | todo | |
-| T0.7 | Build app shell, theme, error boundary, autosave hook | todo | |
+| C0 | Contracts phase 0 | done | 60a4c7c |
+| T0.1 | Implement geometry and field helpers | done | 90c78ab |
+| T0.2 | Implement route tree templates | done | a2faf9b |
+| T0.3 | Implement presets, defaults and resolveStats | done | 9db9991 |
+| T0.4 | Build viewport math and FieldSvg | done | e8cd265 |
+| T0.5 | Implement repositories, migrations, cascade | done | 7da0114 |
+| T0.6 | Seed default settings and sample plays | done | f8fcff1 |
+| T0.7 | Build app shell, theme, error boundary, autosave hook | done | 7e52444 |
 | C1 | Contracts phase 1 | todo | |
 | T1.1 | Implement flipPlay | todo | |
 | T1.2 | Implement strength, numbering, ReceiverRef binding | todo | |

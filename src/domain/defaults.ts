@@ -1,5 +1,8 @@
 /** Default TuningParams (SRS §11.2), route priors (§8.7) and Settings (§5.6). */
-import type { RoutePriorTable, Settings, TuningParams } from './types';
+import { createDefaultFields } from './field';
+import { DEFAULT_PRESETS } from './presets';
+import { SCHEMA_VERSION } from './types';
+import type { Preset, RoutePriorTable, Settings, Stats, TuningParams } from './types';
 
 export const DEFAULT_TUNING: Readonly<TuningParams> = {
   simDt: 1 / 60,
@@ -39,12 +42,104 @@ export const DEFAULT_TUNING: Readonly<TuningParams> = {
 export const ROUTE_PRIOR_KEYS = ['n1-wide', 'n1-tight', 'n2-slot', 'n3', 'rb'] as const;
 export type RoutePriorKey = (typeof ROUTE_PRIOR_KEYS)[number];
 
+/** Every route-tree templateId (kept local so defaults.ts does not depend on routeTree.ts). */
+const ROUTE_TEMPLATE_IDS = [
+  'hitch',
+  'slant',
+  'out',
+  'in',
+  'go',
+  'post',
+  'corner',
+  'curl',
+  'comeback',
+  'flat',
+  'drag',
+  'wheel',
+  'whip',
+  'out-and-up',
+  'sluggo',
+] as const;
+
+/** Raw (unnormalised) weights per alignment; unlisted routes get a small floor weight. */
+const RAW_ROUTE_WEIGHTS: Record<
+  RoutePriorKey,
+  Partial<Record<(typeof ROUTE_TEMPLATE_IDS)[number], number>>
+> = {
+  'n1-wide': {
+    go: 20,
+    hitch: 14,
+    slant: 12,
+    out: 12,
+    comeback: 10,
+    curl: 10,
+    post: 6,
+    corner: 5,
+    'out-and-up': 3,
+    sluggo: 2,
+  },
+  'n1-tight': {
+    go: 20,
+    slant: 18,
+    hitch: 14,
+    in: 12,
+    post: 10,
+    curl: 8,
+    comeback: 5,
+    out: 3,
+    corner: 2,
+    sluggo: 2,
+  },
+  'n2-slot': {
+    out: 16,
+    corner: 14,
+    in: 14,
+    drag: 12,
+    whip: 8,
+    flat: 8,
+    curl: 8,
+    slant: 6,
+    post: 5,
+    hitch: 4,
+    go: 3,
+    sluggo: 2,
+  },
+  n3: { drag: 22, flat: 20, in: 14, curl: 12, out: 10, hitch: 8, whip: 6, slant: 4, wheel: 2, go: 2 },
+  rb: { flat: 30, wheel: 20, drag: 14, out: 12, hitch: 6, whip: 6, curl: 4, slant: 3, go: 2 },
+};
+
+const FLOOR_WEIGHT = 0.5;
+
 /** Default route prior table. Every row has all route-tree templateIds and sums to 1. */
 export function createDefaultRoutePriors(): RoutePriorTable {
-  throw new Error('not implemented');
+  const table: RoutePriorTable = {};
+  for (const key of ROUTE_PRIOR_KEYS) {
+    const raw = RAW_ROUTE_WEIGHTS[key];
+    const weights = ROUTE_TEMPLATE_IDS.map((id) => raw[id] ?? FLOOR_WEIGHT);
+    const total = weights.reduce((a, b) => a + b, 0);
+    const row: Record<string, number> = {};
+    ROUTE_TEMPLATE_IDS.forEach((id, i) => {
+      row[id] = (weights[i] ?? FLOOR_WEIGHT) / total;
+    });
+    table[key] = row;
+  }
+  return table;
+}
+
+function copyPresets(src: Readonly<Record<Preset, Stats>>): Record<Preset, Stats> {
+  return { weak: { ...src.weak }, avg: { ...src.avg }, good: { ...src.good } };
 }
 
 /** Fresh default Settings record (fields, presets, tuning, priors, ui). */
 export function createDefaultSettings(): Settings {
-  throw new Error('not implemented');
+  return {
+    key: 'app',
+    schemaVersion: SCHEMA_VERSION,
+    fields: createDefaultFields(),
+    defaultFormat: '5v5',
+    presets: copyPresets(DEFAULT_PRESETS),
+    tuning: { ...DEFAULT_TUNING },
+    routePriors: createDefaultRoutePriors(),
+    ui: { theme: 'system', snap: true, showGrid: false },
+  };
 }

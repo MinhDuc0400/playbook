@@ -12,7 +12,7 @@ Live tracker. Status: todo / in progress / review / done.
 | T0.5 | Implement repositories, migrations, cascade | done | 7da0114 |
 | T0.6 | Seed default settings and sample plays | done | f8fcff1 |
 | T0.7 | Build app shell, theme, error boundary, autosave hook | done | 7e52444 |
-| C1 | Contracts phase 1 | todo | |
+| C1 | Contracts phase 1 | in progress |  |
 | T1.1 | Implement flipPlay | todo | |
 | T1.2 | Implement strength, numbering, ReceiverRef binding | todo | |
 | T1.3 | Implement movement model, route follower, offense preview | todo | |
@@ -70,7 +70,7 @@ Live tracker. Status: todo / in progress / review / done.
 
 | Phase | Verifier | Report | Tag |
 | --- | --- | --- | --- |
-| 0 | todo | | |
+| 0 | PASS | phase-0-report.md | phase-0 |
 | 1 | todo | | |
 | 2 | todo | | |
 | 3 | todo | | |

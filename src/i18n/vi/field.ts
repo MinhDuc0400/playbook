@@ -2,4 +2,5 @@
 export const field = {
   noRunBadge: 'Chỉ được chuyền',
   fit: 'Vừa màn hình',
+  ariaLabel: 'Sân bóng',
 } as const;

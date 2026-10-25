@@ -72,7 +72,7 @@ Live tracker. Status: todo / in progress / review / done.
 | --- | --- | --- | --- |
 | 0 | PASS | phase-0-report.md | phase-0 |
 | 1 | PASS | phase-1-report.md | phase-1 |
-| 2 | todo | | |
+| 2 | PASS | phase-2-report.md | phase-2 |
 | 3 | todo | | |
 | 4 | todo | | |
 | 5 | todo | | |

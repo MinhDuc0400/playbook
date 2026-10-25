@@ -1,7 +1,7 @@
 /** Generic table repository (NFR-ARC-04: components use repositories, never Dexie). */
 import type { Table } from 'dexie';
-import { notImplemented } from '@/domain/notImplemented';
 import type { ID } from '@/domain/types';
+import { withDbErrors } from '../errors';
 
 export interface Repo<T extends { id: ID }> {
   get(id: ID): Promise<T | undefined>;
@@ -16,5 +16,25 @@ export interface Repo<T extends { id: ID }> {
 
 /** Build a Repo over a table getter (getter so tests can reset the DB). All ops go through withDbErrors. */
 export function createRepo<T extends { id: ID }>(table: () => Table<T, ID>): Repo<T> {
-  return notImplemented(`createRepo ${String(table)}`);
+  return {
+    get: (id) => withDbErrors(() => table().get(id)),
+    getMany: (ids) => withDbErrors(() => table().bulkGet(ids)),
+    list: () => withDbErrors(() => table().toArray()),
+    put: (rec) =>
+      withDbErrors(async () => {
+        const t = table();
+        await t.db.transaction('rw', t, () => t.put(rec));
+      }),
+    bulkPut: (recs) =>
+      withDbErrors(async () => {
+        const t = table();
+        await t.db.transaction('rw', t, () => t.bulkPut(recs));
+      }),
+    remove: (id) =>
+      withDbErrors(async () => {
+        const t = table();
+        await t.db.transaction('rw', t, () => t.delete(id));
+      }),
+    count: () => withDbErrors(() => table().count()),
+  };
 }

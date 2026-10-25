@@ -2,46 +2,61 @@
  * Live-query hooks for components (dexie-react-hooks useLiveQuery over the repositories).
  * Each returns undefined while loading.
  */
-import { notImplemented } from '@/domain/notImplemented';
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { Athlete, DbSnapshot, ID, Install, Lineup, Matchup, Play, Settings } from '@/domain/types';
-import type { MatchupBundle } from './repos/bundle';
+import { athletesRepo } from './repos/athletes';
+import { loadDbSnapshot, loadMatchupBundle, type MatchupBundle } from './repos/bundle';
+import { installsRepo } from './repos/installs';
+import { lineupsRepo } from './repos/lineups';
+import { matchupsRepo } from './repos/matchups';
+import { playsRepo } from './repos/plays';
+import { settingsRepo } from './repos/settings';
 
 export function usePlays(): Play[] | undefined {
-  return notImplemented('usePlays');
+  return useLiveQuery(() => playsRepo.list(), []);
 }
 /** null when the play does not exist. */
 export function usePlay(id: ID | undefined): Play | null | undefined {
-  return notImplemented(`usePlay ${id}`);
+  const found = useLiveQuery(
+    async () => (id === undefined ? null : ((await playsRepo.get(id)) ?? null)),
+    [id],
+  );
+  return id === undefined ? null : found;
 }
 export function useAllTags(): string[] | undefined {
-  return notImplemented('useAllTags');
+  return useLiveQuery(() => playsRepo.allTags(), []);
 }
 export function useMatchups(): Matchup[] | undefined {
-  return notImplemented('useMatchups');
+  return useLiveQuery(() => matchupsRepo.list(), []);
 }
 export function useMatchupBundle(id: ID | undefined): MatchupBundle | undefined {
-  return notImplemented(`useMatchupBundle ${id}`);
+  const bundle = useLiveQuery(async () => (id === undefined ? undefined : await loadMatchupBundle(id)), [id]);
+  return id === undefined ? undefined : bundle;
 }
 export function useMatchupCountByPlay(): Record<ID, number> | undefined {
-  return notImplemented('useMatchupCountByPlay');
+  return useLiveQuery(() => matchupsRepo.countByPlay(), []);
 }
 export function useInstalls(): Install[] | undefined {
-  return notImplemented('useInstalls');
+  return useLiveQuery(() => installsRepo.list(), []);
 }
 /** null when the install does not exist. */
 export function useInstall(id: ID | undefined): Install | null | undefined {
-  return notImplemented(`useInstall ${id}`);
+  const found = useLiveQuery(
+    async () => (id === undefined ? null : ((await installsRepo.get(id)) ?? null)),
+    [id],
+  );
+  return id === undefined ? null : found;
 }
 export function useAthletes(): Athlete[] | undefined {
-  return notImplemented('useAthletes');
+  return useLiveQuery(() => athletesRepo.list(), []);
 }
 export function useLineups(): Lineup[] | undefined {
-  return notImplemented('useLineups');
+  return useLiveQuery(() => lineupsRepo.list(), []);
 }
 /** Stored settings or defaults. */
 export function useSettings(): Settings | undefined {
-  return notImplemented('useSettings');
+  return useLiveQuery(() => settingsRepo.getOrDefault(), []);
 }
 export function useDbSnapshot(): DbSnapshot | undefined {
-  return notImplemented('useDbSnapshot');
+  return useLiveQuery(() => loadDbSnapshot(), []);
 }

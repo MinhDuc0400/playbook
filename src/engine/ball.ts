@@ -1,11 +1,12 @@
 /** Ball flight (SRS §8.8). Pure. */
-import { notImplemented } from '@/domain/notImplemented';
+import { distance, lerpPoint } from '@/domain/geometry';
 import type { BallState, ID, Point, TuningParams } from '@/domain/types';
+import { gaussian } from './rng';
 import type { Rng } from './types';
 
 /** Flight time (s) from → to at tuning.ballSpeed. */
 export function flightTime(from: Point, to: Point, tuning: TuningParams): number {
-  return notImplemented(`flightTime ${from.x}${to.x}${String(tuning)}`);
+  return distance(from, to) / tuning.ballSpeed;
 }
 
 /**
@@ -19,7 +20,10 @@ export function applyThrowError(
   tuning: TuningParams,
   rng: Rng,
 ): Point {
-  return notImplemented(`applyThrowError ${from.x}${aim.x}${accuracy}${String(tuning)}${String(rng)}`);
+  const sigma = (1 - accuracy) * tuning.inaccuracyK * distance(from, aim);
+  const gx = gaussian(rng);
+  const gy = gaussian(rng);
+  return { x: aim.x + sigma * gx, y: aim.y + sigma * gy };
 }
 
 /** Ball state at launch: inAir from → landing, tThrow = t, tLand = t + flightTime. */
@@ -30,12 +34,27 @@ export function launchBall(
   targetId: ID,
   tuning: TuningParams,
 ): BallState {
-  return notImplemented(`launchBall ${from.x}${landing.x}${t}${targetId}${String(tuning)}`);
+  return {
+    state: 'inAir',
+    pos: { ...from },
+    from: { ...from },
+    landing: { ...landing },
+    tThrow: t,
+    tLand: t + flightTime(from, landing, tuning),
+    targetId,
+  };
 }
 
 /** Position of an inAir ball at time t (linear interpolation, clamped to [tThrow, tLand]). */
 export function ballPosAt(ball: BallState, t: number): Point {
-  return notImplemented(`ballPosAt ${ball.state}${t}`);
+  const { from, landing, tThrow, tLand } = ball;
+  if (from === undefined || landing === undefined || tThrow === undefined || tLand === undefined) {
+    return ball.pos;
+  }
+  const span = tLand - tThrow;
+  if (span <= 0) return { ...(t < tThrow ? from : landing) };
+  const u = Math.min(1, Math.max(0, (t - tThrow) / span));
+  return lerpPoint(from, landing, u);
 }
 
 /**
@@ -49,5 +68,12 @@ export function leadTarget(
   posAt: (t: number) => Point,
   tuning: TuningParams,
 ): { aim: Point; tArrive: number } {
-  return notImplemented(`leadTarget ${from.x}${tRelease}${String(posAt)}${String(tuning)}`);
+  let tFlight = flightTime(from, posAt(tRelease), tuning);
+  for (let i = 0; i < 5; i++) {
+    const next = flightTime(from, posAt(tRelease + tFlight), tuning);
+    const change = Math.abs(next - tFlight);
+    tFlight = next;
+    if (change < 0.01) break;
+  }
+  return { aim: posAt(tRelease + tFlight), tArrive: tRelease + tFlight };
 }

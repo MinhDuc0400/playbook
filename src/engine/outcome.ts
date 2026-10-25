@@ -1,5 +1,4 @@
 /** Catch resolution (SRS §8.8, D-11). Pure. */
-import { notImplemented } from '@/domain/notImplemented';
 import type { TuningParams } from '@/domain/types';
 import type { Rng } from './types';
 
@@ -22,7 +21,17 @@ export function resolveContest(
   t: TuningParams,
   rng: Rng,
 ): ContestResult {
-  return notImplemented(`resolveContest ${hands}${ballSkills}${recDist}${defDist}${String(t)}${String(rng)}`);
+  const recOk = rng() < hands;
+  const defOk = rng() < ballSkills;
+  if (!recOk && !defOk) return 'incomplete';
+  if (recOk && !defOk) return 'complete';
+  if (recOk && defOk) {
+    const k = t.contestShareExponent;
+    const sum = recDist ** k + defDist ** k;
+    const recShare = sum === 0 ? 0.5 : defDist ** k / sum;
+    if (rng() < recShare) return 'complete';
+  }
+  return rng() < t.intShare ? 'intercepted' : 'deflected';
 }
 
 export interface ArrivalInput {
@@ -38,5 +47,14 @@ export interface ArrivalInput {
  * WITHOUT consuming rng.
  */
 export function resolveArrival(a: ArrivalInput, t: TuningParams, rng: Rng): ContestResult {
-  return notImplemented(`resolveArrival ${String(a)}${String(t)}${String(rng)}`);
+  const { receiver, defender } = a;
+  if (!receiver && !defender) return 'incomplete';
+  return resolveContest(
+    receiver ? receiver.hands : 0,
+    defender ? defender.ballSkills : 0,
+    receiver ? receiver.dist : 0,
+    defender ? defender.dist : 0,
+    t,
+    rng,
+  );
 }

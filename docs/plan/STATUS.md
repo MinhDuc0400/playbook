@@ -23,11 +23,11 @@ Live tracker. Status: todo / in progress / review / done.
 | T1.8 | Build editor canvas and select/place/route tools | done | 4a760c4 |
 | T1.9 | Build editor page, new-play dialog, metadata, warnings | done | f03771b |
 | T1.10 | Build offense panel and Chạy thử | done | f2058aa |
-| C2 | Contracts phase 2 | todo | |
-| T2.1 | Implement zone presets, defense ops, auto-align | todo | |
-| T2.2 | Build ghost offense layer and man tool | todo | |
-| T2.3 | Build zone/rush tools and assignment rendering | todo | |
-| T2.4 | Build defense panel | todo | |
+| C2 | Contracts phase 2 | done | 8b6bf13 |
+| T2.1 | Implement zone presets, defense ops, auto-align | done | 85ec88f |
+| T2.2 | Build ghost offense layer and man tool | done | f466093 |
+| T2.3 | Build zone/rush tools and assignment rendering | done | 2c182aa |
+| T2.4 | Build defense panel | done | aa3ff43 |
 | C3 | Contracts phase 3 | todo | |
 | T3.1 | Implement RNG, ball flight, catch resolution | todo | |
 | T3.2 | Implement world history and perception | todo | |

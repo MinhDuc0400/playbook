@@ -54,7 +54,12 @@ export const LABEL_POOLS: Readonly<Record<Role, readonly string[]>> = {
 
 /** First label of the role's pool not used in `used`; when exhausted `${role}${n}` with the smallest free n ≥ 2. */
 export function nextDefaultLabel(role: Role, used: readonly string[]): string {
-  return notImplemented(`nextDefaultLabel ${role}${used.length}`);
+  const taken = new Set(used);
+  const free = LABEL_POOLS[role].find((l) => !taken.has(l));
+  if (free !== undefined) return free;
+  let n = 2;
+  while (taken.has(`${role}${n}`)) n += 1;
+  return `${role}${n}`;
 }
 
 /**

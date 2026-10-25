@@ -62,6 +62,8 @@ export interface Play {
   format: Format;
   formation: string; // "Trips", "Cover 3" (no Left/Right)
   strength: Strength; // offense: computed, may be overridden; defense: ghost strength at design time
+  /** Offense: true when the user overrode the computed strength (FR-OFF-05, D-17). */
+  strengthOverridden?: boolean;
   alignTo?: 'ball' | 'strength'; // defense only
   players: PlayerSlot[];
   progression?: ID[]; // offense: QB read order (slot ids)

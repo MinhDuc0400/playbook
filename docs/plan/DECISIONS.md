@@ -131,3 +131,21 @@ ones (marked "supersedes D-xx").
 - Decision: "good concept vs matching coverage" (FR-TUN-03, §14.5) = Trips Flood vs Cover 3, Smash vs
   Cover 2, Mesh vs Cover 1. Benchmark: all players TB, noise on, 50 seeds per pairing.
 - Reason: textbook pairings; matches the play tags (`beats:cover-3`, …).
+
+## D-17 Strength override flag
+- Context: FR-OFF-05 "Strength tự tính … cho phép ghi đè" needs to know whether the stored strength is an
+  override, or every player move would overwrite it.
+- Decision: optional `Play.strengthOverridden?: boolean` (offense). Editor ops recompute strength after
+  alignment changes unless it is true; "auto" clears it. Engine ignores it (uses visible alignment, D-09).
+- Reason: additive optional field; no data-model conflict.
+
+## D-18 Editor default labels, formations, rendering
+- Default labels per role: QB Q; C C; WR X, Z, Y, H, F, W; RB B, R; TE T, U; CB CB1..CB4; S FS, SS, S3;
+  LB LB, LB2, LB3; R R1, R2. Exhausted → `${role}${n}`.
+- Formation presets: 5v5 offense 2x1, Trips, Bunch, Stack, Spread RB; 5v5 defense Cover 1/2/3 shells;
+  7v7 offense 3x2, Trips 7v7; 7v7 defense Cover 2/3 7v7. Default ghost = 2x1 (5v5/custom), 3x2 (7v7).
+- movePlayer translates the player's own offense paths (route/option/motion); defense actions stay
+  (zones are field-relative).
+- Playback picks the last engine frame ≤ t (`engine/frames.ts frameAt`); no UI interpolation (NFR-ARC-03).
+- Receiver tell: within `cutLoss × tellWindow` s of a sharp break (turn ≥ 30°, not smooth) desired speed
+  drops to 0.5 × max; deceleration limit = 2 × acceleration limit.

@@ -3,8 +3,12 @@
  * Each feature owns its namespace file in ./vi/. Components import `t` from here only.
  */
 import { common } from './vi/common';
+import { editor } from './vi/editor';
 import { field } from './vi/field';
+import { offense } from './vi/offense';
+import { playback } from './vi/playback';
+import { tools } from './vi/tools';
 
-export const vi = { common, field } as const;
+export const vi = { common, field, editor, offense, playback, tools } as const;
 export const t = vi;
 export type Strings = typeof vi;

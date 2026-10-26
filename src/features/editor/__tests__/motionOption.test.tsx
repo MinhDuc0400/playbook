@@ -59,7 +59,7 @@ beforeEach(() => {
   store().load(offenseFixture());
 });
 
-describe('ops: motion / option / delay', () => {
+describe('FR-OFF-07 FR-OFF-08 FR-OFF-09 ops: motion / option / delay', () => {
   it('setMotion adds, replaces, removes; default duration 1; immutable', () => {
     const before = play();
     const snapshot = JSON.stringify(before);
@@ -128,7 +128,7 @@ describe('ops: motion / option / delay', () => {
   });
 });
 
-describe('motionTool', () => {
+describe('FR-OFF-07 motionTool', () => {
   it('player + 2 clicks + Enter makes a motion (duration 1) in one undo step', () => {
     click(motionTool, { x: 8, y: 0 }, onPlayer('z'));
     click(motionTool, { x: 6, y: 0 });
@@ -159,7 +159,7 @@ describe('motionTool', () => {
   });
 });
 
-describe('optionTool', () => {
+describe('FR-OFF-08 optionTool', () => {
   it('stem, vsMan, vsZone each closed with Enter makes an option action', () => {
     click(optionTool, { x: 8, y: 0 }, onPlayer('z'));
     click(optionTool, { x: 8, y: 6 });

@@ -42,12 +42,12 @@ Live tracker. Status: todo / in progress / review / done.
 | T3.11 | Build matchup field, overlays, player panel | done | 2a379e0 |
 | T3.12 | Build result panel | done | 1a50157 |
 | C4 | Contracts phase 4 | todo | |
-| T4.1 | Build thumbnails and playbook grid with filters | todo | |
-| T4.2 | Build play actions, delete cascade dialog, matchup list | todo | |
-| T4.3 | Build install list and detail | todo | |
-| T4.4 | Build present mode | todo | |
-| T4.5 | Implement JSON export/import and data settings | todo | |
-| T4.6 | Write E2E scenarios 1–7 | todo | |
+| T4.1 | Build thumbnails and playbook grid with filters | done | ddf1f9d |
+| T4.2 | Build play actions, delete cascade dialog, matchup list | done | 5a77b4b |
+| T4.3 | Build install list and detail | done | 7e6d73e |
+| T4.4 | Build present mode | done | a7bed4b |
+| T4.5 | Implement JSON export/import and data settings | done | b5c6391 |
+| T4.6 | Write E2E scenarios 1–7 | done | fe44891 |
 | C5 | Contracts phase 5 | todo | |
 | T5.1 | Implement anticipation: route prior, tells, QB eyes, oracle | todo | |
 | T5.2 | Implement pattern-match rules | todo | |
@@ -74,7 +74,7 @@ Live tracker. Status: todo / in progress / review / done.
 | 1 | PASS | phase-1-report.md | phase-1 |
 | 2 | PASS | phase-2-report.md | phase-2 |
 | 3 | PASS | phase-3-report.md | phase-3 |
-| 4 | todo | | |
+| 4 + MVP | PASS | phase-4-report.md | phase-4 |
 | 5 | todo | | |
 | 6 | todo | | |
 

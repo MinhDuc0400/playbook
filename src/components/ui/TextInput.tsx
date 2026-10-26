@@ -6,7 +6,7 @@ export interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 }
 
 export const fieldClasses =
-  'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
+  'min-h-10 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 lg:min-h-0';
 
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
   { label, hint, id, className = '', ...rest },

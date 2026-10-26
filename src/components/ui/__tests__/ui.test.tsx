@@ -109,3 +109,24 @@ describe('ui primitives', () => {
     expect(screen.getByLabelText('Loại')).toHaveValue('1');
   });
 });
+
+describe('Dialog responsive (D-25)', () => {
+  it('renders as a full-screen sheet below 640px', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: false,
+      media: q,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    try {
+      render(
+        <Dialog open onClose={() => undefined} title="T">
+          x
+        </Dialog>,
+      );
+      expect(screen.getByRole('dialog')).toHaveAttribute('data-variant', 'sheet');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

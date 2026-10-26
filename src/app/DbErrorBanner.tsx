@@ -28,9 +28,9 @@ export function DbErrorBanner(): JSX.Element | null {
     <div
       role="alert"
       data-testid="db-error-banner"
-      className="flex items-start justify-between gap-3 border-b border-red-300 bg-red-50 px-4 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
+      className="flex items-start justify-between gap-2 border-b border-red-300 bg-red-50 px-3 py-2 sm:gap-3 sm:px-4 text-sm text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"
     >
-      <div>
+      <div className="min-w-0 break-words">
         <p className="font-semibold">{t.common.dbError[info.kind]}</p>
         <p>
           {t.common.dbError.exportHint} <SettingsLink>{t.common.dbError.exportLink}</SettingsLink>
@@ -41,7 +41,7 @@ export function DbErrorBanner(): JSX.Element | null {
         aria-label={t.common.dbError.dismiss}
         title={t.common.dbError.dismiss}
         onClick={() => setInfo(null)}
-        className="rounded px-2 text-lg leading-none hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-red-900"
+        className="min-h-10 shrink-0 rounded px-2 text-lg leading-none hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-red-900"
       >
         ×
       </button>

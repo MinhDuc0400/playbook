@@ -12,7 +12,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   { label, variant = 'ghost', size = 'md', type = 'button', className = '', ...rest },
   ref,
 ) {
-  const dims = size === 'sm' ? 'h-7 w-7 text-sm' : 'h-9 w-9 text-base';
+  const dims = size === 'sm' ? 'h-10 w-10 text-sm lg:h-7 lg:w-7' : 'h-10 w-10 text-base lg:h-9 lg:w-9';
   return (
     <button
       ref={ref}

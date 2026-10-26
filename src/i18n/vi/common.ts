@@ -8,6 +8,7 @@ export const common = {
     suggest: 'Suggest',
     settings: 'Cài đặt',
     label: 'Điều hướng chính',
+    menu: 'Menu',
   },
   loading: 'Đang tải…',
   /** Suffix for the number input paired with a slider (aria-label). */

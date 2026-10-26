@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { t } from '@/i18n/vi';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { IconButton } from './IconButton';
 
 export interface DialogProps {
@@ -16,6 +17,9 @@ const FOCUSABLE =
 /** Modal dialog: Esc / backdrop close, focus moves in on open and returns on close. */
 export function Dialog({ open, onClose, title, children }: DialogProps): JSX.Element | null {
   const titleId = useId();
+  const hasMM = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const wide = useMediaQuery('(min-width: 640px)');
+  const sheet = hasMM && !wide; // full-screen sheet on phones (D-25)
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -65,7 +69,7 @@ export function Dialog({ open, onClose, title, children }: DialogProps): JSX.Ele
   return createPortal(
     <div
       data-testid="dialog-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className={`fixed inset-0 z-50 flex bg-black/50 ${sheet ? '' : 'items-center justify-center p-4'}`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -74,10 +78,13 @@ export function Dialog({ open, onClose, title, children }: DialogProps): JSX.Ele
         ref={panelRef}
         role="dialog"
         aria-modal="true"
+        data-variant={sheet ? 'sheet' : 'modal'}
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={trapTab}
-        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-lg bg-white p-4 text-slate-900 shadow-xl dark:bg-slate-800 dark:text-slate-100"
+        className={`w-full overflow-auto bg-white p-4 text-slate-900 shadow-xl dark:bg-slate-800 dark:text-slate-100 ${
+          sheet ? 'h-dvh max-h-dvh' : 'max-h-[90vh] max-w-2xl rounded-lg'
+        }`}
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 id={titleId} className="text-lg font-semibold">

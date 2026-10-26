@@ -67,3 +67,30 @@ describe('Layout', () => {
     expect(screen.getByLabelText('field')).toHaveValue('?');
   });
 });
+
+describe('Layout (phone)', () => {
+  it('shows a menu button, hides links until opened, closes on navigate', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: !q.includes('min-width'),
+      media: q,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    try {
+      renderLayout();
+      const btn = screen.getByTestId('nav-menu-button');
+      expect(btn).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId('nav-settings')).toBeNull();
+      await userEvent.click(btn);
+      expect(btn).toHaveAttribute('aria-expanded', 'true');
+      for (const id of ['playbook', 'install', 'roster', 'suggest', 'settings']) {
+        expect(screen.getByTestId(`nav-${id}`)).toBeInTheDocument();
+      }
+      await userEvent.click(screen.getByTestId('nav-playbook'));
+      expect(screen.queryByTestId('nav-settings')).toBeNull();
+      expect(screen.getByText('home')).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

@@ -33,6 +33,8 @@ export function decisionText(reads: ReadMetrics, labelOf: (id: string) => string
       return s.decision.checkdown(who);
     case 'forced':
       return s.decision.forced(who);
+    case 'manual':
+      return s.decision.manual(who);
     case 'throwaway':
       return s.decision.throwaway;
     case 'none':

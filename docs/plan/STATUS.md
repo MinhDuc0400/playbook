@@ -79,6 +79,7 @@ Live tracker. Status: todo / in progress / review / done.
 | 6 + final | PASS | phase-6-report.md | phase-6 |
 | 6b (QB reads) | PASS (unit + E2E) | phase-6b-report.md | phase-6b |
 | 6c (QB tự ném, D-23) | PASS (1352 unit, 38/38 E2E) | DECISIONS.md D-23 | phase-6c |
+| 6d (aim fix D-24, zoom clamp + mini-map) | PASS (1364 unit, 38/38 E2E) | DECISIONS.md D-24 | phase-6d |
 
 ## Open questions / blockers
 

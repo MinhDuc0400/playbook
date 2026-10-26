@@ -77,6 +77,7 @@ Live tracker. Status: todo / in progress / review / done.
 | 4 + MVP | PASS | phase-4-report.md | phase-4 |
 | 5 | PASS | phase-5-report.md | phase-5 |
 | 6 + final | PASS | phase-6-report.md | phase-6 |
+| 6b (QB reads) | PASS (unit + E2E) | phase-6b-report.md | phase-6b |
 
 ## Open questions / blockers
 
@@ -151,8 +152,8 @@ See `DECISIONS.md` (D-01 … D-21). Notable: `inaccuracyK` tuned 0.05 → 0.34 (
 added (D-17); i18n split into namespaces behind `src/i18n/vi.ts` (D-06); WebKit stands in for Safari.
 
 ### Known issues
-- 0 % sacks with TB players in the seed pairings (QB throws before the single rusher arrives);
-  Mesh averages < 1 yd per attempt and ~68 % vs every coverage.
+- QB read model added after phase 6 (D-22, `phase-6b-report.md`): reads, windows, scores are now
+  customisable and visualised. 0 % sacks with TB players; Mesh averages ≈ 1 yd per attempt; Mesh/C1 71 %.
 - A hard reload within the 800 ms auto-save window can lose the last edit (pagehide flush is best-effort).
 - Editor clipboard copy/paste (FR-ED-08) and PWA install (NFR-OFF-01 P1) not implemented.
 - Viewport does not refit on window resize (fit button does).

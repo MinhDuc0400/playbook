@@ -1,2 +1,18 @@
-/** present strings (NFR-UX-04). */
-export const present = {} as const;
+/** Present mode strings (FR-IN-04, FR-IN-05). */
+export const present = {
+  loading: 'Đang tải…',
+  notFound: 'Không tìm thấy Install này.',
+  empty: 'Install chưa có matchup nào để trình chiếu.',
+  itemError: 'Không tải được matchup hoặc play của mục này.',
+  simError: 'Không mô phỏng được matchup',
+  exit: 'Thoát',
+  prev: 'Trước',
+  next: 'Kế',
+  fullscreen: 'Toàn màn hình',
+  notes: 'Ghi chú',
+  noNotes: 'Không có ghi chú.',
+  loop: 'Lặp',
+  contrast: 'Tương phản cao',
+  versus: 'vs',
+  position: (i: number, n: number): string => `${i} / ${n}`,
+} as const;

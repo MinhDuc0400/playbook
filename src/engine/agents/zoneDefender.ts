@@ -2,8 +2,8 @@
 import { closestPointOnSegment, distance, distanceToPolygon } from '@/domain/geometry';
 import type { ID, Point } from '@/domain/types';
 import type { AnticipationModel } from '../anticipation';
-import type { Agent, AgentIntent, FieldInfo } from '../types';
-import { ballResponse, findPerceived, reactiveAim, seek } from './common';
+import type { AgentIntent, FieldInfo } from '../types';
+import { ballResponse, type DefenderAgent, findPerceived, reactiveAim, seek } from './common';
 
 /** Distance from the receiver toward the QB at which the zone defender sits. */
 const SHADOW_DIST = 1.5;
@@ -32,7 +32,8 @@ function closestBoundaryPoint(p: Point, polygon: readonly Point[]): Point {
  *   receiver→QB(seen) at 1.5 yd from the receiver toward the QB, clamped to stay within polygon +
  *   zoneBuffer (if outside, project back to the closest point of the expanded zone ≈ move toward drop).
  *   No threat → drift toward dropPoint.
- * - Receiver leaves the zone (+buffer) → released (no carry in phase 3).
+ * - Receiver leaves the zone (+buffer) → released, unless `opts.carry` names it (then it is followed
+ *   anywhere); `opts.ignore` receivers are never threats (match rules, T5.4).
  * - QB eyes: aim.x += (eyeTarget seen x − aim.x) × iq × eyeDriftFactor when p.qb.eyeTarget is seen
  *   (§8.6); with an anticipation model only when model.readingEnabled (a > 0).
  * - Ball: as man defender (throwStarted → eyeTarget; inAir → landing).
@@ -45,26 +46,49 @@ export function createZoneDefender(opts: {
   info: FieldInfo;
   /** Optional §8.7 anticipation; QB-eye drift is gated by `readingEnabled` when given. */
   anticipation?: AnticipationModel;
-}): Agent {
+  /** Match-rule `carry`: receiver followed even outside the zone (+buffer). Read every tick. */
+  carry?: () => ID | null;
+  /** Match-rule `passOff`: receivers released (never a threat). Read every tick. */
+  ignore?: () => ReadonlySet<ID>;
+}): DefenderAgent {
   const { id, polygon, dropPoint, deep, info, anticipation: model } = opts;
   const buffer = info.tuning.zoneBuffer;
   let phase2 = false;
+  let lastAim: Point | null = null;
 
   return {
     id,
+    get lastAim() {
+      return lastAim;
+    },
+    targetId: null,
     step(self, p): AgentIntent {
+      lastAim = null;
       const ball = ballResponse(self, p);
       if (ball) return ball;
 
       const maxSpeed = self.stats.speed;
-      const threats = p.others
-        .filter((o) => o.side === 'offense' && o.role !== 'QB' && distanceToPolygon(o.pos, polygon) <= buffer)
-        .sort((a, b) => (a.id < b.id ? -1 : 1));
+      const carryId = opts.carry?.() ?? null;
+      const carried = carryId === null ? undefined : findPerceived(p, carryId);
+      const released = opts.ignore?.();
+      const threats = carried
+        ? [carried]
+        : p.others
+            .filter(
+              (o) =>
+                o.side === 'offense' &&
+                o.role !== 'QB' &&
+                !released?.has(o.id) &&
+                distanceToPolygon(o.pos, polygon) <= buffer,
+            )
+            .sort((a, b) => (a.id < b.id ? -1 : 1));
 
       if (!phase2 && (distance(self.pos, dropPoint) <= DROP_REACHED || threats.length > 0)) {
         phase2 = true;
       }
+      if (!phase2 || carried) phase2 = true;
       if (!phase2) {
+        lastAim = dropPoint;
         return { ...seek(self.pos, dropPoint, maxSpeed, ARRIVE), state: 'zone' };
       }
 
@@ -96,7 +120,8 @@ export function createZoneDefender(opts: {
           : undefined;
       if (eye) aim.x += (eye.pos.x - aim.x) * self.stats.iq * info.tuning.eyeDriftFactor;
 
-      if (distanceToPolygon(aim, polygon) > buffer) aim = closestBoundaryPoint(aim, polygon);
+      if (!carried && distanceToPolygon(aim, polygon) > buffer) aim = closestBoundaryPoint(aim, polygon);
+      lastAim = aim;
 
       return { ...seek(self.pos, aim, maxSpeed, ARRIVE), state: 'zone' };
     },

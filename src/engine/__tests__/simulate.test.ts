@@ -313,3 +313,42 @@ describe('T-ENG-10 missing man target', () => {
     expect(at?.state).toBe('zone');
   });
 });
+
+describe('FR-MU-11/12 debug output and eyeTarget', () => {
+  const input = makeInput(floodPlay(), cover3Play(), { noise: true, seed: 5 });
+  const plain = simulate(input);
+  const dbg = simulate(input, { debug: true });
+
+  it('without debug there is no debug field; with debug the frames are identical', () => {
+    expect(plain.debug).toBeUndefined();
+    expect(dbg.frames).toEqual(plain.frames);
+    expect(dbg.outcome).toEqual(plain.outcome);
+  });
+
+  it('has one entry per frame and per defender', () => {
+    expect(dbg.debug?.defenders).toHaveLength(dbg.frames.length);
+    for (const d of dbg.debug?.defenders ?? []) {
+      expect(Object.keys(d).sort()).toEqual(['c-cb1', 'c-cb2', 'c-fs', 'c-lb', 'c-r1']);
+    }
+  });
+
+  it('seen positions are the delayed ones, aim is reported for zone defenders', () => {
+    const i = dbg.frames.findIndex((f) => f.t >= 1);
+    const frame = dbg.frames[i] as Frame;
+    const seen = dbg.debug?.defenders[i]?.['c-lb']?.seen ?? {};
+    expect(Object.keys(seen)).toContain('f-z');
+    // Z runs a go: the delayed position lags behind the true one by roughly reaction × speed.
+    const truth = frame.players['f-z']?.pos as Point;
+    const lag = distance(seen['f-z'] as Point, truth);
+    expect(lag).toBeGreaterThan(0.2);
+    expect(lag).toBeLessThan(3);
+    expect(dbg.debug?.defenders[i]?.['c-lb']?.aim).toBeDefined();
+  });
+
+  it('frame.eyeTarget is set once the QB starts reading and is an offense receiver', () => {
+    expect(plain.frames[0]?.eyeTarget).toBeUndefined();
+    const withEye = plain.frames.filter((f) => f.eyeTarget !== undefined);
+    expect(withEye.length).toBeGreaterThan(10);
+    for (const f of withEye) expect(f.players[f.eyeTarget as string]).toBeDefined();
+  });
+});

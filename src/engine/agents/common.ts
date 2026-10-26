@@ -1,7 +1,7 @@
 /** Helpers shared by defender agents (phase 3). Pure. */
 import { EPS, distance } from '@/domain/geometry';
 import type { ID, Leverage, Point } from '@/domain/types';
-import type { AgentIntent, AgentState, PerceivedPlayer, Perception } from '../types';
+import type { Agent, AgentIntent, AgentState, PerceivedPlayer, Perception } from '../types';
 
 export function findPerceived(p: Perception, id: ID): PerceivedPlayer | undefined {
   return p.others.find((o) => o.id === id);
@@ -58,4 +58,12 @@ export function ballResponse(self: AgentState, p: Perception): AgentIntent | und
   }
   if (p.ball.state === 'dead') return { heading: { x: 0, y: 0 }, speed: 0, state: 'idle' };
   return undefined;
+}
+
+/** A coverage agent that also exposes debug info for the Matchup overlay (FR-MU-11). */
+export interface DefenderAgent extends Agent {
+  /** Aim point of the latest step, null when the agent had none (ball response, idle). */
+  readonly lastAim: Point | null;
+  /** Current man target, null for zone defenders. */
+  readonly targetId: ID | null;
 }

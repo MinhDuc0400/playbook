@@ -1,8 +1,10 @@
 /** simulate() — the pass-play simulation (SRS §8.1, FR-ENG-01..07, D-10, D-11, D-15). Pure. */
 import { distance } from '@/domain/geometry';
+import { resolveReceiverRef } from '@/domain/numbering';
 import { outwardSign } from '@/domain/routeTree';
 import type {
   BallState,
+  DefenderDebug,
   Frame,
   FramePlayer,
   ID,
@@ -28,6 +30,8 @@ import { clampToSidelines, separateTeammates, stepMovement } from './movement';
 import { createManDefender } from './agents/manDefender';
 import { createQbAgent } from './agents/qb';
 import { createReceiverAgent } from './agents/receiver';
+import type { DefenderAgent } from './agents/common';
+import { createRuleDefender } from './agents/ruleDefender';
 import { createRusherAgent } from './agents/rusher';
 import { createZoneDefender } from './agents/zoneDefender';
 import { computeMetrics } from './metrics';
@@ -36,7 +40,7 @@ import { buildPerception, type Roster, type Viewer } from './perception';
 import { prepareSim } from './prepare';
 import { previewOffense } from './preview';
 import { forkRng } from './rng';
-import type { Agent, AgentIntent, AgentState, Kinematic, MoveLimits, Rng } from './types';
+import type { Agent, AgentIntent, AgentState, Kinematic, MoveLimits, Perception, Rng } from './types';
 import { createHistory, pushSnapshot, type PlayerSnapshot, type Snapshot } from './world';
 
 /** Simulation keeps running this long after the outcome so the animation shows the ball land. */
@@ -63,6 +67,10 @@ interface Entity {
   /** Deceleration-tell memory per target (defenders, anticipation > 0). */
   tells?: Map<ID, { state: TellState; ema: number | null }>;
   tellRng?: Rng;
+  /** Coverage agent with debug accessors (man / zone defenders). */
+  coverage?: DefenderAgent;
+  /** Last perception built for this entity (debug output only). */
+  lastP?: Perception;
 }
 
 type Pending = { targetId: ID; aim: Point; tRelease: number } | { targetId: null; tRelease: number };
@@ -92,7 +100,8 @@ function standStill(id: ID): Agent {
  * NFR-PERF-02: 5v5 6 s < 20 ms — avoid per-tick allocations of large arrays; history snapshots are
  * required but keep them flat.
  */
-export function simulate(input: SimInput): SimResult {
+export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimResult {
+  const debugOn = opts.debug === true;
   const { tuning, seed } = input;
   const dt = tuning.simDt;
   const prepared = prepareSim(input);
@@ -224,8 +233,22 @@ export function simulate(input: SimInput): SimResult {
   for (const slot of input.defense.players) {
     const b = bindings[slot.id];
     let agent: Agent;
-    if (b?.kind === 'man') {
-      agent = createManDefender({
+    let coverage: DefenderAgent | undefined;
+    const rules = slot.matchRules ?? [];
+    if ((b?.kind === 'man' || b?.kind === 'zone') && rules.length > 0) {
+      coverage = createRuleDefender({
+        id: slot.id,
+        initial: b,
+        rules,
+        leverage: slot.leverage,
+        info,
+        anticipation,
+        resolveRef: (ref) => resolveReceiverRef(ref, numbering),
+        strongSign: numbering.strongSide === 'right' ? 1 : -1,
+      });
+      agent = coverage;
+    } else if (b?.kind === 'man') {
+      agent = coverage = createManDefender({
         id: slot.id,
         targetId: b.targetId,
         technique: b.technique,
@@ -235,7 +258,7 @@ export function simulate(input: SimInput): SimResult {
         anticipation,
       });
     } else if (b?.kind === 'zone') {
-      agent = createZoneDefender({
+      agent = coverage = createZoneDefender({
         id: slot.id,
         polygon: b.polygon,
         dropPoint: b.dropPoint,
@@ -255,6 +278,7 @@ export function simulate(input: SimInput): SimResult {
       agent = standStill(slot.id);
     }
     const de = makeEntity(slot, 'defense', agent);
+    if (coverage) de.coverage = coverage;
     if (anticipation.readingEnabled && b && (b.kind === 'man' || b.kind === 'zone')) {
       const tells = new Map<ID, { state: TellState; ema: number | null }>();
       de.tells = tells;
@@ -285,6 +309,7 @@ export function simulate(input: SimInput): SimResult {
     : { state: 'held', pos: { x: 0, y: 0 } };
   let throwStarted = false;
   let eyeTarget: ID | undefined;
+  const debugFrames: Record<ID, DefenderDebug>[] = [];
   let pending: Pending | null = null;
   let outcome: Outcome | null = null;
   let tThrow: number | undefined;
@@ -327,7 +352,25 @@ export function simulate(input: SimInput): SimResult {
     } else {
       fb = { ...ball, pos: ball.landing ? { ...ball.landing } : { x: ball.pos.x, y: ball.pos.y } };
     }
-    frames.push({ t, players, ball: fb });
+    const frame: Frame = { t, players, ball: fb };
+    if (eyeTarget !== undefined) frame.eyeTarget = eyeTarget;
+    frames.push(frame);
+    if (debugOn) {
+      const defs: Record<ID, DefenderDebug> = {};
+      for (const e of defenseEntities) {
+        const seen: Record<ID, Point> = {};
+        for (const o of e.lastP?.others ?? []) {
+          if (o.side === 'offense') seen[o.id] = { x: o.pos.x, y: o.pos.y };
+        }
+        const d: DefenderDebug = { seen };
+        const aim = e.coverage?.lastAim;
+        if (aim) d.aim = { x: aim.x, y: aim.y };
+        const tid = e.coverage?.targetId;
+        if (tid) d.targetId = tid;
+        defs[e.id] = d;
+      }
+      debugFrames.push(defs);
+    }
   };
 
   const constrain = (e: Entity, k: Kinematic, ballHeld: boolean): Kinematic => {
@@ -386,6 +429,7 @@ export function simulate(input: SimInput): SimResult {
         continue;
       }
       const p = buildPerception(history, roster, e.viewer, t, tuning.leverageReactionFactor);
+      if (debugOn) e.lastP = p;
       const intent = e.agent.step(e.state, p, dt, e.rng);
       if (e.tells && e.tellRng) {
         for (const o of p.others) {
@@ -413,12 +457,12 @@ export function simulate(input: SimInput): SimResult {
       }
       e.intent = intent;
     }
+    eyeTarget = eyeNext;
     if (tick === 0) {
       const k0 = 0 - Math.floor(preTicks * dt * FRAME_RATE + TIME_EPS);
       pushFrame(k0 / FRAME_RATE);
       nextFrame = k0 + 1;
     }
-    eyeTarget = eyeNext;
 
     // ---- 4a. QB decision ----
     if (qb && throwIntent && pending === null && ball.state === 'held' && outcome === null) {
@@ -559,11 +603,13 @@ export function simulate(input: SimInput): SimResult {
     tuning.separationOpen,
   );
 
-  return {
+  const result: SimResult = {
     frames,
     events,
     outcome: outcome as unknown as Outcome,
     metrics,
     warnings: [...prepared.warnings],
   };
+  if (debugOn) result.debug = { defenders: debugFrames };
+  return result;
 }

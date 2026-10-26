@@ -1,9 +1,16 @@
 /** Man defender (SRS §8.6 man, §8.7 reactive aim; anticipation added in phase 5). */
 import { EPS } from '@/domain/geometry';
-import type { ID, Leverage } from '@/domain/types';
+import type { ID, Leverage, Point } from '@/domain/types';
 import type { AnticipationModel } from '../anticipation';
-import type { Agent, AgentIntent, FieldInfo } from '../types';
-import { ballResponse, findPerceived, leverageOffsetPoint, reactiveAim, seek } from './common';
+import type { AgentIntent, FieldInfo } from '../types';
+import {
+  ballResponse,
+  type DefenderAgent,
+  findPerceived,
+  leverageOffsetPoint,
+  reactiveAim,
+  seek,
+} from './common';
 
 /** Trail technique: yards behind the receiver along its direction of travel. */
 export const TRAIL_BEHIND = 0.5;
@@ -34,13 +41,19 @@ export function createManDefender(opts: {
   info: FieldInfo;
   /** Optional §8.7 anticipation; absent = purely reactive (phase-3 behaviour). */
   anticipation?: AnticipationModel;
-}): Agent {
+}): DefenderAgent {
   const { id, targetId, technique, cushion, leverage, info, anticipation: model } = opts;
   const focus = { id: targetId, leverage };
   const belief = model ? model.createBelief(targetId) : null;
+  let lastAim: Point | null = null;
   return {
     id,
+    get lastAim() {
+      return lastAim;
+    },
+    targetId,
     step(self, p): AgentIntent {
+      lastAim = null;
       const ball = ballResponse(self, p);
       if (ball) return { ...ball, focus };
 
@@ -53,6 +66,7 @@ export function createManDefender(opts: {
         : reactiveAim(target, info.tuning.lookahead);
       const aim = leverageOffsetPoint(base, target.pos.x, leverage, info.tuning.leverageOffset);
       const maxSpeed = self.stats.speed;
+      lastAim = aim;
 
       if (technique === 'cushion' && target.pos.y + cushion < self.pos.y) {
         aim.y = Math.max(self.pos.y, target.pos.y + cushion);

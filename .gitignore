@@ -8,3 +8,4 @@ test-results/
 # original kit sources (copied to repo root)
 flagbook-kit/
 flagbook-kit.zip
+.idea/

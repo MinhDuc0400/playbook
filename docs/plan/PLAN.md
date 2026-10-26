@@ -158,3 +158,17 @@ which have no phase in §15); full verification incl. NFR-PERF-01..04.
 | T6.5 | Build random defense mode | FR-RD-01/02/03 | `src/features/matchup/RandomDefense.tsx`, takes over matchup page/overlays as needed, tests | T6.1 | B | hidden name/overlays; guess list; reveal + right/wrong |
 | T6.6 | Build lineup picker and advanced stat sliders | FR-ATH-03/06 | takes over `src/features/matchup/PlayerPanel.tsx`, `ControlsPanel.tsx`, tests | T6.2 | C | sliders + "Về preset"; lineup per side |
 | T6.7 | Extend E2E and perf checks | §14.4, NFR-PERF-01..04 | `e2e/*` | all | D | full suite + perf budgets |
+
+## Phase 6b — QB read model (D-22, user request)
+
+Goal: realistic QB openness + customisable reads (order, windows, scores) and their visualisation.
+
+Exit criteria: seed matchups no longer 100 % first read; target pairs still 60–70 % complete; read plan
+editable; read timeline + scores on the Matchup screen; all tests + E2E green.
+
+| ID | Title | Owned files | Depends | Group |
+| --- | --- | --- | --- | --- |
+| T7.1 | Implement read model (order, windows, closing openness, score) | `src/engine/readModel.ts`, tests | C6b | A |
+| T7.2 | Rework QB agent on the read model; wire frames/metrics/aggregate | takes over `src/engine/agents/qb.ts`, `simulate.ts`, `aggregate.ts`, tests | T7.1 | B |
+| T7.3 | Build read-plan editor in the QB panel | takes over `src/features/editor/offense/OffensePanel.tsx`, `src/features/editor/ops.ts`, `src/i18n/vi/offense.ts`, tests | C6b | A |
+| T7.4 | Build read timeline, score chart, read distribution | new `src/features/matchup/ReadTimeline.tsx`, takes over `ResultPanel.tsx`, `RunManyPanel.tsx`, `src/i18n/vi/result.ts`, tests | T7.2 | C |

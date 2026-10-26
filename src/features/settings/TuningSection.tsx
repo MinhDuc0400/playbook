@@ -36,6 +36,17 @@ export const TUNING_RANGES: Record<Exclude<keyof TuningParams, 'simDt'>, Range> 
   wSim: { min: 0, max: 1, step: 0.01 },
   wMis: { min: 0, max: 1, step: 0.01 },
   suggestRuns: { min: 5, max: 100, step: 1 },
+  assumedDefenderSpeed: { min: 3, max: 12, step: 0.1 },
+  assumedDefenderReaction: { min: 0, max: 1.5, step: 0.05 },
+  readWindowLead: { min: 0, max: 1.5, step: 0.05 },
+  readWindowMin: { min: 0.1, max: 2, step: 0.05 },
+  scoreSepFull: { min: 0.5, max: 10, step: 0.1 },
+  scoreGainFull: { min: 3, max: 40, step: 0.5 },
+  wScoreSep: { min: 0, max: 1, step: 0.01 },
+  wScoreGain: { min: 0, max: 1, step: 0.01 },
+  wScoreRisk: { min: 0, max: 1, step: 0.01 },
+  laneRadius: { min: 0, max: 5, step: 0.1 },
+  scoreThrow: { min: 0, max: 100, step: 1 },
 };
 
 async function patchTuning(patch: Partial<TuningParams>): Promise<void> {

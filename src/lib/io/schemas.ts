@@ -118,6 +118,12 @@ const PlayerSlotSchema = z.object({
   matchRules: z.array(MatchRuleSchema).optional(),
 });
 
+const ReadPlanSchema = z.object({
+  mode: z.enum(['progression', 'leftToRight', 'rightToLeft', 'strongToWeak', 'weakToStrong', 'best']),
+  windows: z.record(z.object({ from: num, to: num })).optional(),
+  minScore: z.record(num).optional(),
+});
+
 export const PlaySchema: z.ZodType<Play> = z.object({
   id,
   schemaVersion: num,
@@ -130,6 +136,7 @@ export const PlaySchema: z.ZodType<Play> = z.object({
   alignTo: z.enum(['ball', 'strength']).optional(),
   players: z.array(PlayerSlotSchema),
   progression: z.array(id).optional(),
+  readPlan: ReadPlanSchema.optional(),
   tags: z.array(z.string()),
   notes: z.string().optional(),
   createdAt: num,
@@ -252,6 +259,17 @@ const TuningSchema: z.ZodType<TuningParams> = z.object({
   wSim: num,
   wMis: num,
   suggestRuns: num,
+  assumedDefenderSpeed: num,
+  assumedDefenderReaction: num,
+  readWindowLead: num,
+  readWindowMin: num,
+  scoreSepFull: num,
+  scoreGainFull: num,
+  wScoreSep: num,
+  wScoreGain: num,
+  wScoreRisk: num,
+  laneRadius: num,
+  scoreThrow: num,
 });
 
 export const SettingsSchema: z.ZodType<Settings> = z.object({

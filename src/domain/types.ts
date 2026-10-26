@@ -67,6 +67,8 @@ export interface Play {
   alignTo?: 'ball' | 'strength'; // defense only
   players: PlayerSlot[];
   progression?: ID[]; // offense: QB read order (slot ids)
+  /** Offense: how the QB reads (D-22). Missing = { mode: 'progression' } with auto windows. */
+  readPlan?: ReadPlan;
   tags: string[];
   notes?: string;
   createdAt: number;
@@ -81,6 +83,23 @@ export interface PlayerSlot {
   leverage?: Leverage; // defense
   actions: Action[]; // in time order
   matchRules?: MatchRule[]; // defense
+}
+
+/** D-22: QB read customisation. */
+export type ReadMode =
+  'progression' | 'leftToRight' | 'rightToLeft' | 'strongToWeak' | 'weakToStrong' | 'best';
+
+export interface ReadWindowSpec {
+  from: number; // s after the snap
+  to: number;
+}
+
+export interface ReadPlan {
+  mode: ReadMode;
+  /** Manual read window per receiver slot id; missing = auto (from the route's first break). */
+  windows?: Record<ID, ReadWindowSpec>;
+  /** Minimum read score (0..100) to throw on that receiver; missing = tuning.scoreThrow. */
+  minScore?: Record<ID, number>;
 }
 
 // ---------- §5.3 actions ----------
@@ -348,6 +367,18 @@ export interface TuningParams {
   wSim: number; // 0.7
   wMis: number; // 0.1
   suggestRuns: number; // 30
+  // D-22 QB read model
+  assumedDefenderSpeed: number; // yd/s the QB assumes a defender closes on the ball after reacting, 7
+  assumedDefenderReaction: number; // s before a defender breaks on the throw (QB's assumption), 0.3
+  readWindowLead: number; // s an auto read window opens before the receiver's first break, 0.3
+  readWindowMin: number; // s minimum auto read window length, 0.45
+  scoreSepFull: number; // yd of predicted separation worth full openness, 4
+  scoreGainFull: number; // yd of catch depth worth full gain, 15
+  wScoreSep: number; // 0.6
+  wScoreGain: number; // 0.25
+  wScoreRisk: number; // 0.15
+  laneRadius: number; // yd around the ball path counted as INT risk, 1.5
+  scoreThrow: number; // default minimum read score (0..100) to throw, 55
 }
 
 /** §8.7: alignment key (e.g. 'n1-wide', 'n1-tight', 'n2-slot') → templateId → prior probability. */
@@ -395,6 +426,8 @@ export interface Frame {
   ball: BallState;
   /** QB eye target at this frame (FR-MU-12 overlay). */
   eyeTarget?: ID;
+  /** QB read state at this frame (D-22): receiver being read and every receiver's read score 0..100. */
+  qb?: { readId?: ID; scores: Record<ID, number> };
 }
 
 /** Per-frame debug view of one defender (FR-MU-11): what it "sees" (delayed) and where it aims. */
@@ -451,6 +484,29 @@ export interface SimMetrics {
   separationAtThrow?: Record<ID, number>;
   timeToThrow?: number;
   openWindows: Record<ID, [number, number][]>; // intervals with separation ≥ separationOpen
+  /** D-22: the QB's read windows and how the decision was made. */
+  reads?: ReadMetrics;
+}
+
+export interface ReadWindow {
+  id: ID; // receiver slot id
+  index: number; // 0 = first read
+  from: number;
+  to: number;
+  auto: boolean;
+}
+
+export interface ReadMetrics {
+  mode: ReadMode;
+  windows: ReadWindow[];
+  decision: {
+    kind: 'read' | 'checkdown' | 'forced' | 'throwaway' | 'none';
+    t: number;
+    targetId?: ID;
+    score?: number;
+    /** Index in `windows` for kind 'read', else null. */
+    readIndex: number | null;
+  };
 }
 
 export interface SimResult {
@@ -476,6 +532,8 @@ export interface AggregateResult {
   targetDistribution: Record<ID, number>;
   perTarget: Record<ID, { throws: number; completes: number; avgSepAtThrow: number }>;
   avgSeparationAtThrow: Record<ID, number>;
+  /** D-22: fraction of runs per decision: '1', '2', … (read index + 1), 'checkdown', 'forced', 'throwaway', 'none'. */
+  readDistribution?: Record<string, number>;
 }
 
 // ---------- §7.2 stats resolution context ----------

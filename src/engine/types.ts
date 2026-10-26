@@ -91,6 +91,8 @@ export interface AgentIntent extends Intent {
   throwaway?: boolean;
   /** Man defender: target it is watching, for the leverage reaction factor next tick (§8.6). */
   focus?: { id: ID; leverage: Leverage | undefined };
+  /** QB only (D-22): read state for Frame.qb. */
+  qbDebug?: { readId?: ID; scores: Record<ID, number> };
   /** Extra events (break, read, pressure, ruleFired…); the world stamps t and playerId. */
   events?: Omit<SimEvent, 't'>[];
 }

@@ -180,3 +180,22 @@ ones (marked "supersedes D-xx").
   parallel with editor/UI tasks; T5.3 (option/motion/delay) takes over simulate after T5.1; T5.4 then wires
   match rules into the agents and adds `simulateMany` + the Worker.
 - Reason: keeps "one owner per file per moment" while still parallelising UI work.
+
+## D-22 QB read model (post phase 6, user request 2026-10-26)
+- Context: in all 9 seed matchups the QB threw to progression #1 (Y) at 1.27 s in 100 % of runs. Its
+  openness check extrapolated defender velocity linearly and ignored defenders breaking on the ball, so
+  every early read looked open (5–9 yd).
+- Decision:
+  - Openness = closing-speed separation: a defender reacts after `assumedDefenderReaction` and closes at
+    `assumedDefenderSpeed` during the flight (`readModel.predictedSeparation`).
+  - Each read has a window: auto = opens `readWindowLead` before the receiver's planned first break,
+    lasts max(`readWindowMin`, readTime(iq)), sequential; manual windows per receiver override.
+  - Read score 0..100 from openness, catch depth and INT lane risk; throw on the current read when
+    sep ≥ `throwOpenThreshold` and score ≥ min score (per receiver, default `scoreThrow`).
+  - After the last window: check-down scan (any receiver, best score ≥ scoreThrow − 15); pressure / clock:
+    forced best valid read, else throwaway (as before).
+  - Play-level optional `readPlan` { mode, windows?, minScore? }; modes progression (default, user choice),
+    left→right, right→left, strong→weak, weak→strong, best.
+  - Results expose `Frame.qb` (current read + scores), `SimMetrics.reads` (windows + decision) and
+    `AggregateResult.readDistribution`.
+- Reason: realistic timing and target variety; coaches can teach read timing (open window vs read window).

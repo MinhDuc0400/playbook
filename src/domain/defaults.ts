@@ -28,6 +28,17 @@ export const DEFAULT_TUNING: Readonly<TuningParams> = {
   wSim: 0.7,
   wMis: 0.1,
   suggestRuns: 30,
+  assumedDefenderSpeed: 7,
+  assumedDefenderReaction: 0.3,
+  readWindowLead: 0.3,
+  readWindowMin: 0.45,
+  scoreSepFull: 4,
+  scoreGainFull: 15,
+  wScoreSep: 0.6,
+  wScoreGain: 0.25,
+  wScoreRisk: 0.15,
+  laneRadius: 1.5,
+  scoreThrow: 55,
 };
 
 /**

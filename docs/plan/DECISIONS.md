@@ -164,3 +164,12 @@ ones (marked "supersedes D-xx").
 - Noise: each stat × U[0.9, 1.1) from `forkRng(seed, 'noise:' + id)`; 0..1 stats clamped.
 - Simulation continues 0.5 s after the outcome so the animation shows the ball arrive.
 - Zone defenders apply QB-eye drift in phase 3; phase 5 gates it on anticipation > 0.
+
+## D-20 Tuning after phase 3 (FR-TUN-03 benchmark)
+- Context: with SRS defaults, Mesh vs Cover 1 completed 75–76 % (catches uncontested, capped by hands);
+  `throwOpenThreshold` and `contestRadius` had no effect.
+- Decision: `inaccuracyK` 0.05 → 0.34 (all other TuningParams at SRS values). Benchmark, all TB, noise
+  on, 200 seeds: Trips Flood vs Cover 3 67 %, Mesh vs Cover 1 69 %, Smash vs Cover 2 61 %.
+- Reason: the only lever that produces misses/contests on short throws without collapsing deep throws;
+  0.40 drops Smash/C2 below 60 %. Re-check after phase 5 anticipation lands.
+- Known limitation: Mesh scores ~69 % against every coverage (crossers beat trail man and zones alike).

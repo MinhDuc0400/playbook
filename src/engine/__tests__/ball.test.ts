@@ -4,7 +4,8 @@ import type { Point } from '@/domain/types';
 import { applyThrowError, ballPosAt, flightTime, launchBall, leadTarget } from '../ball';
 import { createRng } from '../rng';
 
-const T = DEFAULT_TUNING;
+// Pin the SRS reference inaccuracyK so the σ formula checks stay exact (defaults are tuned, D-20).
+const T = { ...DEFAULT_TUNING, inaccuracyK: 0.05 };
 const dist = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 describe('flightTime (§8.8)', () => {

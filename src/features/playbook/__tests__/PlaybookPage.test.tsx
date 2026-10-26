@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { playsRepo } from '@/db/repos/plays';
 import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import PlaybookPage from '../PlaybookPage';
@@ -115,5 +115,36 @@ describe('PlaybookPage select mode (FR-PB-06)', () => {
     await user.click(screen.getByTestId('pb-export-selected'));
     await waitFor(() => expect(sel.exportPlays).toHaveBeenCalledTimes(1));
     expect([...sel.exportPlays.mock.calls[0]![0]].sort()).toEqual([SEED_IDS.mesh, SEED_IDS.smash].sort());
+  });
+});
+
+describe('PlaybookPage mobile (D-25)', () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((q: string) => ({
+      matches: false,
+      media: q,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it('hides filters behind a toggle while search stays visible; grid is one column', async () => {
+    const user = userEvent.setup();
+    renderAt();
+    await waitFor(() => expect(cards()).toHaveLength(6));
+    expect(screen.getByTestId('filter-search')).toBeInTheDocument();
+    expect(screen.queryByTestId('filter-side')).toBeNull();
+    expect(screen.getByTestId('playbook-grid').className).toContain('grid-cols-1');
+    const toggle = screen.getByTestId('filter-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(screen.getByTestId('filter-side')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-search')).toBeInTheDocument();
+    await user.click(toggle);
+    expect(screen.queryByTestId('filter-side')).toBeNull();
   });
 });

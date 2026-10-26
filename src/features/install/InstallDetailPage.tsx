@@ -126,7 +126,9 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
                 </span>
                 <span className="w-6 text-slate-500">{idx + 1}</span>
                 {m ? (
-                  <span className="min-w-0 flex-1 basis-40 break-words font-medium">{matchupLabel(m, playMap)}</span>
+                  <span className="min-w-0 flex-1 basis-40 break-words font-medium">
+                    {matchupLabel(m, playMap)}
+                  </span>
                 ) : (
                   <span role="alert" className="min-w-0 flex-1 basis-40 text-red-700 dark:text-red-300">
                     {t.install.missingMatchup}

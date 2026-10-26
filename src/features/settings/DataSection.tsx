@@ -148,33 +148,35 @@ export function DataSection(): JSX.Element {
       {report ? (
         <div data-testid="import-report">
           <h3 className="mb-1 font-medium">{t.settings.data.reportTitle}</h3>
-          <table className="text-sm">
-            <thead>
-              <tr className="text-left">
-                <th className="pr-4">{t.settings.data.columns.table}</th>
-                <th className="pr-4">{t.settings.data.columns.added}</th>
-                <th className="pr-4">{t.settings.data.columns.updated}</th>
-                <th>{t.settings.data.columns.skipped}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {TABLES.map((name) => (
-                <tr key={name} data-testid={`import-report-${name}`}>
-                  <td className="pr-4">{t.settings.data.tables[name]}</td>
-                  <td className="pr-4">{report[name].added}</td>
-                  <td className="pr-4">{report[name].updated}</td>
-                  <td>{report[name].skipped}</td>
+          <div className="overflow-x-auto">
+            <table className="text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="pr-4">{t.settings.data.columns.table}</th>
+                  <th className="pr-4">{t.settings.data.columns.added}</th>
+                  <th className="pr-4">{t.settings.data.columns.updated}</th>
+                  <th>{t.settings.data.columns.skipped}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {TABLES.map((name) => (
+                  <tr key={name} data-testid={`import-report-${name}`}>
+                    <td className="pr-4">{t.settings.data.tables[name]}</td>
+                    <td className="pr-4">{report[name].added}</td>
+                    <td className="pr-4">{report[name].updated}</td>
+                    <td>{report[name].skipped}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
 
       <Dialog open={confirming} onClose={() => setConfirming(false)} title={t.settings.data.confirmTitle}>
         <div data-testid="import-confirm">
           <p className="mb-4">{t.settings.data.confirmBody}</p>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button onClick={() => setConfirming(false)}>{t.settings.data.cancel}</Button>
             <Button
               variant="danger"

@@ -184,7 +184,11 @@ export function LineupsTab(): JSX.Element {
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">{t.roster.lineups.slots}</span>
             {draft.slots.map((s, i) => (
-              <div key={i} data-testid={`lineup-slot-${s.label}`} className="grid grid-cols-1 items-end gap-2 sm:flex sm:flex-wrap">
+              <div
+                key={i}
+                data-testid={`lineup-slot-${s.label}`}
+                className="grid grid-cols-1 items-end gap-2 sm:flex sm:flex-wrap"
+              >
                 <TextInput
                   label={t.roster.lineups.slotLabel}
                   data-testid={`lineup-label-${i}`}

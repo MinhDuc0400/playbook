@@ -156,7 +156,7 @@ export default function SuggestPage(): JSX.Element {
   return (
     <div className="flex flex-col gap-4 p-4" data-testid="suggest-page">
       <h1 className="text-xl font-semibold">{s.title}</h1>
-      <fieldset className="flex gap-4">
+      <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
         <legend className="text-sm font-medium">{s.direction}</legend>
         {(
           [
@@ -164,7 +164,7 @@ export default function SuggestPage(): JSX.Element {
             ['defense-vs-play', s.defense, 'sg-dir-defense'],
           ] as const
         ).map(([value, label, id]) => (
-          <label key={value} className="flex items-center gap-1 text-sm">
+          <label key={value} className="flex min-h-10 items-center gap-2 text-sm lg:min-h-0">
             <input
               type="radio"
               name="sg-direction"
@@ -180,7 +180,7 @@ export default function SuggestPage(): JSX.Element {
           </label>
         ))}
       </fieldset>
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:flex sm:flex-wrap">
         <Select
           label={direction === 'offense-vs-coverage' ? s.playOffense : s.playDefense}
           data-testid="sg-play"
@@ -222,7 +222,7 @@ export default function SuggestPage(): JSX.Element {
         <p data-testid="sg-hint">{s.pickPrompt}</p>
       ) : (
         <section className="flex flex-col gap-3" data-testid="sg-results">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h2 className="font-semibold">{s.results}</h2>
             <span className="text-xs text-slate-500">{simResults ? s.simTier : s.tagTier}</span>
             <Button
@@ -260,29 +260,38 @@ export default function SuggestPage(): JSX.Element {
               <li
                 key={x.play.id}
                 data-testid={`sg-row-${x.play.id}`}
-                className="flex items-center gap-3 rounded border p-2"
+                className="flex flex-col gap-2 rounded border p-2 sm:flex-row sm:items-center sm:gap-3"
               >
-                <span className="w-6 text-lg font-semibold">{i + 1}</span>
+                <span className="text-lg font-semibold sm:w-6">{i + 1}</span>
                 {snapshot && (
                   <PlayThumbnail
                     play={x.play}
                     field={snapshot.settings.fields[x.play.format]}
                     width={120}
                     height={80}
+                    className="max-w-full !h-auto"
                   />
                 )}
-                <div className="flex-1">
+                <div className="min-w-0 flex-1 break-words">
                   <div className="font-medium">{x.play.name}</div>
                   <div className="text-sm">
                     {s.scoreLabel}: <span data-testid={`sg-score-${x.play.id}`}>{x.score.toFixed(2)}</span>
                   </div>
-                  <ul data-testid={`sg-reasons-${x.play.id}`} className="text-sm text-slate-600">
+                  <ul
+                    data-testid={`sg-reasons-${x.play.id}`}
+                    className="list-disc pl-4 text-sm text-slate-600 sm:list-none sm:pl-0"
+                  >
                     {x.reasons.map((r, j) => (
                       <li key={j}>{reasonText(r, routeNames)}</li>
                     ))}
                   </ul>
                 </div>
-                <Button data-testid={`sg-create-${x.play.id}`} size="sm" onClick={() => create(x.play)}>
+                <Button
+                  className="self-start sm:self-auto"
+                  data-testid={`sg-create-${x.play.id}`}
+                  size="sm"
+                  onClick={() => create(x.play)}
+                >
                   {s.create}
                 </Button>
               </li>

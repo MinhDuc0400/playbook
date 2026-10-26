@@ -68,7 +68,7 @@ const SECTIONS: SectionDef[] = [
 
 export default function SettingsPage(): JSX.Element {
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6" data-testid="page-settings">
+    <div className="mx-auto flex max-w-3xl flex-col gap-8 p-4 sm:p-6" data-testid="page-settings">
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
       {SECTIONS.map((s) => (
         <section key={s.id} data-testid={`settings-section-${s.id}`} className="flex flex-col gap-3">

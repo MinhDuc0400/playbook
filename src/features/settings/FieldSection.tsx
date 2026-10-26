@@ -54,7 +54,7 @@ function NumField(props: {
         value={draft}
         onChange={(e) => set(e.target.value, true)}
         onBlur={revert}
-        className="w-28 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
+        className="min-h-10 w-full max-w-28 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
       />
     </label>
   );
@@ -79,7 +79,7 @@ function LineToGain({ format, value }: { format: Format; value: number[] }): JSX
           }
         }}
         onBlur={() => setText(value.join(', '))}
-        className="w-48 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
+        className="min-h-10 w-full max-w-48 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
       />
     </label>
   );

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExportPngButton } from '@/components/ExportPngButton';
-import { Select } from '@/components/ui';
+import { PanelTabs, Select } from '@/components/ui';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { usePlayback } from '@/components/field/usePlayback';
 import { useDbSnapshot, useMatchupBundle } from '@/db/hooks';
@@ -14,6 +14,7 @@ import { matchupsRepo } from '@/db/repos/matchups';
 import type { DbSnapshot, Matchup, Play, SimEventType } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useAutoSave } from '@/lib/useAutoSave';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { useMatchupStore, type OverlayKey } from '@/store/matchupStore';
 import { levelOf } from './buildSimInput';
 import { ControlsPanel } from './ControlsPanel';
@@ -90,6 +91,8 @@ function MatchupEditor({
   // Working copy: initialised once per id (the editor is keyed by id); our own saves do not reset it.
   const [working, setWorking] = useState<Matchup>(initial);
   const [hidden, setHidden] = useState(false);
+  const isDesktop = useIsDesktop();
+  const [overlayOpen, setOverlayOpen] = useState(false);
   const fieldRef = useRef<HTMLDivElement>(null);
   const autosave = useAutoSave(working, (m) => matchupsRepo.put({ ...m, updatedAt: Date.now() }));
   // Random pick (FR-RD-01): flush right after the commit (effects run after useAutoSave's own) so the
@@ -176,6 +179,262 @@ function MatchupEditor({
 
   const field = snapshot.settings.fields[offense.format];
 
+  const overlayItems = (
+    <>
+      {OVERLAY_KEYS.map((k) => (
+        <label key={k} className="flex min-h-8 items-center gap-2">
+          <input
+            type="checkbox"
+            data-testid={`overlay-toggle-${k}`}
+            checked={overlays[k]}
+            onChange={() => toggleOverlay(k)}
+          />
+          {t.matchupField.overlays[k]}
+        </label>
+      ))}
+      {overlays.perception && built && (
+        <Select
+          label={t.matchupField.debugDefender}
+          data-testid="debug-defender"
+          value={debugDefenderId ?? ''}
+          onChange={(e) => setDebugDefender(e.target.value === '' ? null : e.target.value)}
+        >
+          <option value="">{t.matchupField.debugDefenderNone}</option>
+          {built.defense.players.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </Select>
+      )}
+    </>
+  );
+  const qbToggle = (
+    <label
+      title={t.matchup.qb.toggleHelp}
+      className="flex min-h-10 shrink-0 items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800 lg:min-h-0"
+    >
+      <input
+        type="checkbox"
+        data-testid="qb-mode-toggle"
+        checked={qb.enabled}
+        onChange={(e) => {
+          e.currentTarget.blur(); // keep Space / keys for playback and the QB keys
+          if (e.target.checked) {
+            qb.enable();
+            restart();
+          } else qb.disable();
+        }}
+      />
+      {t.matchup.qb.toggle}
+    </label>
+  );
+  const fieldBody =
+    error !== null ? (
+      <p role="alert" data-testid="matchup-sim-error" className="p-4 text-red-700 dark:text-red-300">
+        {t.matchup.simError}: {error}
+      </p>
+    ) : built && result ? (
+      <div ref={fieldRef} className="h-full w-full">
+        <MatchupField
+          built={built}
+          result={result}
+          t={playback.t}
+          field={field}
+          ballSpot={working.ballSpot}
+          levels={levels}
+          hideDefenseOverlays={hidden}
+          hideReadInfo={hideReadInfo}
+          qbKeys={qb.enabled ? keyMap : undefined}
+          onQbPick={qb.enabled && !qbThrown ? pickReceiver : undefined}
+        />
+      </div>
+    ) : null;
+  const qbPanel = qb.enabled ? (
+    <QbModePanel
+      keyMap={keyMap}
+      feedback={feedback}
+      outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
+      tally={qb.tally}
+      onRetry={() => {
+        qb.retry();
+        restart();
+      }}
+      onExit={qb.disable}
+    />
+  ) : null;
+  const randomDefense = (
+    <RandomDefense
+      offense={offense}
+      defense={defense}
+      hidden={hidden}
+      ended={ended}
+      onPick={(id) => {
+        setWorking((m) => ({ ...m, defensePlayId: id }));
+        // Flush on the next commit so the bundle reloads with the new defense before the reveal.
+        setPickedAt((n) => n + 1);
+      }}
+      onHiddenChange={setHidden}
+    />
+  );
+  const editLinks = (
+    <div className="flex gap-3 text-sm">
+      <Link
+        data-testid="edit-offense"
+        to={`/play/${offense.id}`}
+        className="text-blue-700 underline dark:text-blue-300"
+      >
+        {t.matchup.edit.offense}
+      </Link>
+      {hidden ? (
+        <span data-testid="defense-name-hidden">{t.randomDef.hiddenName}</span>
+      ) : (
+        <Link
+          data-testid="edit-defense"
+          to={`/play/${defense.id}`}
+          className="text-blue-700 underline dark:text-blue-300"
+        >
+          {t.matchup.edit.defense}
+        </Link>
+      )}
+    </div>
+  );
+  const resultPanel =
+    built && result && !hideReadInfo ? (
+      <ResultPanel result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
+    ) : null;
+  const notesField = (
+    <label className="flex flex-col gap-1 text-sm font-medium">
+      {t.matchup.notes}
+      <textarea
+        data-testid="matchup-notes"
+        rows={4}
+        value={working.notes ?? ''}
+        onChange={(e) => setWorking((m) => ({ ...m, notes: e.target.value }))}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+      />
+    </label>
+  );
+  const timelines = (
+    <>
+      <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
+      {built && result && (
+        <ReadTimeline
+          result={result}
+          offense={built.offense}
+          t={playback.t}
+          tuning={built.input.tuning}
+          hideScores={hideReadInfo}
+        />
+      )}
+    </>
+  );
+
+  if (!isDesktop) {
+    return (
+      <div data-testid="matchup-page" data-layout="mobile" className="flex min-w-0 flex-col">
+        <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+          <Link
+            to="/"
+            className="inline-flex min-h-10 items-center text-blue-700 underline dark:text-blue-300"
+          >
+            {t.matchup.back}
+          </Link>
+          <input
+            data-testid="matchup-name"
+            aria-label={t.matchup.name}
+            value={working.name ?? ''}
+            onChange={(e) => setWorking((m) => ({ ...m, name: e.target.value }))}
+            className="min-h-10 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <span
+            data-testid="matchup-save-status"
+            className="shrink-0 text-xs text-slate-600 dark:text-slate-300"
+          >
+            {t.common.saveStatus[autosave.status]}
+          </span>
+        </div>
+        <div
+          data-testid="matchup-field-area"
+          className="relative h-[max(50dvh,300px)] min-w-0 overflow-hidden"
+        >
+          {fieldBody}
+          <div className="pointer-events-none absolute left-1 right-1 top-1 z-20 flex items-start gap-1 overflow-x-auto [&>*]:pointer-events-auto">
+            {qbToggle}
+            <ExportPngButton getNode={() => fieldRef.current} fileName={`${working.name || 'matchup'}.png`} />
+            <button
+              type="button"
+              data-testid="overlay-menu"
+              aria-expanded={overlayOpen}
+              title={t.matchup.overlayMenuHelp}
+              onClick={() => setOverlayOpen((v) => !v)}
+              className="min-h-10 shrink-0 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800"
+            >
+              {t.matchup.overlayMenu}
+            </button>
+          </div>
+          {overlayOpen && (
+            <div
+              data-testid="overlay-sheet"
+              className="absolute right-1 top-12 z-30 flex max-h-[calc(100%-3.5rem)] max-w-[calc(100%-0.5rem)] flex-col gap-1 overflow-y-auto rounded border bg-white p-2 text-sm shadow dark:bg-slate-800"
+            >
+              {overlayItems}
+            </div>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-col gap-1 px-2 py-2">{timelines}</div>
+        {qbPanel && <div className="px-2 pb-2">{qbPanel}</div>}
+        <PanelTabs
+          mode="tabs"
+          tabs={[
+            { id: 'result', label: t.matchup.tabs.result, content: <div className="p-2">{resultPanel}</div> },
+            {
+              id: 'params',
+              label: t.matchup.tabs.params,
+              content: (
+                <div className="flex flex-col gap-3 p-2">
+                  {randomDefense}
+                  <ControlsPanel matchup={working} format={offense.format} onChange={setWorking} />
+                  {editLinks}
+                </div>
+              ),
+            },
+            {
+              id: 'players',
+              label: t.matchup.tabs.players,
+              content: (
+                <div className="p-2">
+                  {built && (
+                    <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />
+                  )}
+                </div>
+              ),
+            },
+            {
+              id: 'runMany',
+              label: t.matchup.tabs.runMany,
+              content: (
+                <div className="p-2">
+                  {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
+                </div>
+              ),
+            },
+            {
+              id: 'notes',
+              label: t.matchup.tabs.notes,
+              content: (
+                <div className="flex flex-col items-start gap-3 p-2">
+                  {notesField}
+                  <AddToInstallButton matchupId={working.id} />
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="matchup-page"
@@ -203,158 +462,31 @@ function MatchupEditor({
       </div>
 
       <div className="relative min-w-0 overflow-hidden">
-        {error !== null ? (
-          <p role="alert" data-testid="matchup-sim-error" className="p-4 text-red-700 dark:text-red-300">
-            {t.matchup.simError}: {error}
-          </p>
-        ) : built && result ? (
-          <div ref={fieldRef} className="h-full w-full">
-            <MatchupField
-              built={built}
-              result={result}
-              t={playback.t}
-              field={field}
-              ballSpot={working.ballSpot}
-              levels={levels}
-              hideDefenseOverlays={hidden}
-              hideReadInfo={hideReadInfo}
-              qbKeys={qb.enabled ? keyMap : undefined}
-              onQbPick={qb.enabled && !qbThrown ? pickReceiver : undefined}
-            />
-          </div>
-        ) : null}
+        {fieldBody}
         <div className="pointer-events-none absolute bottom-2 right-2 top-2 z-20 flex items-start gap-2 [&>*]:pointer-events-auto">
-          <label
-            title={t.matchup.qb.toggleHelp}
-            className="flex items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800"
-          >
-            <input
-              type="checkbox"
-              data-testid="qb-mode-toggle"
-              checked={qb.enabled}
-              onChange={(e) => {
-                e.currentTarget.blur(); // keep Space / keys for playback and the QB keys
-                if (e.target.checked) {
-                  qb.enable();
-                  restart();
-                } else qb.disable();
-              }}
-            />
-            {t.matchup.qb.toggle}
-          </label>
+          {qbToggle}
           <ExportPngButton getNode={() => fieldRef.current} fileName={`${working.name || 'matchup'}.png`} />
           <details className="max-h-full overflow-y-auto rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
             <summary data-testid="overlay-menu" title={t.matchup.overlayMenuHelp} className="cursor-pointer">
               {t.matchup.overlayMenu}
             </summary>
-            <div className="mt-2 flex flex-col gap-1">
-              {OVERLAY_KEYS.map((k) => (
-                <label key={k} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    data-testid={`overlay-toggle-${k}`}
-                    checked={overlays[k]}
-                    onChange={() => toggleOverlay(k)}
-                  />
-                  {t.matchupField.overlays[k]}
-                </label>
-              ))}
-              {overlays.perception && built && (
-                <Select
-                  label={t.matchupField.debugDefender}
-                  data-testid="debug-defender"
-                  value={debugDefenderId ?? ''}
-                  onChange={(e) => setDebugDefender(e.target.value === '' ? null : e.target.value)}
-                >
-                  <option value="">{t.matchupField.debugDefenderNone}</option>
-                  {built.defense.players.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </div>
+            <div className="mt-2 flex flex-col gap-1">{overlayItems}</div>
           </details>
         </div>
       </div>
 
       <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto border-l border-slate-200 p-3 dark:border-slate-700">
-        {qb.enabled && (
-          <QbModePanel
-            keyMap={keyMap}
-            feedback={feedback}
-            outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
-            tally={qb.tally}
-            onRetry={() => {
-              qb.retry();
-              restart();
-            }}
-            onExit={qb.disable}
-          />
-        )}
-        <RandomDefense
-          offense={offense}
-          defense={defense}
-          hidden={hidden}
-          ended={ended}
-          onPick={(id) => {
-            setWorking((m) => ({ ...m, defensePlayId: id }));
-            // Flush on the next commit so the bundle reloads with the new defense before the reveal.
-            setPickedAt((n) => n + 1);
-          }}
-          onHiddenChange={setHidden}
-        />
+        {qbPanel}
+        {randomDefense}
         <ControlsPanel matchup={working} format={offense.format} onChange={setWorking} />
         {built && <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />}
-        <div className="flex gap-3 text-sm">
-          <Link
-            data-testid="edit-offense"
-            to={`/play/${offense.id}`}
-            className="text-blue-700 underline dark:text-blue-300"
-          >
-            {t.matchup.edit.offense}
-          </Link>
-          {hidden ? (
-            <span data-testid="defense-name-hidden">{t.randomDef.hiddenName}</span>
-          ) : (
-            <Link
-              data-testid="edit-defense"
-              to={`/play/${defense.id}`}
-              className="text-blue-700 underline dark:text-blue-300"
-            >
-              {t.matchup.edit.defense}
-            </Link>
-          )}
-        </div>
+        {editLinks}
         {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
-        {built && result && !hideReadInfo && (
-          <ResultPanel result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
-        )}
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {t.matchup.notes}
-          <textarea
-            data-testid="matchup-notes"
-            rows={4}
-            value={working.notes ?? ''}
-            onChange={(e) => setWorking((m) => ({ ...m, notes: e.target.value }))}
-            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-          />
-        </label>
+        {resultPanel}
+        {notesField}
       </aside>
 
-      <div className="flex flex-col gap-1 px-3 py-2">
-        <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
-        {built && result && (
-          <ReadTimeline
-            result={result}
-            offense={built.offense}
-            t={playback.t}
-            tuning={built.input.tuning}
-            hideScores={hideReadInfo}
-          />
-        )}
-      </div>
+      <div className="flex flex-col gap-1 px-3 py-2">{timelines}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installsRepo } from '@/db/repos/installs';
 import { matchupsRepo } from '@/db/repos/matchups';
 import { playsRepo } from '@/db/repos/plays';
@@ -145,5 +145,37 @@ describe('PresentPage (FR-IN-04)', () => {
     key('ArrowRight');
     expect(await screen.findByTestId('matchup-field')).toBeInTheDocument();
     expect(screen.queryByTestId('present-item-error')).toBeNull();
+  });
+});
+
+describe('PresentPage on phones (D-25)', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+      onchange: null,
+    }));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('renders large prev/next buttons in the bottom bar and a toggleable notes sheet', async () => {
+    await seed();
+    renderPresent();
+    const bar = await screen.findByTestId('present-bottom-bar');
+    expect(bar).toContainElement(screen.getByTestId('present-prev'));
+    expect(bar).toContainElement(screen.getByTestId('present-next'));
+    expect(screen.getByTestId('present-next').className).toContain('min-h-12');
+    expect(screen.queryByTestId('present-notes')).toBeNull();
+    fireEvent.click(screen.getByTestId('present-notes-toggle'));
+    expect(await screen.findByTestId('present-notes')).toHaveTextContent('Note one');
+    key('n');
+    expect(screen.queryByTestId('present-notes')).toBeNull();
+    fireEvent.click(screen.getByTestId('present-next'));
+    expect(screen.getByTestId('present-index')).toHaveTextContent('2 / 3');
   });
 });

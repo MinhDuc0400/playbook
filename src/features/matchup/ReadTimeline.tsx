@@ -3,6 +3,7 @@
  * and every receiver's read score over time. Everything is drawn from engine data (NFR-ARC-03).
  */
 import { useState } from 'react';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import type { Play, ReadMetrics, SimResult, TuningParams } from '@/domain/types';
 import { frameAt } from '@/engine/frames';
@@ -51,7 +52,8 @@ export function ReadTimeline({
   tuning = DEFAULT_TUNING,
   hideScores = false,
 }: ReadTimelineProps): JSX.Element | null {
-  const [open, setOpen] = useState(true);
+  const isDesktop = useIsDesktop();
+  const [open, setOpen] = useState(isDesktop); // collapsed by default on phones/tablets (D-25)
   const reads = result.metrics.reads;
   const { frames } = result;
   if (!reads || frames.length === 0) return null;
@@ -109,183 +111,185 @@ export function ReadTimeline({
         </span>
       </button>
       {open && (
-        <div className="mt-1 flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0" />
-            <div className="relative h-4 flex-1">
-              <div
-                data-testid="read-decision"
-                className="absolute top-0 flex h-full -translate-x-px items-center border-l-2 border-red-600 pl-1 font-medium whitespace-nowrap text-red-700 dark:text-red-300"
-                style={
-                  pct(decision.t) > 60
-                    ? {
-                        right: `${100 - pct(decision.t)}%`,
-                        borderLeft: 0,
-                        borderRight: '2px solid #dc2626',
-                        paddingRight: 4,
-                      }
-                    : { left: `${pct(decision.t)}%` }
-                }
-              >
-                {decisionLabel}
-              </div>
-            </div>
-          </div>
-          {ordered.map((id) => {
-            const label = labelOf(id);
-            const win = reads.windows.find((w) => w.id === id);
-            const winIndex = win ? win.index + 1 : undefined;
-            const current = cur?.readId === id;
-            return (
-              <div
-                key={id}
-                data-testid={`read-tl-row-${label}`}
-                data-current={current ? 'true' : undefined}
-                className={`flex items-center gap-2 rounded ${current ? 'bg-blue-100 dark:bg-blue-950' : ''}`}
-              >
-                <span className="flex w-14 shrink-0 items-center gap-1">
-                  <span className="font-medium" style={{ color: colorOf(id) }}>
-                    {label}
-                  </span>
-                  {winIndex !== undefined && (
-                    <span className="rounded bg-blue-600 px-1 text-[10px] text-white">#{winIndex}</span>
-                  )}
-                </span>
-                <div className="relative h-4 flex-1">
-                  {win && (
-                    <div
-                      data-testid={`read-window-${label}`}
-                      data-auto={win.auto ? 'true' : 'false'}
-                      title={`${s.window(win.index + 1, win.from, win.to, win.auto)}`}
-                      className={`absolute top-0 h-2 rounded-sm ${
-                        win.auto
-                          ? 'border border-dashed border-blue-600 bg-blue-300/60'
-                          : 'bg-blue-600 dark:bg-blue-400'
-                      }`}
-                      style={{
-                        left: `${pct(win.from)}%`,
-                        width: `${Math.max(0, pct(win.to) - pct(win.from))}%`,
-                      }}
-                    >
-                      <span className="pointer-events-none px-0.5 text-[9px] leading-2 text-slate-900">
-                        #{win.index + 1} {s.duration(win.to - win.from)}
-                      </span>
-                    </div>
-                  )}
-                  {!hideScores &&
-                    (result.metrics.openWindows[id] ?? []).map(([a, b], k) => (
-                      <div
-                        key={k}
-                        data-testid={`open-window-${label}`}
-                        title={s.open(a, b)}
-                        className="absolute bottom-0 h-1.5 rounded-sm bg-green-500"
-                        style={{ left: `${pct(a)}%`, width: `${Math.max(0, pct(b) - pct(a))}%` }}
-                      />
-                    ))}
-                  {playhead}
+        <div data-testid="read-timeline-scroll" className="max-w-full overflow-x-auto">
+          <div className="mt-1 flex min-w-[560px] flex-col gap-1 lg:min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-14 shrink-0" />
+              <div className="relative h-4 flex-1">
+                <div
+                  data-testid="read-decision"
+                  className="absolute top-0 flex h-full -translate-x-px items-center border-l-2 border-red-600 pl-1 font-medium whitespace-nowrap text-red-700 dark:text-red-300"
+                  style={
+                    pct(decision.t) > 60
+                      ? {
+                          right: `${100 - pct(decision.t)}%`,
+                          borderLeft: 0,
+                          borderRight: '2px solid #dc2626',
+                          paddingRight: 4,
+                        }
+                      : { left: `${pct(decision.t)}%` }
+                  }
+                >
+                  {decisionLabel}
                 </div>
               </div>
-            );
-          })}
-
-          {!hideScores && (
-            <div className="flex items-stretch gap-2">
-              <div className="w-14 shrink-0 text-[10px] text-slate-600 dark:text-slate-300">{s.scores}</div>
-              <div className="relative flex-1" title={s.scoresHelp}>
-                <svg
-                  data-testid="read-scores"
-                  viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-                  preserveAspectRatio="none"
-                  className="block w-full rounded bg-white dark:bg-slate-900"
-                  style={{ height: CHART_H }}
-                  role="img"
-                  aria-label={s.scores}
-                >
-                  {thresholds.map((v) => (
-                    <g key={v} data-testid={`read-threshold-${v}`}>
-                      <line
-                        x1={0}
-                        x2={CHART_W}
-                        y1={y(v)}
-                        y2={y(v)}
-                        stroke="#64748b"
-                        strokeWidth={1}
-                        strokeDasharray="6 4"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    </g>
-                  ))}
-                  {ordered.map((id) => (
-                    <polyline
-                      key={id}
-                      data-testid={`read-score-line-${labelOf(id)}`}
-                      fill="none"
-                      stroke={colorOf(id)}
-                      strokeWidth={2}
-                      vectorEffect="non-scaling-stroke"
-                      points={scoreFrames
-                        .map((f) => `${x(f.t).toFixed(1)},${y(f.qb!.scores[id] ?? 0).toFixed(1)}`)
-                        .join(' ')}
-                    />
-                  ))}
-                  <line
-                    x1={x(t)}
-                    x2={x(t)}
-                    y1={0}
-                    y2={CHART_H}
-                    stroke="currentColor"
-                    strokeWidth={1}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <line
-                    data-testid="read-decision-line"
-                    x1={x(decision.t)}
-                    x2={x(decision.t)}
-                    y1={0}
-                    y2={CHART_H}
-                    stroke="#dc2626"
-                    strokeWidth={1}
-                    strokeDasharray="2 2"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
-                {dotScore !== undefined && (
-                  <span
-                    data-testid="read-decision-dot"
-                    className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600"
-                    style={{ left: `${pct(decision.t)}%`, top: y(dotScore) }}
-                  />
-                )}
-                {thresholds.map((v) => (
-                  <span
-                    key={v}
-                    className="pointer-events-none absolute right-1 text-[10px] text-slate-600 dark:text-slate-300"
-                    style={{ top: Math.max(0, y(v) - 12) }}
-                  >
-                    {s.threshold(v)}
-                  </span>
-                ))}
-              </div>
-              <ul className="flex w-24 shrink-0 flex-col justify-center gap-0.5">
-                {ordered.map((id) => {
-                  const label = labelOf(id);
-                  const v = cur?.scores[id];
-                  return (
-                    <li key={id} className="flex items-center gap-1">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ backgroundColor: colorOf(id) }}
-                      />
-                      <span>{label}</span>
-                      <span data-testid={`read-score-${label}`} className="ml-auto tabular-nums">
-                        {v === undefined ? strings.result.none : Math.round(v)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
-          )}
+            {ordered.map((id) => {
+              const label = labelOf(id);
+              const win = reads.windows.find((w) => w.id === id);
+              const winIndex = win ? win.index + 1 : undefined;
+              const current = cur?.readId === id;
+              return (
+                <div
+                  key={id}
+                  data-testid={`read-tl-row-${label}`}
+                  data-current={current ? 'true' : undefined}
+                  className={`flex items-center gap-2 rounded ${current ? 'bg-blue-100 dark:bg-blue-950' : ''}`}
+                >
+                  <span className="flex w-14 shrink-0 items-center gap-1">
+                    <span className="font-medium" style={{ color: colorOf(id) }}>
+                      {label}
+                    </span>
+                    {winIndex !== undefined && (
+                      <span className="rounded bg-blue-600 px-1 text-[10px] text-white">#{winIndex}</span>
+                    )}
+                  </span>
+                  <div className="relative h-4 flex-1">
+                    {win && (
+                      <div
+                        data-testid={`read-window-${label}`}
+                        data-auto={win.auto ? 'true' : 'false'}
+                        title={`${s.window(win.index + 1, win.from, win.to, win.auto)}`}
+                        className={`absolute top-0 h-2 rounded-sm ${
+                          win.auto
+                            ? 'border border-dashed border-blue-600 bg-blue-300/60'
+                            : 'bg-blue-600 dark:bg-blue-400'
+                        }`}
+                        style={{
+                          left: `${pct(win.from)}%`,
+                          width: `${Math.max(0, pct(win.to) - pct(win.from))}%`,
+                        }}
+                      >
+                        <span className="pointer-events-none px-0.5 text-[9px] leading-2 text-slate-900">
+                          #{win.index + 1} {s.duration(win.to - win.from)}
+                        </span>
+                      </div>
+                    )}
+                    {!hideScores &&
+                      (result.metrics.openWindows[id] ?? []).map(([a, b], k) => (
+                        <div
+                          key={k}
+                          data-testid={`open-window-${label}`}
+                          title={s.open(a, b)}
+                          className="absolute bottom-0 h-1.5 rounded-sm bg-green-500"
+                          style={{ left: `${pct(a)}%`, width: `${Math.max(0, pct(b) - pct(a))}%` }}
+                        />
+                      ))}
+                    {playhead}
+                  </div>
+                </div>
+              );
+            })}
+
+            {!hideScores && (
+              <div className="flex items-stretch gap-2">
+                <div className="w-14 shrink-0 text-[10px] text-slate-600 dark:text-slate-300">{s.scores}</div>
+                <div className="relative flex-1" title={s.scoresHelp}>
+                  <svg
+                    data-testid="read-scores"
+                    viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+                    preserveAspectRatio="none"
+                    className="block w-full rounded bg-white dark:bg-slate-900"
+                    style={{ height: CHART_H }}
+                    role="img"
+                    aria-label={s.scores}
+                  >
+                    {thresholds.map((v) => (
+                      <g key={v} data-testid={`read-threshold-${v}`}>
+                        <line
+                          x1={0}
+                          x2={CHART_W}
+                          y1={y(v)}
+                          y2={y(v)}
+                          stroke="#64748b"
+                          strokeWidth={1}
+                          strokeDasharray="6 4"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </g>
+                    ))}
+                    {ordered.map((id) => (
+                      <polyline
+                        key={id}
+                        data-testid={`read-score-line-${labelOf(id)}`}
+                        fill="none"
+                        stroke={colorOf(id)}
+                        strokeWidth={2}
+                        vectorEffect="non-scaling-stroke"
+                        points={scoreFrames
+                          .map((f) => `${x(f.t).toFixed(1)},${y(f.qb!.scores[id] ?? 0).toFixed(1)}`)
+                          .join(' ')}
+                      />
+                    ))}
+                    <line
+                      x1={x(t)}
+                      x2={x(t)}
+                      y1={0}
+                      y2={CHART_H}
+                      stroke="currentColor"
+                      strokeWidth={1}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <line
+                      data-testid="read-decision-line"
+                      x1={x(decision.t)}
+                      x2={x(decision.t)}
+                      y1={0}
+                      y2={CHART_H}
+                      stroke="#dc2626"
+                      strokeWidth={1}
+                      strokeDasharray="2 2"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                  {dotScore !== undefined && (
+                    <span
+                      data-testid="read-decision-dot"
+                      className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600"
+                      style={{ left: `${pct(decision.t)}%`, top: y(dotScore) }}
+                    />
+                  )}
+                  {thresholds.map((v) => (
+                    <span
+                      key={v}
+                      className="pointer-events-none absolute right-1 text-[10px] text-slate-600 dark:text-slate-300"
+                      style={{ top: Math.max(0, y(v) - 12) }}
+                    >
+                      {s.threshold(v)}
+                    </span>
+                  ))}
+                </div>
+                <ul className="flex w-24 shrink-0 flex-col justify-center gap-0.5">
+                  {ordered.map((id) => {
+                    const label = labelOf(id);
+                    const v = cur?.scores[id];
+                    return (
+                      <li key={id} className="flex items-center gap-1">
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: colorOf(id) }}
+                        />
+                        <span>{label}</span>
+                        <span data-testid={`read-score-${label}`} className="ml-auto tabular-nums">
+                          {v === undefined ? strings.result.none : Math.round(v)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>

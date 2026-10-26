@@ -12,13 +12,14 @@ import { levelOf } from '@/features/matchup/buildSimInput';
 import { MatchupField } from '@/features/matchup/MatchupField';
 import { useMatchupSim } from '@/features/matchup/useMatchupSim';
 import { t } from '@/i18n/vi';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { sortedItems } from './items';
 import { NoteText } from './NoteText';
 
 const MARKER_TYPES: ReadonlySet<SimEventType> = new Set(['snap', 'break', 'throw', 'catch', 'sack', 'int']);
 
 const btn =
-  'rounded-md border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700 ' +
+  'min-h-10 shrink-0 rounded-md border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-700 ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400 disabled:opacity-40';
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -46,6 +47,7 @@ function PlayView({
   showNotes: boolean;
   contrast: boolean;
 }): JSX.Element {
+  const isDesktop = useIsDesktop();
   const { built, result, error } = useMatchupSim(matchup, offense, defense, snapshot);
   const duration = result && result.frames.length > 0 ? result.frames[result.frames.length - 1]!.t : 0;
   const playback = usePlayback({ duration, autoPlay: true, loop });
@@ -90,7 +92,7 @@ function PlayView({
       <h1 data-testid="present-title" className="px-4 py-1 text-lg font-semibold">
         {title}
       </h1>
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">
           {error !== null ? (
             <p role="alert" data-testid="present-sim-error" className="p-4 text-red-300">
@@ -111,7 +113,12 @@ function PlayView({
         {showNotes && (
           <aside
             data-testid="present-notes"
-            className="w-72 shrink-0 overflow-y-auto border-l border-slate-600 p-4 text-lg"
+            aria-label={t.present.notesSheet}
+            className={
+              isDesktop
+                ? 'w-72 shrink-0 overflow-y-auto border-l border-slate-600 p-4 text-lg'
+                : 'absolute inset-x-0 bottom-0 z-30 max-h-[45%] overflow-y-auto rounded-t-xl border-t border-slate-500 bg-slate-800/95 p-4 text-base shadow-2xl'
+            }
           >
             {item.coachNote?.trim() ? (
               <NoteText text={item.coachNote} />
@@ -170,7 +177,8 @@ function Presenter({ install }: { install: Install }): JSX.Element {
   const snapshot = useDbSnapshot();
   const items = useMemo(() => sortedItems(install), [install]);
   const [index, setIndex] = useState(0);
-  const [showNotes, setShowNotes] = useState(true);
+  const isDesktop = useIsDesktop();
+  const [showNotes, setShowNotes] = useState(isDesktop);
   const [loop, setLoop] = useState(false);
   const [contrast, setContrast] = useState(false);
 
@@ -210,9 +218,35 @@ function Presenter({ install }: { install: Install }): JSX.Element {
   }, [last, navigate, install.id]);
 
   const item = items[cur];
+  const big = `${btn} min-h-12 flex-1 text-base`;
+  const nav = (
+    <>
+      <button
+        type="button"
+        data-testid="present-prev"
+        className={isDesktop ? btn : big}
+        disabled={cur <= 0}
+        onClick={() => go(-1)}
+      >
+        {t.present.prev}
+      </button>
+      <span data-testid="present-index" className="min-w-[4rem] text-center">
+        {t.present.position(items.length === 0 ? 0 : cur + 1, items.length)}
+      </span>
+      <button
+        type="button"
+        data-testid="present-next"
+        className={isDesktop ? btn : big}
+        disabled={cur >= last}
+        onClick={() => go(1)}
+      >
+        {t.present.next}
+      </button>
+    </>
+  );
   return (
     <div data-testid="present-page" className="fixed inset-0 flex flex-col bg-slate-900 text-white">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-700 px-3 py-2">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-700 px-3 py-2 lg:flex-wrap lg:overflow-visible">
         <button
           type="button"
           data-testid="present-exit"
@@ -221,27 +255,7 @@ function Presenter({ install }: { install: Install }): JSX.Element {
         >
           {t.present.exit}
         </button>
-        <button
-          type="button"
-          data-testid="present-prev"
-          className={btn}
-          disabled={cur <= 0}
-          onClick={() => go(-1)}
-        >
-          {t.present.prev}
-        </button>
-        <span data-testid="present-index" className="min-w-[4rem] text-center">
-          {t.present.position(items.length === 0 ? 0 : cur + 1, items.length)}
-        </span>
-        <button
-          type="button"
-          data-testid="present-next"
-          className={btn}
-          disabled={cur >= last}
-          onClick={() => go(1)}
-        >
-          {t.present.next}
-        </button>
+        {isDesktop && nav}
         <span className="flex-1" />
         <button
           type="button"
@@ -292,6 +306,14 @@ function Presenter({ install }: { install: Install }): JSX.Element {
           showNotes={showNotes}
           contrast={contrast}
         />
+      )}
+      {!isDesktop && (
+        <div
+          data-testid="present-bottom-bar"
+          className="flex items-center gap-2 border-t border-slate-700 px-3 py-2"
+        >
+          {nav}
+        </div>
       )}
     </div>
   );

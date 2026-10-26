@@ -75,6 +75,7 @@ export function Timeline({
         data-testid="btn-play"
         label={playback.playing ? p.pause : p.play}
         variant="primary"
+        className="max-lg:order-1 max-lg:h-10 max-lg:w-10"
         onClick={playback.toggle}
       >
         <Icon d={playback.playing ? PAUSE_PATH : PLAY_PATH} />
@@ -84,13 +85,14 @@ export function Timeline({
         <IconButton
           data-testid="btn-prev-event"
           label={p.prevEvent}
+          className="max-lg:order-4 max-lg:h-10 max-lg:w-10"
           onClick={() => playback.stepToMark(-1, markTimes)}
         >
           <Icon d={PREV_PATH} />
         </IconButton>
       )}
 
-      <div className="relative min-w-[8rem] flex-1">
+      <div className="relative min-w-[8rem] flex-1 max-lg:order-2">
         <div className="relative h-3">
           {markers.map((m, i) => (
             <span
@@ -120,26 +122,34 @@ export function Timeline({
         <IconButton
           data-testid="btn-next-event"
           label={p.nextEvent}
+          className="max-lg:order-4 max-lg:h-10 max-lg:w-10"
           onClick={() => playback.stepToMark(1, markTimes)}
         >
           <Icon d={NEXT_PATH} />
         </IconButton>
       )}
 
+      {!compact && <span aria-hidden="true" className="hidden h-0 basis-full max-lg:order-3 max-lg:block" />}
+
       <span
         data-testid="timeline-time"
-        className="min-w-[4.5rem] text-right text-sm tabular-nums"
+        className="min-w-[4.5rem] text-right text-sm tabular-nums max-lg:order-2"
         aria-live="off"
       >
         {formatTime(playback.t)}
       </span>
 
       {!compact && (
-        <div role="group" aria-label={p.speed} className="flex gap-1">
+        <div
+          role="group"
+          aria-label={p.speed}
+          className="flex gap-1 max-lg:order-4 max-lg:min-w-0 max-lg:flex-1 max-lg:overflow-x-auto"
+        >
           {PLAYBACK_SPEEDS.map((s) => (
             <Button
               key={s}
               size="sm"
+              className="max-lg:min-h-10 max-lg:min-w-10"
               variant={playback.speed === s ? 'primary' : 'secondary'}
               data-testid={`btn-speed-${s}`}
               aria-pressed={playback.speed === s}

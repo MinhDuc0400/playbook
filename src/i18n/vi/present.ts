@@ -10,6 +10,8 @@ export const present = {
   next: 'Kế',
   fullscreen: 'Toàn màn hình',
   notes: 'Ghi chú',
+  notesSheet: 'Ghi chú huấn luyện',
+  closeNotes: 'Đóng ghi chú',
   noNotes: 'Không có ghi chú.',
   loop: 'Lặp',
   contrast: 'Tương phản cao',

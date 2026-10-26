@@ -11,6 +11,7 @@ export const matchup = {
   simError: 'Không chạy được mô phỏng',
   name: 'Tên matchup',
   notes: 'Ghi chú',
+  tabs: { result: 'Kết quả', params: 'Tham số', players: 'Cầu thủ', runMany: 'Chạy 50', notes: 'Ghi chú' },
   overlayMenu: 'Lớp hiển thị',
   overlayMenuHelp:
     'Bật/tắt các lớp vẽ trên sân: route dự kiến, vệt chạy, zone, đường man, đường bóng, separation, perception, mắt QB.',

@@ -207,7 +207,11 @@ export function QbEyesOverlay({ built, result, t }: OverlayProps): JSX.Element |
   const qb = built.offense.players.find((p) => p.role === 'QB');
   if (!frame || !qb || !frame.eyeTarget) return null;
   const from = frame.players[qb.id]?.pos;
-  const to = frame.players[frame.eyeTarget]?.pos;
+  // Once the ball is in the air the QB's eyes follow the throw: point at the landing spot.
+  const to =
+    frame.ball.state === 'inAir' && frame.ball.landing
+      ? frame.ball.landing
+      : frame.players[frame.eyeTarget]?.pos;
   if (!from || !to) return null;
   const a = toScreen(from, viewport);
   const b = toScreen(to, viewport);

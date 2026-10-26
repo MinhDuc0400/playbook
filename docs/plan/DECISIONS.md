@@ -223,3 +223,11 @@ ones (marked "supersedes D-xx").
     predicted separation at the press, best alternative at that moment, outcome; "Thử lại" resets; a
     session tally (attempts, completions, % of throws to the best-scoring receiver).
 - Reason: deterministic replay makes the press-time result exact and comparable with the auto QB.
+
+## D-24 Catchable aim + eye line + re-tune (user report 2026-10-26)
+- Context: a ball path went off the field while the QB's eye line pointed at the receiver: the QB led a
+  receiver pinned on the sideline (aim on x = −15) and throw error pushed it out.
+- Decision: the QB's aim is clamped `AIM_MARGIN` = 1 yd inside the sidelines and the end line (scoring
+  and throws). The QB-eye overlay points at the ball's landing spot while the ball is in the air.
+  `inaccuracyK` 0.2 → 0.3 (fewer automatic out-of-bounds misses raised completion). 200 seeds, TB,
+  noise on: Flood/C3 69 %, Mesh/C1 67 %, Smash/C2 66 % — all three inside 60–70 %.

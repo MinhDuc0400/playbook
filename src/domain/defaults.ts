@@ -17,7 +17,7 @@ export const DEFAULT_TUNING: Readonly<TuningParams> = {
   pressureRadius: 2,
   sackRadius: 1,
   ballSpeed: 18,
-  inaccuracyK: 0.2, // tuned (D-20, D-22); SRS starting value 0.05
+  inaccuracyK: 0.3, // tuned (D-20, D-22, D-24); SRS starting value 0.05
   catchRadius: 1,
   contestRadius: 1,
   intShare: 0.4,

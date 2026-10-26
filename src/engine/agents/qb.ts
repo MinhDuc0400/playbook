@@ -72,6 +72,9 @@ interface Eval {
  *   first tick with t ≥ manualThrow.t (even during the drop) it throws to manualThrow.targetId (decision
  *   'manual'), or throws away when that target is unknown / behind the LOS / out of arm range.
  */
+/** Yards the aim point stays inside the sidelines / end line (receivers are clamped there too). */
+export const AIM_MARGIN = 1;
+
 export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent {
   const { plan, info } = opts;
   const { tuning } = info;
@@ -118,7 +121,13 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent 
     if (base === undefined) return { id, aim: qbPos, sep: 0, score: 0, valid: false };
     const posAt = (tt: number): Point => plan.plannedPos(id, tt) ?? base;
     const tRelease = t + release;
-    const { aim, tArrive } = leadTarget(qbPos, tRelease, posAt, tuning);
+    const lead = leadTarget(qbPos, tRelease, posAt, tuning);
+    const tArrive = lead.tArrive;
+    // Throw to a catchable spot: at least AIM_MARGIN yd inside the sidelines and the end line.
+    const aim: Point = {
+      x: Math.min(info.maxX - AIM_MARGIN, Math.max(info.minX + AIM_MARGIN, lead.aim.x)),
+      y: Math.min(info.maxY - AIM_MARGIN, lead.aim.y),
+    };
     const sep = predictedSeparation({ catchPt: aim, tRelease, tArrive, pT: p.t, defenders, tuning });
     const valid = aim.y > 0 && distance(aim, qbPos) <= armRange;
     if (!valid) return { id, aim, sep, score: 0, valid };

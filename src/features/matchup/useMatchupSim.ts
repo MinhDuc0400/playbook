@@ -1,13 +1,16 @@
 /** Runs simulate() for the current matchup (memoized; main thread, < 20 ms per NFR-PERF-02). */
-import { notImplemented } from '@/domain/notImplemented';
+import { useMemo } from 'react';
 import type { DbSnapshot, Matchup, Play, SimResult } from '@/domain/types';
-import type { BuiltSim } from './buildSimInput';
+import { simulate } from '@/engine/simulate';
+import { buildSimInput, type BuiltSim } from './buildSimInput';
 
 export interface MatchupSim {
   built: BuiltSim | null;
   result: SimResult | null;
   error: string | null; // simulate threw (bad data) — shown, never crashes (NFR-REL-04)
 }
+
+const EMPTY: MatchupSim = { built: null, result: null, error: null };
 
 /** Recomputes only when matchup/plays/snapshot change (by reference). null inputs → all null. */
 export function useMatchupSim(
@@ -16,7 +19,14 @@ export function useMatchupSim(
   defense: Play | null,
   snapshot: DbSnapshot | undefined,
 ): MatchupSim {
-  return notImplemented(
-    `useMatchupSim ${String(matchup)}${String(offense)}${String(defense)}${String(snapshot)}`,
-  );
+  return useMemo(() => {
+    if (!matchup || !offense || !defense || !snapshot) return EMPTY;
+    let built: BuiltSim | null = null;
+    try {
+      built = buildSimInput(matchup, offense, defense, snapshot);
+      return { built, result: simulate(built.input), error: null };
+    } catch (e) {
+      return { built, result: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  }, [matchup, offense, defense, snapshot]);
 }

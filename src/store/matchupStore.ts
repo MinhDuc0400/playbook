@@ -1,5 +1,5 @@
 /** Matchup screen UI state (overlays, selection). Playback lives in usePlayback. */
-import { notImplemented } from '@/domain/notImplemented';
+import { create } from 'zustand';
 import type { ID, Side } from '@/domain/types';
 
 export type OverlayKey = 'plannedRoutes' | 'trails' | 'zones' | 'manLines' | 'ballPath' | 'separation';
@@ -19,9 +19,20 @@ export interface MatchupStoreHook {
   getState(): MatchupUiState;
 }
 
-export const useMatchupStore: MatchupStoreHook = new Proxy(
-  (() => notImplemented('useMatchupStore')) as unknown as MatchupStoreHook,
-  {
-    get: (_t, key) => notImplemented(`useMatchupStore.${String(key)}`),
-  },
-);
+const defaultOverlays = (): Record<OverlayKey, boolean> => ({
+  plannedRoutes: true,
+  trails: false,
+  zones: true,
+  manLines: true,
+  ballPath: true,
+  separation: true,
+});
+
+export const useMatchupStore: MatchupStoreHook = create<MatchupUiState>()((set) => ({
+  overlays: defaultOverlays(),
+  selected: null,
+  toggleOverlay: (k) => set((s) => ({ overlays: { ...s.overlays, [k]: !s.overlays[k] } })),
+  setOverlay: (k, v) => set((s) => ({ overlays: { ...s.overlays, [k]: v } })),
+  select: (selected) => set({ selected }),
+  reset: () => set({ overlays: defaultOverlays(), selected: null }),
+}));

@@ -256,6 +256,36 @@ describe('FieldStage zoom limits, buttons and minimap', () => {
   });
 });
 
+describe('FieldStage on phones (D-25)', () => {
+  const realMatchMedia = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: false, // not (min-width: 1024px)
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+  });
+
+  it('has no zoom buttons or mini-map; the fit button only appears once zoomed', () => {
+    renderStage();
+    expect(screen.queryByTestId('btn-zoom-in')).toBeNull();
+    expect(screen.queryByTestId('btn-zoom-out')).toBeNull();
+    expect(screen.queryByTestId('btn-minimap')).toBeNull();
+    expect(screen.queryByTestId('minimap')).toBeNull();
+    // At the default view there is nothing to reset.
+    expect(screen.queryByTestId('btn-fit')).toBeNull();
+    const stage = screen.getByTestId('field-stage');
+    fireEvent.wheel(stage, { deltaY: -400, clientX: 400, clientY: 300 });
+    expect(screen.getByTestId('btn-fit')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('btn-fit'));
+    expect(screen.queryByTestId('btn-fit')).toBeNull();
+  });
+});
+
 describe('FieldStage without ResizeObserver', () => {
   it('measures once via getBoundingClientRect', () => {
     vi.stubGlobal('ResizeObserver', undefined);

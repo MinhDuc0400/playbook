@@ -52,7 +52,7 @@ export function TopBar({ autosave }: TopBarProps): JSX.Element | null {
   };
 
   if (!isDesktop) {
-    const touchBtn = 'min-h-10 min-w-10';
+    const touchBtn = 'min-h-10 min-w-10 whitespace-nowrap';
     return (
       <div
         role="toolbar"

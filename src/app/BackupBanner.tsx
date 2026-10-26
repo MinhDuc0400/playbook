@@ -58,9 +58,9 @@ export function BackupBanner(): JSX.Element | null {
     <div
       role="status"
       data-testid="backup-banner"
-      className="flex flex-wrap items-center gap-2 border-b border-amber-300 bg-amber-50 px-3 py-2 sm:gap-3 sm:px-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-300 bg-amber-50 px-3 py-1.5 text-xs sm:gap-3 sm:px-4 sm:py-2 sm:text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
     >
-      <span className="min-w-0 flex-1 basis-48 break-words">
+      <span className="min-w-0 flex-1 basis-full break-words sm:basis-48">
         {s.text}{' '}
         {inRouter ? (
           <Link to="/settings" className={linkCls}>

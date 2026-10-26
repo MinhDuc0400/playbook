@@ -6,6 +6,7 @@ import { fieldBounds } from '@/domain/field';
 import type { BallSpot, FieldConfig } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { FieldSvg, type FieldSvgProps } from './FieldSvg';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { Minimap } from './Minimap';
 import { useZoomPan } from './useZoomPan';
 import { clampViewport, defaultViewport, viewportForCenter, visibleRect } from './viewport';
@@ -36,7 +37,9 @@ export function FieldStage({
   );
   const bounds = useCallback(() => fieldBounds(field, ballSpot), [field, ballSpot]);
   const { viewport, setViewport, fit, zoomBy, panning } = useZoomPan(containerRef, makeFit, { bounds });
-  const [minimapOpen, setMinimapOpen] = useState(true);
+  // The mini-map would cover a large part of a phone-sized field: closed by default there (D-25).
+  const isDesktop = useIsDesktop();
+  const [minimapOpen, setMinimapOpen] = useState(isDesktop);
 
   const full = fieldBounds(field, ballSpot);
   const vis = viewport ? visibleRect(viewport) : null;
@@ -44,6 +47,15 @@ export function FieldStage({
     !!vis &&
     (vis.maxX - vis.minX < full.maxX - full.minX - 1e-6 ||
       vis.maxY - vis.minY < full.maxY - full.minY - 1e-6);
+
+  // Phones: the fit button appears only after the user pinched/panned away from the default view.
+  const fitVp = viewport ? makeFit(viewport.width, viewport.height) : null;
+  const changedFromDefault =
+    !!viewport &&
+    !!fitVp &&
+    (Math.abs(viewport.scale - fitVp.scale) > 1e-3 ||
+      Math.abs(viewport.center.x - fitVp.center.x) > 0.05 ||
+      Math.abs(viewport.center.y - fitVp.center.y) > 0.05);
 
   return (
     <div
@@ -58,7 +70,7 @@ export function FieldStage({
           {children}
         </FieldSvg>
       )}
-      {viewport && zoomed && minimapOpen && (
+      {isDesktop && viewport && zoomed && minimapOpen && (
         <div data-no-zoompan="" className="absolute bottom-2 left-2">
           <Minimap
             field={field}
@@ -72,88 +84,96 @@ export function FieldStage({
       )}
       <div data-no-zoompan="" className="absolute right-2 top-2 flex items-center gap-2">
         {overlayControls}
-        <button
-          type="button"
-          data-testid="btn-minimap"
-          aria-label={t.field.minimapToggle}
-          title={t.field.minimapToggle}
-          aria-pressed={minimapOpen}
-          onClick={() => setMinimapOpen((v) => !v)}
-          className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+        {isDesktop && (
+          <button
+            type="button"
+            data-testid="btn-minimap"
+            aria-label={t.field.minimapToggle}
+            title={t.field.minimapToggle}
+            aria-pressed={minimapOpen}
+            onClick={() => setMinimapOpen((v) => !v)}
+            className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            <rect x="2" y="2" width="12" height="12" rx="1" />
-            <rect x="3.5" y="7" width="5" height="5" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          data-testid="btn-zoom-out"
-          aria-label={t.field.zoomOut}
-          title={t.field.zoomOut}
-          onClick={() => zoomBy(1 / 1.25)}
-          className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+            <svg
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="2" y="2" width="12" height="12" rx="1" />
+              <rect x="3.5" y="7" width="5" height="5" />
+            </svg>
+          </button>
+        )}
+        {isDesktop && (
+          <button
+            type="button"
+            data-testid="btn-zoom-out"
+            aria-label={t.field.zoomOut}
+            title={t.field.zoomOut}
+            onClick={() => zoomBy(1 / 1.25)}
+            className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            <path d="M3 8h10" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          data-testid="btn-zoom-in"
-          aria-label={t.field.zoomIn}
-          title={t.field.zoomIn}
-          onClick={() => zoomBy(1.25)}
-          className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+            <svg
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M3 8h10" />
+            </svg>
+          </button>
+        )}
+        {isDesktop && (
+          <button
+            type="button"
+            data-testid="btn-zoom-in"
+            aria-label={t.field.zoomIn}
+            title={t.field.zoomIn}
+            onClick={() => zoomBy(1.25)}
+            className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            <path d="M3 8h10M8 3v10" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          data-testid="btn-fit"
-          aria-label={t.field.fit}
-          title={t.field.fit}
-          onClick={fit}
-          className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
-        >
-          <svg
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+            <svg
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M3 8h10M8 3v10" />
+            </svg>
+          </button>
+        )}
+        {(isDesktop || changedFromDefault) && (
+          <button
+            type="button"
+            data-testid="btn-fit"
+            aria-label={t.field.fit}
+            title={t.field.fit}
+            onClick={fit}
+            className="rounded-md bg-white/90 px-2 py-1 text-sm text-slate-800 shadow hover:bg-white dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-800"
           >
-            <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" />
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

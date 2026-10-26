@@ -108,6 +108,17 @@ export async function playToEnd(page: Page): Promise<void> {
     .toBe(true);
 }
 
+/** Sets the playback scrubber to `t` seconds (range inputs can't be filled). */
+export async function seekTo(page: Page, t: number): Promise<void> {
+  await page.getByTestId('timeline-scrubber').evaluate((el, value) => {
+    const input = el as HTMLInputElement;
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    set?.call(input, String(value));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, t);
+}
+
 /** Starts a requestAnimationFrame recorder in the page (timestamps in ms). */
 export async function startFrameRecorder(page: Page): Promise<void> {
   await page.evaluate(() => {

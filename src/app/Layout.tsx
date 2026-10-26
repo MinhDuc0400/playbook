@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { IconButton } from '@/components/ui';
 import { t } from '@/i18n/vi';
+import { BackupBanner } from './BackupBanner';
 import { DbErrorBanner } from './DbErrorBanner';
 import { ShortcutSheet } from './ShortcutSheet';
 
@@ -62,6 +63,7 @@ export function Layout(): JSX.Element {
         </IconButton>
       </header>
       <DbErrorBanner />
+      <BackupBanner />
       <main className="flex-1">
         <Outlet />
       </main>

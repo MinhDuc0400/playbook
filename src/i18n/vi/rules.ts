@@ -1,2 +1,37 @@
-/** rules strings (NFR-UX-04). */
-export const rules = {} as const;
+/** rules strings (NFR-UX-04). Match-rule form (FR-DEF-07). */
+export const rules = {
+  title: 'Luật pattern match',
+  empty: 'Chưa có luật nào.',
+  add: 'Thêm luật',
+  when: 'Khi',
+  depth: 'sâu ≥',
+  depthUnit: 'yd',
+  before: 'trước',
+  beforeUnit: 's',
+  then: 'thì',
+  receiver: 'Receiver',
+  event: 'Sự kiện',
+  reaction: 'Phản ứng',
+  target: 'Target',
+  zone: 'Zone',
+  moveUp: 'Lên',
+  moveDown: 'Xuống',
+  remove: 'Xóa luật',
+  drag: 'Kéo để đổi thứ tự',
+  strong: 'Strong',
+  weak: 'Weak',
+  events: {
+    vertical: 'chạy vertical',
+    out: 'bẻ out',
+    in: 'bẻ in',
+    under: 'chạy under',
+    release: 'release',
+    stop: 'dừng (stop)',
+  },
+  reactions: {
+    man: 'Man',
+    zone: 'Zone',
+    carry: 'Carry',
+    passOff: 'Pass off',
+  },
+} as const;

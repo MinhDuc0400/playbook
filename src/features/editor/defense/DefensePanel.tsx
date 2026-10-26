@@ -29,6 +29,7 @@ import {
   setRush,
   setZone,
 } from '@/features/editor/defense/ops';
+import { MatchRulesForm } from '@/features/editor/defense/MatchRulesForm';
 import { setLabel } from '@/features/editor/ops';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
@@ -288,6 +289,7 @@ function SelectedDefender({
       >
         {s.defender.clear}
       </Button>
+      <MatchRulesForm slotId={slot.id} />
     </Section>
   );
 }

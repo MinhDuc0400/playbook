@@ -270,4 +270,16 @@ describe('DefensePanel (T2.4)', () => {
     expect(slotOf('lb').start).toEqual({ x: 5, y: 4 });
     expect(slotOf('fs').start).toEqual({ x: 0, y: 12 });
   });
+
+  it('FR-DEF-07 shows the match-rules form for a selected defender only', () => {
+    setup(['cb1']);
+    expect(screen.getByTestId('rules-list')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('rule-add'));
+    expect(play().players.find((p) => p.id === 'cb1')?.matchRules).toHaveLength(1);
+  });
+
+  it('FR-DEF-07 hides the match-rules form without a single selection', () => {
+    setup();
+    expect(screen.queryByTestId('rules-list')).toBeNull();
+  });
 });

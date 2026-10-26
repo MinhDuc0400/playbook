@@ -7,6 +7,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { usePlayback } from '@/components/field/usePlayback';
 import { useDbSnapshot, useMatchupBundle } from '@/db/hooks';
+import { AddToInstallButton } from '@/features/install/AddToInstallButton';
 import { matchupsRepo } from '@/db/repos/matchups';
 import type { DbSnapshot, Matchup, Play, SimEventType } from '@/domain/types';
 import { t } from '@/i18n/vi';
@@ -127,6 +128,7 @@ function MatchupEditor({
         <span data-testid="matchup-save-status" className="text-sm text-slate-600 dark:text-slate-300">
           {t.common.saveStatus[autosave.status]}
         </span>
+        <AddToInstallButton matchupId={working.id} />
       </div>
 
       <div className="relative min-w-0 overflow-hidden">

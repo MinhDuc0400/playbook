@@ -41,7 +41,7 @@ describe('DEFAULT_TUNING (SRS §11.2)', () => {
       pressureRadius: 2,
       sackRadius: 1,
       ballSpeed: 18,
-      inaccuracyK: 0.34, // tuned per D-20
+      inaccuracyK: 0.2, // tuned per D-20/D-22
       catchRadius: 1,
       contestRadius: 1,
       intShare: 0.4,

@@ -199,3 +199,10 @@ ones (marked "supersedes D-xx").
   - Results expose `Frame.qb` (current read + scores), `SimMetrics.reads` (windows + decision) and
     `AggregateResult.readDistribution`.
 - Reason: realistic timing and target variety; coaches can teach read timing (open window vs read window).
+- Re-tune after D-22 (supersedes D-20 value): `inaccuracyK` 0.34 → 0.2 (closing-speed openness already
+  produces tight windows). 200 seeds, TB, noise on: Flood/C3 61 %, Mesh/C1 71 %, Smash/C2 65 %.
+  Mesh/C1 stays ≈ 71 % under every knob tried (inaccuracyK, catch/contest radius, thresholds): its drags
+  are uncontested and capped by hands 0.75. Accepted as 1 pp over the 60–70 % band.
+- Pressure anticipation: the QB treats a rusher as pressure when its time-to-QB (perceived distance /
+  assumedDefenderSpeed, minus the QB's perception lag) ≤ release + 0.25 s; check-down earlier when it is
+  < release + 0.5 s. Auto windows follow the drop rhythm (see readModel.buildWindows JSDoc).

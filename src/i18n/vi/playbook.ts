@@ -1,2 +1,26 @@
 /** playbook strings (NFR-UX-04). */
-export const playbook = {} as const;
+export const playbook = {
+  title: 'Playbook',
+  tabs: { plays: 'Play', matchups: 'Matchup', label: 'Chế độ xem' },
+  newPlay: 'Tạo play mới',
+  filter: {
+    label: 'Bộ lọc',
+    side: 'Bên',
+    sideAll: 'Tất cả',
+    sideOffense: 'Offense',
+    sideDefense: 'Defense',
+    format: 'Format',
+    formatAll: 'Tất cả',
+    formation: 'Formation',
+    formationAll: 'Tất cả',
+    tag: 'Tag',
+    tagAll: 'Tất cả',
+    search: 'Tìm theo tên',
+    searchPlaceholder: 'Nhập tên play…',
+    sort: 'Sắp xếp',
+    sortUpdated: 'Mới sửa',
+    sortName: 'Tên (A-Z)',
+  },
+  empty: 'Không có play nào khớp bộ lọc.',
+  emptyAll: 'Chưa có play nào. Hãy tạo play đầu tiên.',
+} as const;

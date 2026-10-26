@@ -62,8 +62,11 @@ export function readOrder(
 
 /**
  * Windows in read order. Manual windows (plan.windows[id]) are used as given (clamped from ≥ dropEnd,
- * to > from). Auto window i: from = max(prevTo (or dropEnd for i = 0), (breakTime ?? dropEnd) −
- * readWindowLead), to = from + max(readWindowMin, readSec). Manual windows still advance `prevTo`.
+ * to > from). Auto window i follows the QB's rhythm and the route: with len = max(readWindowMin, readSec),
+ * from = max(prevTo (or dropEnd for i = 0), min(break − readWindowLead, dropEnd + i × readSec)) and
+ * to = from + len; when the break is later than `from` the window stretches to
+ * min(break + readWindowLead, from + 2 × len). A receiver without break counts as breaking at dropEnd.
+ * Manual windows still advance `prevTo`.
  */
 export function buildWindows(opts: {
   order: readonly ID[];
@@ -87,8 +90,10 @@ export function buildWindows(opts: {
       return;
     }
     const brk = byId.get(id)?.breakTime ?? dropEnd;
-    const from = Math.max(prevTo, brk - tuning.readWindowLead);
-    const to = from + Math.max(tuning.readWindowMin, readSec);
+    const len = Math.max(tuning.readWindowMin, readSec);
+    const from = Math.max(prevTo, Math.min(brk - tuning.readWindowLead, dropEnd + index * readSec));
+    const to =
+      brk > from ? Math.max(from + len, Math.min(brk + tuning.readWindowLead, from + 2 * len)) : from + len;
     out.push({ id, index, from, to, auto: true });
     prevTo = to;
   });

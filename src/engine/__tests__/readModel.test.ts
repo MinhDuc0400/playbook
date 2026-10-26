@@ -65,10 +65,47 @@ describe('buildWindows', () => {
       tuning: T,
     });
     expect(w[0]).toMatchObject({ id: 'a', index: 0, auto: true });
-    expect(w[0]?.from).toBeCloseTo(1.2);
-    expect(w[0]?.to).toBeCloseTo(1.8);
-    expect(w[1]?.from).toBeCloseTo(1.8); // max(prevTo 1.8, 1.6 - 0.3)
-    expect(w[1]?.to).toBeCloseTo(2.4);
+    expect(w[0]?.from).toBeCloseTo(1.0);
+    expect(w[0]?.to).toBeCloseTo(1.8); // break 1.5 > from: min(1.5 + 0.3, 1.0 + 1.2) = 1.8
+    expect(w[1]?.from).toBeCloseTo(1.8);
+    expect(w[1]?.to).toBeCloseTo(2.4); // break 1.6 <= from
+  });
+  it('the first read starts when the drop ends, a late break stretches the window', () => {
+    const w = buildWindows({
+      order: ['a'],
+      receivers: [r('a', 0, -1, 1.5)],
+      plan: undefined,
+      dropEnd,
+      readSec: 0.6,
+      tuning: T,
+    });
+    expect(w[0]?.from).toBeCloseTo(1.0);
+    expect(w[0]?.to).toBeCloseTo(1.8); // min(1.5 + 0.3, 1.0 + 1.2)
+  });
+  it('a very late break caps the window at twice its length', () => {
+    const w = buildWindows({
+      order: ['a'],
+      receivers: [r('a', 0, -1, 4)],
+      plan: undefined,
+      dropEnd,
+      readSec: 0.6,
+      tuning: T,
+    });
+    expect(w[0]?.from).toBeCloseTo(1.0);
+    expect(w[0]?.to).toBeCloseTo(2.2);
+  });
+  it('reads follow the QB rhythm, not the break, for later receivers', () => {
+    const recs = [r('a', 0), r('b', 3, -1, 3.0)];
+    const w = buildWindows({
+      order: ['a', 'b'],
+      receivers: recs,
+      plan: undefined,
+      dropEnd,
+      readSec: 0.6,
+      tuning: T,
+    });
+    expect(w[0]?.to).toBeCloseTo(1.6);
+    expect(w[1]?.from).toBeCloseTo(1.6); // max(prevTo 1.6, min(2.7, 1.0 + 0.6))
   });
   it('uses readWindowMin when readSec is short and dropEnd when no break', () => {
     const w = buildWindows({

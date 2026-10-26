@@ -49,15 +49,19 @@ function planFor(
   progression: ID[],
   over: Partial<QbPlan> = {},
 ): QbPlan {
+  const posOf = (id: ID, t: number): Point | undefined => {
+    const s = spots[id];
+    return s === undefined ? undefined : typeof s === 'function' ? s(t) : s;
+  };
   return {
     id: 'qb',
     start: { x: 0, y: -5 },
     drop: { type: 'qbDrop', depth: 2, style: 'under' },
     progression,
-    plannedPos: (id, t) => {
-      const s = spots[id];
-      return s === undefined ? undefined : typeof s === 'function' ? s(t) : s;
-    },
+    receivers: Object.keys(spots).map((id) => ({ id, pos: posOf(id, 0) as Point })),
+    strongSide: 'right',
+    dropEnd: 0.8,
+    plannedPos: posOf,
     ...over,
   };
 }
@@ -147,24 +151,26 @@ describe('T-ENG QB drop', () => {
 });
 
 describe('T-ENG QB reads', () => {
-  it('reads in progression order, one step per readTime, eyeTarget follows', () => {
-    const plan = planFor({ a: A, b: B }, ['a', 'b']);
+  const dropEndOf = (plan: QbPlan): number =>
+    (run(plan, covered, 3).find((k) => k.out.state === 'ball') as Tick).t;
+
+  it('reads in progression order, one auto window per readTime, eyeTarget follows', () => {
+    const base = planFor({ a: A, b: B }, ['a', 'b']);
+    const plan = { ...base, dropEnd: dropEndOf(base) };
     const ticks = run(plan, covered, 3, { stats: stats({ eyeDiscipline: 0 }) });
     const reads = events(ticks, 'read') as { t: number; id: ID }[];
-    const dropEnd = ticks.find((k) => k.out.state === 'ball') as Tick;
-    expect(reads[0]).toEqual({ t: dropEnd.t, id: 'a' });
-    expect(reads[1]?.id).toBe('b');
-    expect(reads[1]!.t - reads[0]!.t).toBeCloseTo(readTime(0.5), 1);
-    expect(reads[2]?.id).toBe('a');
+    expect(reads.map((r) => r.id)).toEqual(['a', 'b']);
+    expect(reads[0]!.t).toBeCloseTo(plan.dropEnd, 1);
+    expect(reads[1]!.t - reads[0]!.t).toBeCloseTo(Math.max(readTime(0.5), 0.45), 1);
     const midFirst = ticks.find((k) => k.t >= reads[0]!.t + 0.1) as Tick;
     expect(midFirst.out.eyeTarget).toBe('a');
     const midSecond = ticks.find((k) => k.t >= reads[1]!.t + 0.1) as Tick;
     expect(midSecond.out.eyeTarget).toBe('b');
   });
 
-  it('empty progression evaluates all planned receivers sorted by id', () => {
+  it('empty progression reads left to right', () => {
     const plan = planFor({ b: B, a: A }, []);
-    const ticks = run(plan, covered, 1);
+    const ticks = run(plan, covered, 2);
     expect(events(ticks, 'read')[0]?.id).toBe('a');
   });
 });
@@ -303,12 +309,17 @@ describe('T-ENG QB pressure and clock', () => {
 });
 
 describe('T-ENG QB look-off', () => {
-  const plan = planFor({ a: A, b: B }, ['a', 'b']);
+  const base = planFor({ a: A, b: B }, ['a', 'b']);
+  const plan = {
+    ...base,
+    dropEnd: (run(base, covered, 3).find((k) => k.out.state === 'ball') as Tick).t,
+  };
   const eyes = (disc: number, rng: Rng): { rel: number; eye?: ID; step: ID }[] => {
     const ticks = run(plan, covered, 2, { stats: stats({ eyeDiscipline: disc }), rng });
     const reads = events(ticks, 'read') as { t: number; id: ID }[];
+    const lastRead = reads[reads.length - 1] as { t: number };
     return ticks
-      .filter((k) => k.out.state === 'ball')
+      .filter((k) => k.out.state === 'ball' && k.t < lastRead.t + 0.4)
       .map((k) => {
         const cur = [...reads].reverse().find((r) => r.t <= k.t + 1e-9) as { t: number; id: ID };
         return { rel: k.t - cur.t, eye: k.out.eyeTarget, step: cur.id };
@@ -317,7 +328,7 @@ describe('T-ENG QB look-off', () => {
 
   it('eyeDiscipline 1: eyeTarget is the other receiver in the first half of each step', () => {
     const rows = eyes(1, () => 0.5);
-    const half = readTime(0.5) / 2;
+    const half = Math.max(readTime(0.5), 0.45) / 2;
     const first = rows.filter((r) => r.rel < half - 1e-6);
     const second = rows.filter((r) => r.rel > half + 1e-6);
     expect(first.length).toBeGreaterThan(0);

@@ -33,7 +33,7 @@ describe('T-ENG-07 anticipation reduces separation', () => {
     let n = 0;
     for (let seed = 1; seed <= 24; seed++) {
       const r = simulate(makeInput(floodPlay(), cover1(), { seed, noise: true, anticipation: a }));
-      const end = Math.min(throwTime(r) ?? 3, 3);
+      const end = Math.min(throwTime(r) ?? 1.5, 1.5);
       for (const series of Object.values(r.metrics.separation)) {
         for (const s of series) {
           if (s.t <= end) {

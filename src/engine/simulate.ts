@@ -28,7 +28,7 @@ import { applyThrowError, ballPosAt, launchBall } from './ball';
 import { frameAt } from './frames';
 import { clampToSidelines, separateTeammates, stepMovement } from './movement';
 import { createManDefender } from './agents/manDefender';
-import { createQbAgent } from './agents/qb';
+import { createQbAgent, type QbAgent } from './agents/qb';
 import { createReceiverAgent } from './agents/receiver';
 import type { DefenderAgent } from './agents/common';
 import { createRuleDefender } from './agents/ruleDefender';
@@ -39,6 +39,7 @@ import { resolveArrival } from './outcome';
 import { buildPerception, type Roster, type Viewer } from './perception';
 import { prepareSim } from './prepare';
 import { previewOffense } from './preview';
+import type { ReceiverInfo } from './readModel';
 import { forkRng } from './rng';
 import type { Agent, AgentIntent, AgentState, Kinematic, MoveLimits, Perception, Rng } from './types';
 import { createHistory, pushSnapshot, type PlayerSnapshot, type Snapshot } from './world';
@@ -139,6 +140,25 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
   // §8.7 anticipation: receivers as the defense can read them at the snap; the oracle (a > 0.5 only)
   // is the offense-only preview run, handed in as a function so agents never see the opponent's play.
   const strongSide = numbering.strongSide;
+  // QB read model inputs (D-22): first break per receiver (option stem end counts) and the drop end.
+  const breakTimes: Record<ID, number> = {};
+  for (const ev of preview.events) {
+    if ((ev.type !== 'break' && ev.type !== 'optionChoice') || ev.playerId === undefined) continue;
+    if (ev.t < 0) continue;
+    const prev = breakTimes[ev.playerId];
+    if (prev === undefined || ev.t < prev) breakTimes[ev.playerId] = ev.t;
+  }
+  const dropOf = qbSlot?.actions.find((a): a is QbDropAction => a.type === 'qbDrop') ?? null;
+  let dropEnd = 0;
+  if (qbSlot && dropOf) {
+    const target = { x: qbSlot.start.x, y: Math.min(0, qbSlot.start.y - dropOf.depth) };
+    // Preview frames keep the 'drop' label after arrival, so detect arrival by position.
+    const arrived = preview.frames.find((f) => {
+      const q = f.players[qbSlot.id];
+      return f.t > 0 && q !== undefined && distance(q.pos, target) < 0.1;
+    });
+    dropEnd = arrived?.t ?? tuning.maxTime;
+  }
   const anticipation: AnticipationModel = createAnticipation({
     a: input.anticipation,
     priors: input.routePriors,
@@ -202,20 +222,31 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     return e;
   };
 
+  let qbAgent: QbAgent | undefined;
   for (const slot of input.offense.players) {
     if (slot.id === qbId) {
-      const drop = slot.actions.find((a): a is QbDropAction => a.type === 'qbDrop') ?? null;
-      const agent = createQbAgent({
+      const receivers: ReceiverInfo[] = input.offense.players
+        .filter((s) => s.id !== qbId)
+        .map((s) => {
+          const at = snapStart[s.id] as Point;
+          const brk = breakTimes[s.id];
+          return { id: s.id, pos: { x: at.x, y: at.y }, ...(brk !== undefined ? { breakTime: brk } : {}) };
+        });
+      qbAgent = createQbAgent({
         plan: {
           id: slot.id,
           start: { x: slot.start.x, y: slot.start.y },
-          drop,
+          drop: dropOf,
           progression: [...(input.offense.progression ?? [])],
+          ...(input.offense.readPlan ? { readPlan: input.offense.readPlan } : {}),
+          receivers,
+          strongSide,
+          dropEnd,
           plannedPos,
         },
         info,
       });
-      makeEntity(slot, 'offense', agent);
+      makeEntity(slot, 'offense', qbAgent);
     } else {
       makeEntity(
         slot,
@@ -309,6 +340,7 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     : { state: 'held', pos: { x: 0, y: 0 } };
   let throwStarted = false;
   let eyeTarget: ID | undefined;
+  let qbDebug: Frame['qb'];
   const debugFrames: Record<ID, DefenderDebug>[] = [];
   let pending: Pending | null = null;
   let outcome: Outcome | null = null;
@@ -354,6 +386,7 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     }
     const frame: Frame = { t, players, ball: fb };
     if (eyeTarget !== undefined) frame.eyeTarget = eyeTarget;
+    if (qbDebug !== undefined) frame.qb = qbDebug;
     frames.push(frame);
     if (debugOn) {
       const defs: Record<ID, DefenderDebug> = {};
@@ -453,6 +486,7 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
       }
       if (e === qb) {
         if (intent.eyeTarget !== undefined) eyeNext = intent.eyeTarget;
+        if (intent.qbDebug !== undefined) qbDebug = intent.qbDebug;
         if (intent.throw || intent.throwaway) throwIntent = intent;
       }
       e.intent = intent;
@@ -602,6 +636,13 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     tThrow,
     tuning.separationOpen,
   );
+
+  const dec = qbAgent?.decision;
+  metrics.reads = {
+    mode: input.offense.readPlan?.mode ?? 'progression',
+    windows: qbAgent?.windows ?? [],
+    decision: dec ?? { kind: 'none', t: outcome === null ? 0 : (outcome as Outcome).t, readIndex: null },
+  };
 
   const result: SimResult = {
     frames,

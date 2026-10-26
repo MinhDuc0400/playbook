@@ -1,54 +1,93 @@
-/** QB agent (SRS §8.5 QB, D-15). Knows its own team's plan; never the defense play. */
+/** QB agent (SRS §8.5 QB, D-15, D-22). Knows its own team's plan; never the defense play. */
 import { distance } from '@/domain/geometry';
 import { readTime } from '@/domain/stats';
-import type { ID, Point, QbDropAction } from '@/domain/types';
+import type { ID, LateralSide, Point, QbDropAction, ReadMetrics, ReadPlan, ReadWindow } from '@/domain/types';
 import { leadTarget } from '../ball';
 import { brakingSpeed } from '../movement';
+import {
+  buildWindows,
+  laneRisk,
+  minScoreFor,
+  predictedSeparation,
+  readOrder,
+  readScore,
+  type ReceiverInfo,
+} from '../readModel';
 import type { Agent, AgentIntent, FieldInfo, PerceivedPlayer, Perception } from '../types';
 
-/** Assumed closing speed is not modelled: predicted defender position = seen pos + seen vel × Δt. */
 export interface QbPlan {
   id: ID;
   start: Point;
   drop: QbDropAction | null;
-  /** Read order (slot ids). Empty → all receivers sorted by id. */
+  /** Read order (slot ids) for mode 'progression'. Empty → left to right. */
   progression: ID[];
+  /** Offense play's read customisation (D-22). Missing = progression mode with auto windows. */
+  readPlan?: ReadPlan;
+  /** Own receivers: alignment at the snap and planned first-break time. */
+  receivers: ReceiverInfo[];
+  strongSide: LateralSide;
+  /** Estimated time (s after the snap) the drop ends; 0 without a drop. */
+  dropEnd: number;
   /** Own receivers' planned positions (offense-only kinematic run, previewOffense). */
   plannedPos(receiverId: ID, t: number): Point | undefined;
 }
 
+export type QbDecision = ReadMetrics['decision'];
+
+export interface QbAgent extends Agent {
+  /** Read windows in read order (empty until the first step). */
+  readonly windows: ReadWindow[];
+  /** The decision once made, else null. */
+  readonly decision: QbDecision | null;
+}
+
+interface Eval {
+  id: ID;
+  aim: Point;
+  sep: number;
+  score: number;
+  valid: boolean;
+}
+
 /**
  * - Drop: backpedal to (start.x, start.y − depth) at 0.7 × speed (state 'drop'), then stand ('ball').
- *   QB never crosses the LOS (world also clamps).
- * - Reads start when the drop is done: each progression step lasts readTime(stats.iq) s (event 'read',
- *   targetId). eyeTarget = current read; per read step, with probability eyeDiscipline (one rng draw at
- *   the start of the step) look off: eyeTarget = another receiver (next one in progression, wrapping)
- *   for the first half of the step.
- * - Evaluate the current read every tick: tRelease = t + release; leadTarget(qbPos, tRelease, plannedPos)
- *   → aim, tArrive; valid if aim.y > 0 and |aim − qbPos| ≤ armRange; predicted separation = min over seen
- *   defenders of |aim − (def.pos + def.vel × (tArrive − p.t))|. Throw when valid and sep ≥
- *   throwOpenThreshold → intent.throw {targetId, aim}, event 'throwStart' is emitted by the world.
- * - Pressure: any seen defender with role 'R' within pressureRadius (event 'pressure' once), or
- *   t ≥ passClock − release → evaluate ALL receivers; best valid sep ≥ throwOpenThreshold → throw to it,
- *   else throwaway.
+ * - Read windows (D-22): order = readOrder(mode, …), windows = buildWindows(…, readTime(iq)). The read is
+ *   the window containing t; eyeTarget = that receiver (with probability eyeDiscipline — one rng draw per
+ *   window — the first half of the window looks at the next read). Event 'read' when a window opens.
+ * - Every tick after the drop, every receiver is scored: catch point = leadTarget(qbPos, t + release),
+ *   valid if catch.y > 0 and |catch − qbPos| ≤ armRange, sep = predictedSeparation, risk = laneRisk,
+ *   score = readScore; invalid → 0.
+ * - Throw on the current read when valid && sep ≥ throwOpenThreshold && score ≥ minScoreFor(id). Mode 'best':
+ *   from the first window's start, throw to the best valid receiver whose score reaches its minimum.
+ * - After the last window, or once a rusher is within release + 0.5 s: check-down to the best valid receiver with score ≥ scoreThrow − 15.
+ * - Pressure (seen rusher within pressureRadius, or reaching the QB within release + 0.25 s at
+ *   assumedDefenderSpeed) or t ≥ passClock − release: best valid receiver with
+ *   sep ≥ throwOpenThreshold ('forced'), else throwaway.
  * - After deciding: stand still.
  */
-export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): Agent {
+export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent {
   const { plan, info } = opts;
   const { tuning } = info;
   const dropDepth = plan.drop?.depth ?? 0;
   const dropTarget: Point = { x: plan.start.x, y: Math.min(0, plan.start.y - dropDepth) };
   const DROP_DONE_DIST = 0.05;
   const EPS_T = 1e-9;
+  const CHECKDOWN_MARGIN = 15;
+  const HURRY_MARGIN = 0.25;
+  const CHECKDOWN_HURRY = 0.5;
+  const mode = plan.readPlan?.mode ?? 'progression';
 
   let dropDone = false;
   let decided = false;
+  let decision: QbDecision | null = null;
   let pressureEmitted = false;
-  let readIdx = -1;
-  let stepStart = 0;
+  let windows: ReadWindow[] = [];
+  let built = false;
+  let lastWindow = -1;
   let lookOff = false;
   let eyeTarget: ID | undefined;
-  let progression: ID[] | null = null;
+  const planned = new Map<ID, boolean>();
+  for (const r of plan.receivers) planned.set(r.id, plan.plannedPos(r.id, 0) !== undefined);
 
   const idle = (): AgentIntent => ({
     heading: { x: 0, y: 0 },
@@ -57,21 +96,6 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): Agent {
     ...(eyeTarget !== undefined ? { eyeTarget } : {}),
   });
 
-  /** Receivers to consider: progression, or all planned ids (sorted) when none given. */
-  function receiverIds(others: PerceivedPlayer[]): ID[] {
-    if (progression === null) {
-      if (plan.progression.length > 0) progression = [...plan.progression];
-      else {
-        const ids = others
-          .filter((o) => o.side === 'offense' && plan.plannedPos(o.id, 0) !== undefined)
-          .map((o) => o.id);
-        progression = [...new Set(ids)].sort();
-      }
-    }
-    return progression;
-  }
-
-  /** Aim + validity + predicted separation for a receiver thrown to now. */
   function evaluate(
     id: ID,
     qbPos: Point,
@@ -79,58 +103,93 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): Agent {
     release: number,
     armRange: number,
     p: Perception,
-  ): { aim: Point; sep: number } | null {
-    const base = plan.plannedPos(id, 0);
-    if (base === undefined) return null;
+    defenders: readonly PerceivedPlayer[],
+  ): Eval {
+    const base = planned.get(id) ? plan.plannedPos(id, 0) : undefined;
+    if (base === undefined) return { id, aim: qbPos, sep: 0, score: 0, valid: false };
     const posAt = (tt: number): Point => plan.plannedPos(id, tt) ?? base;
-    const { aim, tArrive } = leadTarget(qbPos, t + release, posAt, tuning);
-    if (aim.y <= 0 || distance(aim, qbPos) > armRange) return null;
-    let sep = Infinity;
-    for (const d of p.others) {
-      if (d.side !== 'defense') continue;
-      const dt = tArrive - p.t;
-      const pred = { x: d.pos.x + d.vel.x * dt, y: d.pos.y + d.vel.y * dt };
-      sep = Math.min(sep, distance(aim, pred));
-    }
-    return { aim, sep };
+    const tRelease = t + release;
+    const { aim, tArrive } = leadTarget(qbPos, tRelease, posAt, tuning);
+    const sep = predictedSeparation({ catchPt: aim, tRelease, tArrive, pT: p.t, defenders, tuning });
+    const valid = aim.y > 0 && distance(aim, qbPos) <= armRange;
+    if (!valid) return { id, aim, sep, score: 0, valid };
+    const dtR = tRelease - p.t;
+    const atRelease = defenders.map((d) => ({ x: d.pos.x + d.vel.x * dtR, y: d.pos.y + d.vel.y * dtR }));
+    const risk = laneRisk(qbPos, aim, atRelease, tuning.laneRadius);
+    return { id, aim, sep, score: readScore(sep, aim.y, risk, tuning), valid };
   }
+
+  const best = (evs: readonly Eval[], ok: (e: Eval) => boolean): Eval | null => {
+    let out: Eval | null = null;
+    for (const e of evs) if (e.valid && ok(e) && (out === null || e.score > out.score)) out = e;
+    return out;
+  };
 
   return {
     id: plan.id,
+    get windows() {
+      return windows;
+    },
+    get decision() {
+      return decision;
+    },
     step(self, p, _dt, rng) {
       if (decided) return idle();
       const { release, armRange, eyeDiscipline, iq } = self.stats;
+      const t = self.t;
+      if (!built) {
+        built = true;
+        const order = readOrder(mode, plan.progression, plan.receivers, plan.strongSide);
+        windows = buildWindows({
+          order,
+          receivers: plan.receivers,
+          plan: plan.readPlan,
+          dropEnd: plan.dropEnd,
+          readSec: readTime(iq),
+          tuning,
+        });
+      }
       const events: NonNullable<AgentIntent['events']> = [];
-      const ids = receiverIds(p.others);
+      const defenders = p.others.filter((o) => o.side === 'defense');
+      const evalAll = (): Eval[] =>
+        plan.receivers.map((r) => evaluate(r.id, self.pos, t, release, armRange, p, defenders));
 
-      // Pressure (perceived rushers) and pass clock force a decision at once.
-      const pressured = p.others.some(
-        (o) => o.side === 'defense' && o.role === 'R' && distance(o.pos, self.pos) <= tuning.pressureRadius,
-      );
+      const commit = (kind: QbDecision['kind'], e: Eval | null, readIndex: number | null): AgentIntent => {
+        decided = true;
+        const out = idle();
+        if (e) {
+          eyeTarget = e.id;
+          out.eyeTarget = e.id;
+          out.throw = { targetId: e.id, aim: e.aim };
+          decision = { kind, t, targetId: e.id, score: e.score, readIndex };
+        } else {
+          out.throwaway = true;
+          decision = { kind: 'throwaway', t, readIndex: null };
+        }
+        if (events.length > 0) out.events = events;
+        return out;
+      };
+
+      // Pressure (perceived rushers) and the pass clock force a decision at once.
+      // Anticipated pressure: seconds until the nearest perceived rusher reaches the QB.
+      // The QB sees the rusher `lag` seconds late, so it is that much closer than perceived.
+      const lag = Math.max(0, t - p.t);
+      let tPress = Infinity;
+      let pressured = false;
+      for (const o of defenders) {
+        if (o.role !== 'R') continue;
+        const d = distance(o.pos, self.pos);
+        if (d <= tuning.pressureRadius) pressured = true;
+        tPress = Math.min(tPress, Math.max(0, d / tuning.assumedDefenderSpeed - lag));
+      }
+      if (tPress <= release + HURRY_MARGIN) pressured = true;
       if (pressured && !pressureEmitted) {
         pressureEmitted = true;
         events.push({ type: 'pressure', playerId: plan.id });
       }
-      const clockOut = self.t >= info.field.passClock - release - EPS_T;
-      if (pressured || clockOut) {
-        decided = true;
-        let best: { id: ID; aim: Point; sep: number } | null = null;
-        for (const id of ids) {
-          const ev = evaluate(id, self.pos, self.t, release, armRange, p);
-          if (ev && ev.sep >= tuning.throwOpenThreshold && (best === null || ev.sep > best.sep)) {
-            best = { id, ...ev };
-          }
-        }
-        const out = idle();
-        if (best) {
-          eyeTarget = best.id;
-          out.eyeTarget = eyeTarget;
-          out.throw = { targetId: best.id, aim: best.aim };
-        } else {
-          out.throwaway = true;
-        }
-        if (events.length > 0) out.events = events;
-        return out;
+      if (pressured || t >= info.field.passClock - release - EPS_T) {
+        const pick = best(evalAll(), (e) => e.sep >= tuning.throwOpenThreshold);
+        return commit(pick ? 'forced' : 'throwaway', pick, null);
       }
 
       // Drop.
@@ -149,33 +208,58 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): Agent {
       }
 
       // Reads.
-      if (ids.length === 0) {
-        return { ...idle(), ...(events.length > 0 ? { events } : {}) };
+      const evs = evalAll();
+      const scores: Record<ID, number> = {};
+      for (const e of evs) scores[e.id] = e.score;
+      const first = windows[0];
+      const last = windows[windows.length - 1];
+      if (first === undefined || last === undefined) {
+        return { ...idle(), qbDebug: { scores }, ...(events.length > 0 ? { events } : {}) };
       }
-      const stepLen = readTime(iq);
-      if (readIdx < 0 || self.t - stepStart >= stepLen - EPS_T) {
-        readIdx = readIdx < 0 ? 0 : (readIdx + 1) % ids.length;
-        stepStart = self.t;
+      const cur = windows.find((w) => t >= w.from - EPS_T && t < w.to - EPS_T);
+      if (cur !== undefined && cur.index !== lastWindow) {
+        lastWindow = cur.index;
         lookOff = rng() < eyeDiscipline;
-        events.push({ type: 'read', playerId: plan.id, targetId: ids[readIdx] as ID });
+        events.push({ type: 'read', playerId: plan.id, targetId: cur.id });
       }
-      const current = ids[readIdx] as ID;
-      eyeTarget =
-        lookOff && self.t - stepStart < stepLen / 2 ? (ids[(readIdx + 1) % ids.length] as ID) : current;
+      if (cur !== undefined) {
+        const next = windows[(cur.index + 1) % windows.length] as ReadWindow;
+        eyeTarget = lookOff && t - cur.from < (cur.to - cur.from) / 2 ? next.id : cur.id;
+      } else if (eyeTarget === undefined || t < first.from) {
+        eyeTarget = first.id;
+      }
+
+      const byId = new Map(evs.map((e) => [e.id, e]));
+      const indexOf = (id: ID): number => windows.findIndex((w) => w.id === id);
+      const minOk = (e: Eval): boolean => e.score >= minScoreFor(e.id, plan.readPlan, tuning);
+      let thrown: AgentIntent | null = null;
+      if (mode === 'best') {
+        if (t >= first.from - EPS_T) {
+          const pick = best(evs, minOk);
+          if (pick) thrown = commit('read', pick, indexOf(pick.id));
+        }
+      } else if (cur !== undefined) {
+        const e = byId.get(cur.id);
+        if (e && e.valid && e.sep >= tuning.throwOpenThreshold && minOk(e)) {
+          thrown = commit('read', e, cur.index);
+        }
+      }
+      if (thrown === null && (t >= last.to - EPS_T || tPress < release + CHECKDOWN_HURRY)) {
+        const pick = best(evs, (e) => e.score >= tuning.scoreThrow - CHECKDOWN_MARGIN);
+        if (pick) thrown = commit('checkdown', pick, null);
+      }
+      if (thrown) {
+        thrown.qbDebug = { ...(cur ? { readId: cur.id } : {}), scores };
+        return thrown;
+      }
 
       const out: AgentIntent = {
         heading: { x: 0, y: 0 },
         speed: 0,
         state: 'ball',
-        eyeTarget,
+        ...(eyeTarget !== undefined ? { eyeTarget } : {}),
+        qbDebug: { ...(cur ? { readId: cur.id } : {}), scores },
       };
-      const ev = evaluate(current, self.pos, self.t, release, armRange, p);
-      if (ev && ev.sep >= tuning.throwOpenThreshold) {
-        decided = true;
-        eyeTarget = current;
-        out.eyeTarget = current;
-        out.throw = { targetId: current, aim: ev.aim };
-      }
       if (events.length > 0) out.events = events;
       return out;
     },

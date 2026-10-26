@@ -50,6 +50,7 @@ export function aggregate(results: readonly SimResult[], receiverIds: readonly I
     sepSum[id] = { sum: 0, n: 0 };
     perTargetSep[id] = { sum: 0, n: 0 };
   }
+  const readCount: Record<string, number> = {};
   let yards = 0;
   let completes = 0;
   let ttSum = 0;
@@ -73,6 +74,11 @@ export function aggregate(results: readonly SimResult[], receiverIds: readonly I
         acc.n += 1;
       }
     }
+    const dec = r.metrics.reads?.decision;
+    if (dec) {
+      const key = dec.kind === 'read' ? String((dec.readIndex ?? 0) + 1) : dec.kind;
+      readCount[key] = (readCount[key] ?? 0) + 1;
+    }
     const thrown = r.events.find((e) => e.type === 'throw');
     const tid = thrown?.targetId;
     if (tid !== undefined) {
@@ -95,6 +101,8 @@ export function aggregate(results: readonly SimResult[], receiverIds: readonly I
     const pt = perTarget[id];
     if (pt) pt.avgSepAtThrow = acc.n > 0 ? acc.sum / acc.n : 0;
   }
+  const readDistribution: Record<string, number> = {};
+  for (const [k, n] of Object.entries(readCount)) readDistribution[k] = runs > 0 ? n / runs : 0;
   const avgSeparationAtThrow: Record<ID, number> = {};
   for (const [id, acc] of Object.entries(sepSum)) {
     if (acc.n > 0) avgSeparationAtThrow[id] = acc.sum / acc.n;
@@ -112,5 +120,6 @@ export function aggregate(results: readonly SimResult[], receiverIds: readonly I
     targetDistribution,
     perTarget,
     avgSeparationAtThrow,
+    readDistribution,
   };
 }

@@ -30,6 +30,10 @@ export interface QbPlan {
   dropEnd: number;
   /** Own receivers' planned positions (offense-only kinematic run, previewOffense). */
   plannedPos(receiverId: ID, t: number): Point | undefined;
+  /** D-23: 'manual' = never decides on its own; throws only at `manualThrow`. Default 'auto'. */
+  control?: 'auto' | 'manual';
+  /** Manual mode: throw to `targetId` at the first tick with t ≥ `t` (ignored in auto mode). */
+  manualThrow?: { targetId: ID; t: number };
 }
 
 export type QbDecision = ReadMetrics['decision'];
@@ -64,6 +68,9 @@ interface Eval {
  *   assumedDefenderSpeed) or t ≥ passClock − release: best valid receiver with
  *   sep ≥ throwOpenThreshold ('forced'), else throwaway.
  * - After deciding: stand still.
+ * - Manual control (D-23): drop and reads are unchanged, but none of the decisions above happen. At the
+ *   first tick with t ≥ manualThrow.t (even during the drop) it throws to manualThrow.targetId (decision
+ *   'manual'), or throws away when that target is unknown / behind the LOS / out of arm range.
  */
 export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent {
   const { plan, info } = opts;
@@ -76,6 +83,8 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent 
   const HURRY_MARGIN = 0.25;
   const CHECKDOWN_HURRY = 0.5;
   const mode = plan.readPlan?.mode ?? 'progression';
+  const manual = plan.control === 'manual';
+  const manualThrow = manual ? plan.manualThrow : undefined;
 
   let dropDone = false;
   let decided = false;
@@ -187,7 +196,17 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent 
         pressureEmitted = true;
         events.push({ type: 'pressure', playerId: plan.id });
       }
-      if (pressured || t >= info.field.passClock - release - EPS_T) {
+      if (manualThrow !== undefined && t >= manualThrow.t - EPS_T) {
+        const evs = evalAll();
+        const scores: Record<ID, number> = {};
+        for (const e of evs) scores[e.id] = e.score;
+        const pick = evs.find((e) => e.id === manualThrow.targetId && e.valid) ?? null;
+        const idx = pick ? windows.findIndex((w) => w.id === pick.id) : -1;
+        const out = commit('manual', pick, idx >= 0 ? idx : null);
+        out.qbDebug = { scores };
+        return out;
+      }
+      if (!manual && (pressured || t >= info.field.passClock - release - EPS_T)) {
         const pick = best(evalAll(), (e) => e.sep >= tuning.throwOpenThreshold);
         return commit(pick ? 'forced' : 'throwaway', pick, null);
       }
@@ -233,7 +252,9 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent 
       const indexOf = (id: ID): number => windows.findIndex((w) => w.id === id);
       const minOk = (e: Eval): boolean => e.score >= minScoreFor(e.id, plan.readPlan, tuning);
       let thrown: AgentIntent | null = null;
-      if (mode === 'best') {
+      if (manual) {
+        // Manual control: hold and keep reading; the throw (if any) is handled above.
+      } else if (mode === 'best') {
         if (t >= first.from - EPS_T) {
           const pick = best(evs, minOk);
           if (pick) thrown = commit('read', pick, indexOf(pick.id));
@@ -244,7 +265,7 @@ export function createQbAgent(opts: { plan: QbPlan; info: FieldInfo }): QbAgent 
           thrown = commit('read', e, cur.index);
         }
       }
-      if (thrown === null && (t >= last.to - EPS_T || tPress < release + CHECKDOWN_HURRY)) {
+      if (!manual && thrown === null && (t >= last.to - EPS_T || tPress < release + CHECKDOWN_HURRY)) {
         const pick = best(evs, (e) => e.score >= tuning.scoreThrow - CHECKDOWN_MARGIN);
         if (pick) thrown = commit('checkdown', pick, null);
       }

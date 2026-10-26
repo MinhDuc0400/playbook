@@ -243,6 +243,9 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
           strongSide,
           dropEnd,
           plannedPos,
+          ...(input.qbControl === 'manual'
+            ? { control: 'manual' as const, ...(input.manualThrow ? { manualThrow: input.manualThrow } : {}) }
+            : {}),
         },
         info,
       });

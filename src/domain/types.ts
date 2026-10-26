@@ -393,6 +393,23 @@ export interface Frame {
   t: number;
   players: Record<ID, FramePlayer>;
   ball: BallState;
+  /** QB eye target at this frame (FR-MU-12 overlay). */
+  eyeTarget?: ID;
+}
+
+/** Per-frame debug view of one defender (FR-MU-11): what it "sees" (delayed) and where it aims. */
+export interface DefenderDebug {
+  /** Perceived positions of offense players at this frame (delayed by reaction). */
+  seen: Record<ID, Point>;
+  /** Current aim point, when the agent has one. */
+  aim?: Point;
+  /** Current man target (after match-rule switches), if any. */
+  targetId?: ID;
+}
+
+/** Optional debug data, aligned with `frames` (same index). */
+export interface SimDebug {
+  defenders: Record<ID, DefenderDebug>[];
 }
 
 export type SimEventType =
@@ -442,6 +459,8 @@ export interface SimResult {
   outcome: Outcome;
   metrics: SimMetrics;
   warnings: string[];
+  /** Present only when simulate() was called with { debug: true }. */
+  debug?: SimDebug;
 }
 
 export interface AggregateResult {

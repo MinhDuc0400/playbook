@@ -220,3 +220,20 @@ describe('settingsRepo', () => {
     expect(res.key).toBe('app');
   });
 });
+
+describe('settingsRepo fills keys missing from older records (D-22)', () => {
+  it('get/getOrDefault/update return complete tuning', async () => {
+    const { createDefaultSettings, DEFAULT_TUNING } = await import('@/domain/defaults');
+    const { getDb } = await import('../schema');
+    const s = createDefaultSettings();
+    const tuning: Record<string, number> = { ...s.tuning };
+    delete tuning.scoreThrow;
+    await getDb().settings.put({ ...s, tuning: tuning as unknown as typeof s.tuning });
+    const { settingsRepo } = await import('../repos/settings');
+    expect((await settingsRepo.get())?.tuning.scoreThrow).toBe(DEFAULT_TUNING.scoreThrow);
+    expect((await settingsRepo.getOrDefault()).tuning.scoreThrow).toBe(DEFAULT_TUNING.scoreThrow);
+    expect((await settingsRepo.update({ defaultFormat: '7v7' })).tuning.scoreThrow).toBe(
+      DEFAULT_TUNING.scoreThrow,
+    );
+  });
+});

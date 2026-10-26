@@ -1,5 +1,5 @@
 /** Read helpers combining tables (FR-DAT-03, §7.2 DbSnapshot). */
-import { createDefaultSettings } from '@/domain/defaults';
+import { createDefaultSettings, normalizeSettings } from '@/domain/defaults';
 import type { Athlete, DbSnapshot, ID, Lineup, Matchup, Play } from '@/domain/types';
 import { withDbErrors } from '../errors';
 import { getDb } from '../schema';
@@ -46,6 +46,10 @@ export async function loadDbSnapshot(): Promise<DbSnapshot> {
     for (const l of lineups) lineupsById[l.id] = l;
     const athletesById: Record<ID, Athlete> = {};
     for (const a of athletes) athletesById[a.id] = a;
-    return { settings: settings ?? createDefaultSettings(), lineups: lineupsById, athletes: athletesById };
+    return {
+      settings: settings ? normalizeSettings(settings) : createDefaultSettings(),
+      lineups: lineupsById,
+      athletes: athletesById,
+    };
   });
 }

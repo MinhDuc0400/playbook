@@ -154,3 +154,29 @@ export function createDefaultSettings(): Settings {
     ui: { theme: 'system', snap: true, showGrid: false },
   };
 }
+
+/**
+ * Fill keys missing from a stored Settings record with defaults (tuning params, preset stats, field
+ * configs, route-prior rows, ui), so settings saved by an older app version keep working after new
+ * parameters are added (D-22). Existing values always win. Returns a new object.
+ */
+export function normalizeSettings(stored: Settings): Settings {
+  const d = createDefaultSettings();
+  const presets = { ...d.presets };
+  for (const k of Object.keys(d.presets) as (keyof Settings['presets'])[]) {
+    presets[k] = { ...d.presets[k], ...stored.presets?.[k] };
+  }
+  const fields = { ...d.fields };
+  for (const k of Object.keys(d.fields) as (keyof Settings['fields'])[]) {
+    fields[k] = { ...d.fields[k], ...stored.fields?.[k] };
+  }
+  return {
+    ...d,
+    ...stored,
+    presets,
+    fields,
+    tuning: { ...d.tuning, ...stored.tuning },
+    routePriors: { ...d.routePriors, ...stored.routePriors },
+    ui: { ...d.ui, ...stored.ui },
+  };
+}

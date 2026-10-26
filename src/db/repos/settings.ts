@@ -1,4 +1,4 @@
-import { createDefaultSettings } from '@/domain/defaults';
+import { createDefaultSettings, normalizeSettings } from '@/domain/defaults';
 import type { Settings } from '@/domain/types';
 import { withDbErrors } from '../errors';
 import { getDb } from '../schema';
@@ -15,8 +15,16 @@ export interface SettingsRepo {
 const KEY = 'app';
 
 export const settingsRepo: SettingsRepo = {
-  get: () => withDbErrors(() => getDb().settings.get(KEY)),
-  getOrDefault: () => withDbErrors(async () => (await getDb().settings.get(KEY)) ?? createDefaultSettings()),
+  get: () =>
+    withDbErrors(async () => {
+      const s = await getDb().settings.get(KEY);
+      return s ? normalizeSettings(s) : undefined;
+    }),
+  getOrDefault: () =>
+    withDbErrors(async () => {
+      const s = await getDb().settings.get(KEY);
+      return s ? normalizeSettings(s) : createDefaultSettings();
+    }),
   put: (s) =>
     withDbErrors(async () => {
       const db = getDb();
@@ -26,7 +34,8 @@ export const settingsRepo: SettingsRepo = {
     withDbErrors(async () => {
       const db = getDb();
       return db.transaction('rw', db.settings, async () => {
-        const current = (await db.settings.get(KEY)) ?? createDefaultSettings();
+        const stored = await db.settings.get(KEY);
+        const current = stored ? normalizeSettings(stored) : createDefaultSettings();
         const next: Settings = { ...current, ...patch, key: KEY };
         await db.settings.put(next);
         return next;

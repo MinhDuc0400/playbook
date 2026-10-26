@@ -149,3 +149,25 @@ describe('createDefaultSettings', () => {
     expect(DEFAULT_PRESETS.avg.speed).toBe(7);
   });
 });
+
+describe('normalizeSettings (D-22)', () => {
+  it('fills tuning keys missing from older stored settings and keeps existing values', async () => {
+    const { normalizeSettings, createDefaultSettings, DEFAULT_TUNING } = await import('../defaults');
+    const old = createDefaultSettings();
+    const tuning: Record<string, number> = { ...old.tuning, ballSpeed: 20 };
+    delete tuning.scoreThrow;
+    delete tuning.assumedDefenderSpeed;
+    const presetsAvg: Record<string, number> = { ...old.presets.avg };
+    delete presetsAvg.hands;
+    const stored = {
+      ...old,
+      tuning: tuning as unknown as typeof old.tuning,
+      presets: { ...old.presets, avg: presetsAvg as unknown as typeof old.presets.avg },
+    };
+    const n = normalizeSettings(stored);
+    expect(n.tuning.scoreThrow).toBe(DEFAULT_TUNING.scoreThrow);
+    expect(n.tuning.assumedDefenderSpeed).toBe(DEFAULT_TUNING.assumedDefenderSpeed);
+    expect(n.tuning.ballSpeed).toBe(20);
+    expect(n.presets.avg.hands).toBe(old.presets.avg.hands);
+  });
+});

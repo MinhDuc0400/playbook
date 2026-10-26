@@ -4,7 +4,8 @@ import { nanoid } from 'nanoid';
 import { migrateRecord, type TableName } from '@/db/migrations';
 import { withDbErrors } from '@/db/errors';
 import { getDb } from '@/db/schema';
-import { SCHEMA_VERSION, type ExportFile, type ID } from '@/domain/types';
+import { normalizeSettings } from '@/domain/defaults';
+import { SCHEMA_VERSION, type ExportFile, type ID, type Settings } from '@/domain/types';
 import { ExportFileSchema } from './schemas';
 
 export type ImportMode = 'merge' | 'replace';
@@ -82,7 +83,9 @@ export function parseImport(text: string): ParseResult {
     data[table] = list.map((rec, i) => migrate(table, rec, `data.${table}[${i}]`));
   }
   if (raw.data.settings !== undefined) {
-    data.settings = migrate('settings', raw.data.settings, 'data.settings');
+    const migrated = migrate('settings', raw.data.settings, 'data.settings');
+    // Files from older app versions lack newer tuning/preset keys: fill them with defaults (D-22).
+    data.settings = isObject(migrated) ? normalizeSettings(migrated as unknown as Settings) : migrated;
   }
   if (errors.length > 0) return { ok: false, errors: errors.slice(0, MAX_ERRORS) };
 

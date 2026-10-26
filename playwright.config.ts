@@ -14,6 +14,9 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     { name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } } },
+    // D-25 responsive checks: only the responsive spec runs on these devices.
+    { name: 'mobile', testMatch: /16-responsive\.spec\.ts/, use: { ...devices['iPhone 14 Pro Max'] } },
+    { name: 'tablet', testMatch: /16-responsive\.spec\.ts/, use: { ...devices['iPad Mini'] } },
   ],
   webServer: {
     command: 'pnpm build && pnpm preview --port 4173 --strictPort',

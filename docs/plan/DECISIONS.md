@@ -231,3 +231,19 @@ ones (marked "supersedes D-xx").
   and throws). The QB-eye overlay points at the ball's landing spot while the ball is in the air.
   `inaccuracyK` 0.2 → 0.3 (fewer automatic out-of-bounds misses raised completion). 200 seeds, TB,
   noise on: Flood/C3 69 %, Mesh/C1 67 %, Smash/C2 66 % — all three inside 60–70 %.
+
+## D-25 Responsive layout down to phones (user request 2026-10-26; supersedes D-01 "tablet view-only" and the
+Editor ≥ 1024 px limit of NFR-UX-01)
+- Breakpoints (Tailwind): < 640 phone, 640–1023 tablet, ≥ 1024 desktop (current layouts unchanged).
+- Rules for < 1024 px:
+  - No horizontal page scroll at 360, 390, 430, 768 px (`documentElement.scrollWidth ≤ innerWidth`);
+    wide content (tables, timelines) scrolls inside its own container.
+  - The field comes first and gets ≥ 50 % of the viewport height; side panels move below it into a tab
+    strip (one panel visible at a time). Bottom panels (warnings, timeline) collapse to a summary line.
+  - Touch targets ≥ 40 px; toolbars become horizontal scrollable strips; top bars wrap into one row of
+    primary actions + an overflow "⋯" menu.
+  - App nav becomes a compact bar with a menu button; dialogs are full-screen sheets on phones.
+  - Editing on phones is supported (pointer events already work with touch); keyboard-only shortcuts get
+    on-screen buttons where they are the only way (e.g. finish route = "Xong").
+- Verification: Playwright project `mobile` (iPhone 14 Pro Max, WebKit) and `tablet` (iPad Mini,
+  WebKit) run `e2e/16-responsive.spec.ts` (no overflow on every screen + core flows by touch).

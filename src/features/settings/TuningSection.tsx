@@ -66,7 +66,7 @@ function Row({ name, value }: { name: Exclude<keyof TuningParams, 'simDt'>; valu
       <input
         type="number"
         data-testid={`tuning-${name}`}
-        aria-label={`${label} (số)`}
+        aria-label={`${label} ${t.common.numberSuffix}`}
         min={r.min}
         max={r.max}
         step={r.step}

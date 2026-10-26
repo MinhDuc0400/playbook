@@ -82,7 +82,7 @@ function StatRow({
         />
         <input
           type="number"
-          aria-label={`${label} (số)`}
+          aria-label={`${label} ${t.common.numberSuffix}`}
           data-testid={`player-stat-${statKey}-num`}
           min={min}
           max={max}

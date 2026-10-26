@@ -10,6 +10,8 @@ export const common = {
     label: 'Điều hướng chính',
   },
   loading: 'Đang tải…',
+  /** Suffix for the number input paired with a slider (aria-label). */
+  numberSuffix: '(số)',
   notFound: 'Không tìm thấy',
   comingSoon: 'Sắp có',
   close: 'Đóng',

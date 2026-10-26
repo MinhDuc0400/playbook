@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installsRepo } from '@/db/repos/installs';
 import { matchupsRepo } from '@/db/repos/matchups';
 import { playsRepo } from '@/db/repos/plays';
@@ -105,6 +105,32 @@ describe('PresentPage (FR-IN-04)', () => {
 
     key('Escape');
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/install/inst1'));
+  });
+
+  it('FR-IN-05 contrast toggle switches the field to the high-contrast theme', async () => {
+    // Give FieldStage a measurable container so it renders the svg in jsdom.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    });
+    await seed();
+    renderPresent();
+    await screen.findByTestId('matchup-field');
+    const btn = screen.getByTestId('present-contrast');
+    expect(btn).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(screen.getByTestId('field-svg')).toHaveAttribute('data-theme', 'contrast'));
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.getByTestId('field-svg')).toHaveAttribute('data-theme', 'normal'));
+    rect.mockRestore();
   });
 
   it('shows an item error for a missing matchup and still navigates', async () => {

@@ -173,3 +173,10 @@ ones (marked "supersedes D-xx").
 - Reason: the only lever that produces misses/contests on short throws without collapsing deep throws;
   0.40 drops Smash/C2 below 60 %. Re-check after phase 5 anticipation lands.
 - Known limitation: Mesh scores ~69 % against every coverage (crossers beat trail man and zones alike).
+
+## D-21 Phase 5 ordering
+- Context: anticipation, option/motion and match rules all need `simulate.ts` and the defender agents.
+- Decision: T5.1 (anticipation, owns simulate + man/zone agents) and T5.2 (pure `matchRules.ts`) run in
+  parallel with editor/UI tasks; T5.3 (option/motion/delay) takes over simulate after T5.1; T5.4 then wires
+  match rules into the agents and adds `simulateMany` + the Worker.
+- Reason: keeps "one owner per file per moment" while still parallelising UI work.

@@ -14,6 +14,8 @@ import { settings } from './vi/settings';
 import { matchup } from './vi/matchup';
 import { matchupField } from './vi/matchupField';
 import { result } from './vi/result';
+import { rules } from './vi/rules';
+import { tuning } from './vi/tuning';
 import { offense } from './vi/offense';
 import { playback } from './vi/playback';
 import { tools } from './vi/tools';
@@ -34,6 +36,8 @@ export const vi = {
   install,
   present,
   settings,
+  rules,
+  tuning,
 } as const;
 export const t = vi;
 export type Strings = typeof vi;

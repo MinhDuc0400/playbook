@@ -147,49 +147,52 @@ describe('T-ENG-02 no lookahead', () => {
     ),
   ]);
 
-  it('defenders are identical before the first offensive difference + the minimum effective delay', () => {
-    const runA = simulate(makeInput(offenseWith([{ x: -10, y: 15 }]), defense));
-    const runB = simulate(makeInput(offenseWith([{ x: -2, y: 10 }]), defense));
-    const offenseIds = ['q', 'a', 'b'];
-    const defenderIds = ['cb', 'cb2', 's', 'lb'];
+  it.each([0, 0.5])(
+    'defenders are identical before the first offensive difference + the minimum effective delay (a = %s)',
+    (a) => {
+      const runA = simulate(makeInput(offenseWith([{ x: -10, y: 15 }]), defense, { anticipation: a }));
+      const runB = simulate(makeInput(offenseWith([{ x: -2, y: 10 }]), defense, { anticipation: a }));
+      const offenseIds = ['q', 'a', 'b'];
+      const defenderIds = ['cb', 'cb2', 's', 'lb'];
 
-    const n = Math.min(runA.frames.length, runB.frames.length);
-    let diffIdx = -1;
-    for (let k = 0; k < n && diffIdx < 0; k++) {
-      for (const id of offenseIds) {
-        const pa = (runA.frames[k] as Frame).players[id];
-        const pb = (runB.frames[k] as Frame).players[id];
-        if (pa?.pos.x !== pb?.pos.x || pa?.pos.y !== pb?.pos.y) diffIdx = k;
+      const n = Math.min(runA.frames.length, runB.frames.length);
+      let diffIdx = -1;
+      for (let k = 0; k < n && diffIdx < 0; k++) {
+        for (const id of offenseIds) {
+          const pa = (runA.frames[k] as Frame).players[id];
+          const pb = (runB.frames[k] as Frame).players[id];
+          if (pa?.pos.x !== pb?.pos.x || pa?.pos.y !== pb?.pos.y) diffIdx = k;
+        }
       }
-    }
-    expect(diffIdx).toBeGreaterThan(0);
-    const tDiff = (runA.frames[diffIdx] as Frame).t;
+      expect(diffIdx).toBeGreaterThan(0);
+      const tDiff = (runA.frames[diffIdx] as Frame).t;
 
-    const tuning = makeInput(offenseWith([]), defense).tuning;
-    const minDelay = DEFAULT_PRESETS.avg.reaction * tuning.leverageReactionFactor * 0.5;
-    // The QB must not have thrown before the change is visible (this test is about the defense's eyes).
-    for (const r of [runA, runB]) {
-      const tt = throwTime(r);
-      if (tt !== undefined) expect(tt).toBeGreaterThan(tDiff + minDelay);
-    }
-    let checked = 0;
-    for (let k = 0; k < n; k++) {
-      const fa = runA.frames[k] as Frame;
-      const fb = runB.frames[k] as Frame;
-      if (fa.t >= tDiff + minDelay) break;
-      for (const id of defenderIds) expect(fa.players[id]).toEqual(fb.players[id]);
-      checked += 1;
-    }
-    expect(checked).toBeGreaterThan(10);
-    // Sanity: the change does matter later.
-    const last = Math.min(n - 1, diffIdx + 45);
-    const moved = defenderIds.some(
-      (id) =>
-        JSON.stringify((runA.frames[last] as Frame).players[id]) !==
-        JSON.stringify((runB.frames[last] as Frame).players[id]),
-    );
-    expect(moved).toBe(true);
-  });
+      const tuning = makeInput(offenseWith([]), defense).tuning;
+      const minDelay = DEFAULT_PRESETS.avg.reaction * tuning.leverageReactionFactor * 0.5;
+      // The QB must not have thrown before the change is visible (this test is about the defense's eyes).
+      for (const r of [runA, runB]) {
+        const tt = throwTime(r);
+        if (tt !== undefined) expect(tt).toBeGreaterThan(tDiff + minDelay);
+      }
+      let checked = 0;
+      for (let k = 0; k < n; k++) {
+        const fa = runA.frames[k] as Frame;
+        const fb = runB.frames[k] as Frame;
+        if (fa.t >= tDiff + minDelay) break;
+        for (const id of defenderIds) expect(fa.players[id]).toEqual(fb.players[id]);
+        checked += 1;
+      }
+      expect(checked).toBeGreaterThan(10);
+      // Sanity: the change does matter later.
+      const last = Math.min(n - 1, diffIdx + 45);
+      const moved = defenderIds.some(
+        (id) =>
+          JSON.stringify((runA.frames[last] as Frame).players[id]) !==
+          JSON.stringify((runB.frames[last] as Frame).players[id]),
+      );
+      expect(moved).toBe(true);
+    },
+  );
 });
 
 describe('T-ENG-05 leverage', () => {

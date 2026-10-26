@@ -1,6 +1,7 @@
 /** Zone defender (SRS §8.6 zone). */
 import { closestPointOnSegment, distance, distanceToPolygon } from '@/domain/geometry';
 import type { ID, Point } from '@/domain/types';
+import type { AnticipationModel } from '../anticipation';
 import type { Agent, AgentIntent, FieldInfo } from '../types';
 import { ballResponse, findPerceived, reactiveAim, seek } from './common';
 
@@ -33,7 +34,7 @@ function closestBoundaryPoint(p: Point, polygon: readonly Point[]): Point {
  *   No threat → drift toward dropPoint.
  * - Receiver leaves the zone (+buffer) → released (no carry in phase 3).
  * - QB eyes: aim.x += (eyeTarget seen x − aim.x) × iq × eyeDriftFactor when p.qb.eyeTarget is seen
- *   (§8.6; full anticipation gating comes in phase 5 — apply always in phase 3).
+ *   (§8.6); with an anticipation model only when model.readingEnabled (a > 0).
  * - Ball: as man defender (throwStarted → eyeTarget; inAir → landing).
  */
 export function createZoneDefender(opts: {
@@ -42,8 +43,10 @@ export function createZoneDefender(opts: {
   dropPoint: Point;
   deep: boolean;
   info: FieldInfo;
+  /** Optional §8.7 anticipation; QB-eye drift is gated by `readingEnabled` when given. */
+  anticipation?: AnticipationModel;
 }): Agent {
-  const { id, polygon, dropPoint, deep, info } = opts;
+  const { id, polygon, dropPoint, deep, info, anticipation: model } = opts;
   const buffer = info.tuning.zoneBuffer;
   let phase2 = false;
 
@@ -87,7 +90,10 @@ export function createZoneDefender(opts: {
             : { x: p.qb.pos.x, y: p.qb.pos.y };
       }
 
-      const eye = p.qb.eyeTarget !== undefined ? findPerceived(p, p.qb.eyeTarget) : undefined;
+      const eye =
+        (!model || model.readingEnabled) && p.qb.eyeTarget !== undefined
+          ? findPerceived(p, p.qb.eyeTarget)
+          : undefined;
       if (eye) aim.x += (eye.pos.x - aim.x) * self.stats.iq * info.tuning.eyeDriftFactor;
 
       if (distanceToPolygon(aim, polygon) > buffer) aim = closestBoundaryPoint(aim, polygon);

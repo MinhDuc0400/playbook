@@ -1,5 +1,6 @@
 /** simulate() — the pass-play simulation (SRS §8.1, FR-ENG-01..07, D-10, D-11, D-15). Pure. */
 import { distance } from '@/domain/geometry';
+import { outwardSign } from '@/domain/routeTree';
 import type {
   BallState,
   Frame,
@@ -14,6 +15,13 @@ import type {
   SimInput,
   SimResult,
 } from '@/domain/types';
+import {
+  createAnticipation,
+  createTellState,
+  type AnticipationModel,
+  type TellState,
+  priorKeyFor,
+} from './anticipation';
 import { applyThrowError, ballPosAt, launchBall } from './ball';
 import { frameAt } from './frames';
 import { clampToSidelines, separateTeammates, stepMovement } from './movement';
@@ -36,6 +44,8 @@ export const POST_OUTCOME_TIME = 0.5;
 
 const FRAME_RATE = 30;
 const TIME_EPS = 1e-9;
+/** Time constant (s) of the seen-speed average a deceleration tell is measured against. */
+const TELL_EMA_TAU = 0.2;
 const STAND: AgentIntent = { heading: { x: 0, y: 0 }, speed: 0, state: 'idle' };
 
 interface Entity {
@@ -50,6 +60,9 @@ interface Entity {
   isRusher: boolean;
   frameState: string;
   intent: AgentIntent;
+  /** Deceleration-tell memory per target (defenders, anticipation > 0). */
+  tells?: Map<ID, { state: TellState; ema: number | null }>;
+  tellRng?: Rng;
 }
 
 type Pending = { targetId: ID; aim: Point; tRelease: number } | { targetId: null; tRelease: number };
@@ -105,6 +118,38 @@ export function simulate(input: SimInput): SimResult {
     const p = f?.players[id];
     return p ? { x: p.pos.x, y: p.pos.y } : undefined;
   };
+
+  // §8.7 anticipation: receivers as the defense can read them at the snap; the oracle (a > 0.5 only)
+  // is the offense-only preview run, handed in as a function so agents never see the opponent's play.
+  const strongSide = numbering.strongSide;
+  const anticipation: AnticipationModel = createAnticipation({
+    a: input.anticipation,
+    priors: input.routePriors,
+    receivers: input.offense.players
+      .filter((s) => s.id !== qbId)
+      .map((s) => {
+        const ref = numbering.refs[s.id];
+        const outward = outwardSign(s.start, strongSide);
+        return {
+          id: s.id,
+          start: { x: s.start.x, y: s.start.y },
+          outward,
+          key: priorKeyFor(
+            ref && ref.kind === 'number' ? ref.number : null,
+            numbering.rbId === s.id,
+            outward === 1 ? info.maxX - s.start.x : s.start.x - info.minX,
+          ),
+          side: s.start.x >= 0 ? ('right' as const) : ('left' as const),
+        };
+      }),
+    oracle:
+      input.anticipation > 0.5
+        ? (id, t) => {
+            const p = frameAt(preview.frames, t)?.players[id];
+            return p ? { x: p.pos.x, y: p.pos.y } : undefined;
+          }
+        : null,
+  });
 
   // ---- entities (slot order: offense then defense) ----
   const entities: Entity[] = [];
@@ -168,6 +213,7 @@ export function simulate(input: SimInput): SimResult {
         cushion: b.cushion,
         leverage: slot.leverage,
         info,
+        anticipation,
       });
     } else if (b?.kind === 'zone') {
       agent = createZoneDefender({
@@ -176,6 +222,7 @@ export function simulate(input: SimInput): SimResult {
         dropPoint: b.dropPoint,
         deep: b.deep,
         info,
+        anticipation,
       });
     } else if (b?.kind === 'rush') {
       agent = createRusherAgent({
@@ -188,7 +235,13 @@ export function simulate(input: SimInput): SimResult {
     } else {
       agent = standStill(slot.id);
     }
-    makeEntity(slot, 'defense', agent);
+    const de = makeEntity(slot, 'defense', agent);
+    if (anticipation.readingEnabled && b && (b.kind === 'man' || b.kind === 'zone')) {
+      const tells = new Map<ID, { state: TellState; ema: number | null }>();
+      de.tells = tells;
+      de.tellRng = forkRng(seed, 'tell:' + slot.id);
+      de.viewer.delayFactor = (targetId) => tells.get(targetId)?.state.factor ?? 1;
+    }
   }
 
   const roster: Roster = { players: {} };
@@ -308,6 +361,19 @@ export function simulate(input: SimInput): SimResult {
       e.state.t = t;
       const p = buildPerception(history, roster, e.viewer, t, tuning.leverageReactionFactor);
       const intent = e.agent.step(e.state, p, dt, e.rng);
+      if (e.tells && e.tellRng) {
+        for (const o of p.others) {
+          if (o.side !== 'offense' || o.id === qbId) continue;
+          let tell = e.tells.get(o.id);
+          if (!tell) {
+            tell = { state: createTellState(), ema: null };
+            e.tells.set(o.id, tell);
+          }
+          const speed = Math.hypot(o.vel.x, o.vel.y);
+          anticipation.tellFactor(tell.state, o, tell.ema, e.state.stats.iq, e.tellRng);
+          tell.ema = tell.ema === null ? speed : tell.ema + (speed - tell.ema) * (dt / (dt + TELL_EMA_TAU));
+        }
+      }
       e.frameState = intent.state ?? 'idle';
       if (intent.focus) e.viewer.focus = intent.focus;
       if (intent.events) {

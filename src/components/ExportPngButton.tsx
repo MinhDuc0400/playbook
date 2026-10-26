@@ -27,7 +27,12 @@ export function ExportPngButton({ getNode, fileName }: ExportPngButtonProps): JS
   };
   return (
     <>
-      <Button data-testid="btn-export-png" disabled={busy} onClick={() => void run()}>
+      <Button
+        data-testid="btn-export-png"
+        title={t.exportx.png.help}
+        disabled={busy}
+        onClick={() => void run()}
+      >
         {t.exportx.png.button}
       </Button>
       {failed ? (

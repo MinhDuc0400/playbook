@@ -98,6 +98,7 @@ export function ReadTimeline({
         data-testid="read-timeline-toggle"
         aria-expanded={open}
         aria-label={s.toggle}
+        title={s.help}
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 text-left font-semibold"
       >
@@ -190,7 +191,7 @@ export function ReadTimeline({
           {!hideScores && (
             <div className="flex items-stretch gap-2">
               <div className="w-14 shrink-0 text-[10px] text-slate-600 dark:text-slate-300">{s.scores}</div>
-              <div className="relative flex-1">
+              <div className="relative flex-1" title={s.scoresHelp}>
                 <svg
                   data-testid="read-scores"
                   viewBox={`0 0 ${CHART_W} ${CHART_H}`}

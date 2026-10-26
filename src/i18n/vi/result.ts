@@ -24,6 +24,9 @@ export const result = {
   readTimeline: {
     title: 'Timeline đọc',
     toggle: 'Ẩn/hiện timeline đọc',
+    help: 'Timeline đọc của QB. Thanh xanh dương: lúc QB đọc receiver đó (#1, #2…). Vạch xanh lá: lúc receiver thật sự mở. Vạch đỏ: thời điểm và quyết định ném. Đồ thị bên dưới: điểm đọc 0–100 của từng receiver, nét đứt là ngưỡng để ném. Bấm để thu gọn / mở rộng.',
+    scoresHelp:
+      'Điểm đọc 0–100 theo thời gian (độ mở, cự ly, rủi ro INT). QB ném người đang đọc khi điểm ≥ ngưỡng.',
     scores: 'Điểm đọc',
     threshold: (v: number): string => `ngưỡng ${v}`,
     window: (n: number, from: number, to: number, auto: boolean): string =>

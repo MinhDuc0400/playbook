@@ -223,8 +223,11 @@ function MatchupEditor({
             />
           </div>
         ) : null}
-        <div className="absolute right-2 top-2 flex items-start gap-2">
-          <label className="flex items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800">
+        <div className="pointer-events-none absolute bottom-2 right-2 top-2 z-20 flex items-start gap-2 [&>*]:pointer-events-auto">
+          <label
+            title={t.matchup.qb.toggleHelp}
+            className="flex items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800"
+          >
             <input
               type="checkbox"
               data-testid="qb-mode-toggle"
@@ -240,8 +243,8 @@ function MatchupEditor({
             {t.matchup.qb.toggle}
           </label>
           <ExportPngButton getNode={() => fieldRef.current} fileName={`${working.name || 'matchup'}.png`} />
-          <details className="rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
-            <summary data-testid="overlay-menu" className="cursor-pointer">
+          <details className="max-h-full overflow-y-auto rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
+            <summary data-testid="overlay-menu" title={t.matchup.overlayMenuHelp} className="cursor-pointer">
               {t.matchup.overlayMenu}
             </summary>
             <div className="mt-2 flex flex-col gap-1">

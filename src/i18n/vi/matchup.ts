@@ -12,8 +12,12 @@ export const matchup = {
   name: 'Tên matchup',
   notes: 'Ghi chú',
   overlayMenu: 'Lớp hiển thị',
+  overlayMenuHelp:
+    'Bật/tắt các lớp vẽ trên sân: route dự kiến, vệt chạy, zone, đường man, đường bóng, separation, perception, mắt QB.',
   qb: {
     toggle: 'QB tự ném',
+    toggleHelp:
+      'Bạn làm QB: play chạy lại từ đầu, QB không tự ném. Bấm Q/W/E/R/T (hoặc click receiver) để ném cho receiver theo thứ tự đọc, đúng tại thời điểm bấm.',
     title: 'QB tự ném',
     hint: 'Bấm Q/W/E/R/T để ném',
     clickHint: 'hoặc bấm vào receiver',

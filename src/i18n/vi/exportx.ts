@@ -9,6 +9,7 @@ export const exportx = {
   },
   png: {
     button: 'Export PNG',
+    help: 'Lưu hình sân ở khung hình hiện tại ra file PNG.',
     failed: 'Không export được PNG',
   },
   pdf: {

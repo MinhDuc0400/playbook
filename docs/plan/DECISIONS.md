@@ -206,3 +206,20 @@ ones (marked "supersedes D-xx").
 - Pressure anticipation: the QB treats a rusher as pressure when its time-to-QB (perceived distance /
   assumedDefenderSpeed, minus the QB's perception lag) ≤ release + 0.25 s; check-down earlier when it is
   < release + 0.5 s. Auto windows follow the drop rhythm (see readModel.buildWindows JSDoc).
+
+## D-23 "QB tự ném" mode (user request 2026-10-26)
+- Context: the user wants to play QB in the Matchup screen: press a key to throw to a receiver at that
+  moment and see whether it was open.
+- Decision:
+  - Engine: optional `SimInput.qbControl: 'manual'` + `manualThrow { targetId, t }`. In manual mode the QB
+    drops, reads (eyes, look-offs) and keeps computing read scores, but never decides on its own; sack and
+    the 7 s timeout still apply. At the first tick with t ≥ manualThrow.t it throws to the target with the
+    normal lead/error/release model (decision kind 'manual'). An invalid target (catch y ≤ 0 or beyond
+    armRange) becomes a throwaway at that moment. Determinism: the run with a manual throw at t is
+    identical to the run without one for every frame before t.
+  - UI (UI-only state, nothing persisted): toggle "QB tự ném" on the Matchup page; keys Q W E R T = read
+    order #1..#5 (badge on each receiver token), click a receiver token too; the sim re-runs with the
+    throw at the current playhead and playback continues. Feedback: target, time, read score and
+    predicted separation at the press, best alternative at that moment, outcome; "Thử lại" resets; a
+    session tally (attempts, completions, % of throws to the best-scoring receiver).
+- Reason: deterministic replay makes the press-time result exact and comparable with the auto QB.

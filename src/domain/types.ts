@@ -401,6 +401,13 @@ export interface SimInput {
   noise: boolean;
   tuning: TuningParams;
   routePriors: RoutePriorTable;
+  /**
+   * D-23 "QB tự ném" mode: 'manual' = the QB drops and reads (eyes, scores) but never decides on its own
+   * (no read throw, check-down, forced throw or throwaway; sack and timeout still apply). Default 'auto'.
+   */
+  qbControl?: 'auto' | 'manual';
+  /** Manual mode: throw to `targetId` at the first tick with t ≥ `t` (the user's key press). */
+  manualThrow?: { targetId: ID; t: number };
 }
 
 export interface BallState {
@@ -500,7 +507,7 @@ export interface ReadMetrics {
   mode: ReadMode;
   windows: ReadWindow[];
   decision: {
-    kind: 'read' | 'checkdown' | 'forced' | 'throwaway' | 'none';
+    kind: 'read' | 'checkdown' | 'forced' | 'throwaway' | 'manual' | 'none';
     t: number;
     targetId?: ID;
     score?: number;

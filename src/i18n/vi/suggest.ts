@@ -1,2 +1,30 @@
 /** suggest strings (NFR-UX-04). */
-export const suggest = {} as const;
+export const suggest = {
+  title: 'Gợi ý play',
+  direction: 'Hướng',
+  offense: 'Offense đánh coverage',
+  defense: 'Defense chặn play',
+  playOffense: 'Play defense (coverage)',
+  playDefense: 'Play offense',
+  lineup: 'Lineup (tùy chọn)',
+  noLineup: 'Không dùng lineup',
+  choosePlay: 'Chọn play...',
+  format: (f: string): string => `Format ${f}`,
+  pickPrompt: 'Chọn một play để xem gợi ý.',
+  empty: 'Không có play phù hợp cùng format.',
+  results: 'Top 5 gợi ý',
+  tagTier: 'Theo tag (tức thì)',
+  simTier: 'Theo mô phỏng',
+  runSim: 'Chạy mô phỏng',
+  cancel: 'Hủy',
+  cancelled: 'Đã hủy mô phỏng.',
+  failed: 'Mô phỏng thất bại.',
+  progress: (done: number, total: number): string => `${done} / ${total} play`,
+  create: 'Tạo matchup',
+  scoreLabel: 'Điểm',
+  tagReason: (tag: string): string => `Tag khớp: ${tag}`,
+  simReason: (c: number, y: number, s: number, i: number): string =>
+    `Hoàn thành ${Math.round(c * 100)}%, ${y.toFixed(1)} yd/lần, sack ${Math.round(s * 100)}%, INT ${Math.round(i * 100)}%`,
+  targetReason: (name: string, sep: number, c: number): string =>
+    `${name} mở trung bình ${sep.toFixed(1)} yd lúc ném, hoàn thành ${Math.round(c * 100)}%`,
+} as const;

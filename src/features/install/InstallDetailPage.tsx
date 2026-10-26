@@ -8,6 +8,10 @@ import { installsRepo } from '@/db/repos/installs';
 import type { ID, Install } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useAutoSave } from '@/lib/useAutoSave';
+import { downloadBlob } from '@/lib/export/download';
+import { exportInstallPdf } from '@/lib/export/pdf';
+import { exportInstallBundle } from '@/lib/export/selective';
+import { serializeExport } from '@/lib/io/exportData';
 import { addItems, moveItem, removeItem, setNote, sortedItems } from './items';
 import { MatchupPicker, matchupLabel } from './MatchupPicker';
 
@@ -24,6 +28,21 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
   const matchupMap = useMemo(() => new Map((matchups ?? []).map((m) => [m.id, m])), [matchups]);
   const playMap = useMemo(() => new Map((plays ?? []).map((p) => [p.id, p])), [plays]);
   const items = sortedItems(working);
+  const [exportError, setExportError] = useState(false);
+  const runExport = async (fn: () => Promise<void>): Promise<void> => {
+    setExportError(false);
+    try {
+      await fn();
+    } catch {
+      setExportError(true);
+    }
+  };
+  const exportJson = (): Promise<void> =>
+    runExport(async () => {
+      const file = await exportInstallBundle(working.id);
+      const { json } = serializeExport(file);
+      downloadBlob(new Blob([json], { type: 'application/json' }), `${working.name || 'install'}.json`);
+    });
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4" data-testid="install-detail-page">
@@ -41,7 +60,21 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
         >
           {t.install.present}
         </Link>
+        <Button data-testid="install-export-json" onClick={() => void exportJson()}>
+          {t.exportx.json.button}
+        </Button>
+        <Button
+          data-testid="install-export-pdf"
+          onClick={() => void runExport(() => exportInstallPdf(working.id))}
+        >
+          {t.exportx.pdf.button}
+        </Button>
       </div>
+      {exportError ? (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+          {t.exportx.pdf.failed}
+        </p>
+      ) : null}
       <label className="flex flex-col gap-1 text-sm font-medium">
         {t.install.name}
         <input

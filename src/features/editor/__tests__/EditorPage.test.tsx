@@ -1,13 +1,16 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { playsRepo } from '@/db/repos/plays';
 import { createPlay } from '@/domain/formations';
 import type { Play } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import EditorPage from '../EditorPage';
+
+const png = vi.hoisted(() => ({ exportNodeToPng: vi.fn(async () => {}) }));
+vi.mock('@/lib/export/png', () => ({ exportNodeToPng: png.exportNodeToPng }));
 
 let n = 0;
 const idGen = () => `p${++n}`;
@@ -201,5 +204,23 @@ describe('EditorPage: actions', () => {
     expect(useEditorStore.getState().previewing).toBe(true);
     await user.click(screen.getByTestId('btn-preview'));
     expect(useEditorStore.getState().previewing).toBe(false);
+  });
+});
+
+describe('EditorPage PNG export (FR-ED-09)', () => {
+  it('btn-export-png calls exportNodeToPng with the play name', async () => {
+    const play = await seed();
+    const user = userEvent.setup();
+    renderAt(`/play/${play.id}`);
+    await screen.findByTestId('btn-export-png');
+    // jsdom has no layout, so the canvas SVG is absent: stand in for the field stage.
+    const stage = document.createElement('div');
+    const fakeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    fakeSvg.setAttribute('data-testid', 'field-svg');
+    stage.appendChild(fakeSvg);
+    document.body.appendChild(stage);
+    await user.click(await screen.findByTestId('btn-export-png'));
+    await waitFor(() => expect(png.exportNodeToPng).toHaveBeenCalledTimes(1));
+    expect(png.exportNodeToPng).toHaveBeenCalledWith(expect.anything(), 'Smash.png');
   });
 });

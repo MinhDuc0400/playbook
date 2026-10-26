@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { installsRepo } from '@/db/repos/installs';
 import { matchupsRepo } from '@/db/repos/matchups';
 import { playsRepo } from '@/db/repos/plays';
@@ -12,6 +12,18 @@ import { AddToInstallButton } from '../AddToInstallButton';
 import InstallDetailPage from '../InstallDetailPage';
 import InstallListPage from '../InstallListPage';
 import { sortedItems } from '../items';
+
+const ex = vi.hoisted(() => ({
+  pdf: vi.fn(async () => {}),
+  bundle: vi.fn(async () => ({
+    app: 'flagbook',
+    schemaVersion: 1,
+    exportedAt: '2026-01-01T00:00:00Z',
+    data: {},
+  })),
+}));
+vi.mock('@/lib/export/pdf', () => ({ exportInstallPdf: ex.pdf }));
+vi.mock('@/lib/export/selective', () => ({ exportInstallBundle: ex.bundle }));
 
 let n = 0;
 const idGen = () => `g${++n}`;
@@ -154,5 +166,19 @@ describe('AddToInstallButton (FR-IN-02)', () => {
     const items = sortedItems((await installsRepo.get('inst1'))!);
     expect(items.map((i) => i.order)).toEqual([0, 1]);
     expect(items[1]!.matchupId).toBe(mid);
+  });
+});
+
+describe('install export buttons (FR-IN-06, FR-IO-06)', () => {
+  it('call the exporters', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    await installsRepo.put(mkInstall());
+    const user = userEvent.setup();
+    renderAt('/install/inst1');
+    await user.click(await screen.findByTestId('install-export-pdf'));
+    expect(ex.pdf).toHaveBeenCalledWith('inst1');
+    await user.click(screen.getByTestId('install-export-json'));
+    await waitFor(() => expect(ex.bundle).toHaveBeenCalledWith('inst1'));
   });
 });

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from 'zustand';
+import { ExportPngButton } from '@/components/ExportPngButton';
 import { Button, IconButton } from '@/components/ui';
 import { playsRepo } from '@/db/repos/plays';
 import { t } from '@/i18n/vi';
@@ -15,6 +16,12 @@ export interface TopBarProps {
 
 const badge =
   'rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+
+/** The field SVG's wrapper (the stage container), falling back to the SVG itself. */
+function getFieldNode(): HTMLElement | null {
+  const svg = document.querySelector<SVGElement>('[data-testid="field-svg"]');
+  return (svg?.parentElement as HTMLElement | null) ?? (svg as unknown as HTMLElement | null);
+}
 
 export function TopBar({ autosave }: TopBarProps): JSX.Element | null {
   const navigate = useNavigate();
@@ -105,6 +112,7 @@ export function TopBar({ autosave }: TopBarProps): JSX.Element | null {
       >
         ↷
       </IconButton>
+      <ExportPngButton getNode={getFieldNode} fileName={`${play.name || 'play'}.png`} />
       <Button data-testid="btn-duplicate" disabled={duplicating} onClick={() => void duplicate()}>
         {t.editor.topBar.duplicate}
       </Button>

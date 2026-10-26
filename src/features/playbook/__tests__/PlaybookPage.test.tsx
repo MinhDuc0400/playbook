@@ -6,6 +6,12 @@ import { playsRepo } from '@/db/repos/plays';
 import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import PlaybookPage from '../PlaybookPage';
 
+const sel = vi.hoisted(() => ({ exportPlays: vi.fn(async (ids: readonly string[]) => ({ ids })) }));
+vi.mock('@/lib/export/selective', () => ({ exportPlays: sel.exportPlays }));
+vi.mock('@/lib/io/exportData', () => ({
+  serializeExport: () => ({ json: '{}', fileName: 'flagbook-2026-01-01.json' }),
+}));
+
 vi.mock('../PlayCard', () => ({
   PlayCard: ({ play }: { play: { id: string } }) => <div data-testid={`card-${play.id}`} />,
 }));
@@ -93,5 +99,21 @@ describe('PlaybookPage (FR-PB-01, FR-PB-02)', () => {
     expect(cards()).toHaveLength(0);
     await user.click(screen.getByTestId('tab-plays'));
     await waitFor(() => expect(cards()).toHaveLength(6));
+  });
+});
+
+describe('PlaybookPage select mode (FR-PB-06)', () => {
+  it('exports the selected ids', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const user = userEvent.setup();
+    renderAt();
+    await waitFor(() => expect(cards()).toHaveLength(6));
+    await user.click(screen.getByTestId('pb-select-mode'));
+    await user.click(screen.getByTestId(`pb-select-${SEED_IDS.mesh}`));
+    await user.click(screen.getByTestId(`pb-select-${SEED_IDS.smash}`));
+    await user.click(screen.getByTestId('pb-export-selected'));
+    await waitFor(() => expect(sel.exportPlays).toHaveBeenCalledTimes(1));
+    expect([...sel.exportPlays.mock.calls[0]![0]].sort()).toEqual([SEED_IDS.mesh, SEED_IDS.smash].sort());
   });
 });

@@ -1,10 +1,13 @@
 /** Playbook home (FR-PB-01, FR-PB-02): filterable play grid + Matchup tab. Filter state lives in the URL. */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Select, TextInput } from '@/components/ui';
+import { Button, Select, TextInput } from '@/components/ui';
 import { useMatchupCountByPlay, usePlays, useSettings } from '@/db/hooks';
-import type { Format, Side } from '@/domain/types';
+import type { Format, ID, Side } from '@/domain/types';
 import { t } from '@/i18n/vi';
+import { downloadBlob } from '@/lib/export/download';
+import { exportPlays } from '@/lib/export/selective';
+import { serializeExport } from '@/lib/io/exportData';
 import { facets, filterPlays, type PlayFilter } from './filterPlays';
 import { MatchupList } from './MatchupList';
 import { PlayCard } from './PlayCard';
@@ -16,6 +19,23 @@ export default function PlaybookPage(): JSX.Element {
   const plays = usePlays();
   const settings = useSettings();
   const counts = useMatchupCountByPlay();
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<ID>>(new Set());
+  const toggleSelected = (id: ID): void =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const exportSelected = async (): Promise<void> => {
+    const file = await exportPlays([...selected]);
+    const { json, fileName } = serializeExport(file);
+    downloadBlob(
+      new Blob([json], { type: 'application/json' }),
+      fileName.replace('flagbook-', 'flagbook-plays-'),
+    );
+  };
 
   const tab = params.get('tab') === 'matchups' ? 'matchups' : 'plays';
   const sideP = params.get('side');
@@ -83,13 +103,37 @@ export default function PlaybookPage(): JSX.Element {
             {t.playbook.tabs.matchups}
           </button>
         </div>
-        <Link
-          to="/play/new"
-          data-testid="btn-new-play"
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {t.playbook.newPlay}
-        </Link>
+        <div className="flex items-center gap-2">
+          {tab === 'plays' ? (
+            <Button
+              data-testid="pb-select-mode"
+              aria-pressed={selectMode}
+              variant={selectMode ? 'primary' : 'secondary'}
+              onClick={() => {
+                setSelectMode((v) => !v);
+                setSelected(new Set());
+              }}
+            >
+              {selectMode ? t.exportx.select.toggleOff : t.exportx.select.toggle}
+            </Button>
+          ) : null}
+          {tab === 'plays' && selectMode ? (
+            <Button
+              data-testid="pb-export-selected"
+              disabled={selected.size === 0}
+              onClick={() => void exportSelected()}
+            >
+              {t.exportx.select.exportSelected} ({selected.size})
+            </Button>
+          ) : null}
+          <Link
+            to="/play/new"
+            data-testid="btn-new-play"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {t.playbook.newPlay}
+          </Link>
+        </div>
       </div>
 
       {tab === 'matchups' ? (
@@ -179,12 +223,23 @@ export default function PlaybookPage(): JSX.Element {
               className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
               {visible.map((play) => (
-                <PlayCard
-                  key={play.id}
-                  play={play}
-                  field={settings.fields[play.format]}
-                  matchupCount={counts?.[play.id] ?? 0}
-                />
+                <div key={play.id} className="relative">
+                  {selectMode ? (
+                    <input
+                      type="checkbox"
+                      data-testid={`pb-select-${play.id}`}
+                      aria-label={`${t.exportx.select.selectPlay}: ${play.name}`}
+                      checked={selected.has(play.id)}
+                      onChange={() => toggleSelected(play.id)}
+                      className="absolute left-2 top-2 z-10 h-5 w-5"
+                    />
+                  ) : null}
+                  <PlayCard
+                    play={play}
+                    field={settings.fields[play.format]}
+                    matchupCount={counts?.[play.id] ?? 0}
+                  />
+                </div>
               ))}
             </div>
           )}

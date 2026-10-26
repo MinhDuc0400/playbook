@@ -2,7 +2,7 @@
  * Matchup screen (SRS §12.1): `/matchup/new` (create dialog) and `/matchup/:id` (simulate, tweak,
  * play back, save). FR-MU-01..04, FR-MU-08, FR-DAT-03, FR-DAT-04.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ExportPngButton } from '@/components/ExportPngButton';
 import { Select } from '@/components/ui';
@@ -21,11 +21,13 @@ import { MatchupField } from './MatchupField';
 import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
 import { ReadTimeline } from './ReadTimeline';
+import { QbModePanel } from './QbModePanel';
 import { RandomDefense } from './RandomDefense';
 import { ResultPanel } from './ResultPanel';
 import { RunManyPanel } from './RunManyPanel';
 import { useMatchupShortcuts } from './useMatchupShortcuts';
 import { useMatchupSim } from './useMatchupSim';
+import { buildQbKeyMap, qbFeedback, useQbKeys, useQbModeState } from './useQbMode';
 
 const MARKER_TYPES: ReadonlySet<SimEventType> = new Set([
   'snap',
@@ -102,7 +104,15 @@ function MatchupEditor({
   const toggleOverlay = useMatchupStore((s) => s.toggleOverlay);
   const debugDefenderId = useMatchupStore((s) => s.debugDefenderId);
   const setDebugDefender = useMatchupStore((s) => s.setDebugDefender);
-  const { built, result, error } = useMatchupSim(working, offense, defense, snapshot, overlays.perception);
+  const qb = useQbModeState();
+  const { built, result, error } = useMatchupSim(
+    working,
+    offense,
+    defense,
+    snapshot,
+    overlays.perception,
+    qb.override,
+  );
   const labels = useMemo(() => {
     const out: Record<string, string> = {};
     for (const p of built?.offense.players ?? []) out[p.id] = p.label;
@@ -112,6 +122,35 @@ function MatchupEditor({
   const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
   const playback = usePlayback({ duration, minT });
   const ended = duration > 0 && !playback.playing && playback.t >= duration;
+
+  // "QB tự ném" (D-23): keys / token clicks throw at the playhead; the re-run keeps t and playback.
+  const keyMap = useMemo(() => buildQbKeyMap(result, built?.offense.players ?? []), [result, built]);
+  const qbThrown = qb.manualThrow !== null;
+  const { throwTo, record } = qb;
+  const playbackT = playback.t;
+  const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
+  useQbKeys(qb.enabled && !qbThrown, keyMap, pickReceiver);
+  useEffect(() => record(result, keyMap), [record, result, keyMap]);
+  const { seek, play } = playback;
+  const minTRef = useRef(minT);
+  useEffect(() => {
+    minTRef.current = minT;
+  });
+  const restart = useCallback(() => {
+    seek(minTRef.current);
+    play();
+  }, [seek, play]);
+  const feedback = useMemo(
+    () => (result && qb.manualThrow ? qbFeedback(result, keyMap, qb.manualThrow) : null),
+    [result, qb.manualThrow, keyMap],
+  );
+  const hideReadInfo = qb.enabled && !qbThrown;
+  const runManyInput = useMemo(() => {
+    if (!built) return null;
+    if (!qb.enabled) return built.input;
+    const { qbControl: _c, manualThrow: _m, ...rest } = built.input;
+    return rest;
+  }, [built, qb.enabled]);
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
@@ -178,10 +217,28 @@ function MatchupEditor({
               ballSpot={working.ballSpot}
               levels={levels}
               hideDefenseOverlays={hidden}
+              hideReadInfo={hideReadInfo}
+              qbKeys={qb.enabled ? keyMap : undefined}
+              onQbPick={qb.enabled && !qbThrown ? pickReceiver : undefined}
             />
           </div>
         ) : null}
         <div className="absolute right-2 top-2 flex items-start gap-2">
+          <label className="flex items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800">
+            <input
+              type="checkbox"
+              data-testid="qb-mode-toggle"
+              checked={qb.enabled}
+              onChange={(e) => {
+                e.currentTarget.blur(); // keep Space / keys for playback and the QB keys
+                if (e.target.checked) {
+                  qb.enable();
+                  restart();
+                } else qb.disable();
+              }}
+            />
+            {t.matchup.qb.toggle}
+          </label>
           <ExportPngButton getNode={() => fieldRef.current} fileName={`${working.name || 'matchup'}.png`} />
           <details className="rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
             <summary data-testid="overlay-menu" className="cursor-pointer">
@@ -220,6 +277,19 @@ function MatchupEditor({
       </div>
 
       <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto border-l border-slate-200 p-3 dark:border-slate-700">
+        {qb.enabled && (
+          <QbModePanel
+            keyMap={keyMap}
+            feedback={feedback}
+            outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
+            tally={qb.tally}
+            onRetry={() => {
+              qb.retry();
+              restart();
+            }}
+            onExit={qb.disable}
+          />
+        )}
         <RandomDefense
           offense={offense}
           defense={defense}
@@ -254,8 +324,8 @@ function MatchupEditor({
             </Link>
           )}
         </div>
-        {built && <RunManyPanel input={built.input} labels={labels} />}
-        {built && result && (
+        {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
+        {built && result && !hideReadInfo && (
           <ResultPanel result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
@@ -273,7 +343,13 @@ function MatchupEditor({
       <div className="flex flex-col gap-1 px-3 py-2">
         <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
         {built && result && (
-          <ReadTimeline result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
+          <ReadTimeline
+            result={result}
+            offense={built.offense}
+            t={playback.t}
+            tuning={built.input.tuning}
+            hideScores={hideReadInfo}
+          />
         )}
       </div>
     </div>

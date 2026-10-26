@@ -15,6 +15,8 @@ export interface ReadTimelineProps {
   /** Playhead (s). */
   t: number;
   tuning?: TuningParams;
+  /** D-23 QB mode before the throw: hide score chart, legend and open windows. */
+  hideScores?: boolean;
 }
 
 const s = strings.result.readTimeline;
@@ -47,6 +49,7 @@ export function ReadTimeline({
   offense,
   t,
   tuning = DEFAULT_TUNING,
+  hideScores = false,
 }: ReadTimelineProps): JSX.Element | null {
   const [open, setOpen] = useState(true);
   const reads = result.metrics.reads;
@@ -168,117 +171,120 @@ export function ReadTimeline({
                       </span>
                     </div>
                   )}
-                  {(result.metrics.openWindows[id] ?? []).map(([a, b], k) => (
-                    <div
-                      key={k}
-                      data-testid={`open-window-${label}`}
-                      title={s.open(a, b)}
-                      className="absolute bottom-0 h-1.5 rounded-sm bg-green-500"
-                      style={{ left: `${pct(a)}%`, width: `${Math.max(0, pct(b) - pct(a))}%` }}
-                    />
-                  ))}
+                  {!hideScores &&
+                    (result.metrics.openWindows[id] ?? []).map(([a, b], k) => (
+                      <div
+                        key={k}
+                        data-testid={`open-window-${label}`}
+                        title={s.open(a, b)}
+                        className="absolute bottom-0 h-1.5 rounded-sm bg-green-500"
+                        style={{ left: `${pct(a)}%`, width: `${Math.max(0, pct(b) - pct(a))}%` }}
+                      />
+                    ))}
                   {playhead}
                 </div>
               </div>
             );
           })}
 
-          <div className="flex items-stretch gap-2">
-            <div className="w-14 shrink-0 text-[10px] text-slate-600 dark:text-slate-300">{s.scores}</div>
-            <div className="relative flex-1">
-              <svg
-                data-testid="read-scores"
-                viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-                preserveAspectRatio="none"
-                className="block w-full rounded bg-white dark:bg-slate-900"
-                style={{ height: CHART_H }}
-                role="img"
-                aria-label={s.scores}
-              >
-                {thresholds.map((v) => (
-                  <g key={v} data-testid={`read-threshold-${v}`}>
-                    <line
-                      x1={0}
-                      x2={CHART_W}
-                      y1={y(v)}
-                      y2={y(v)}
-                      stroke="#64748b"
-                      strokeWidth={1}
-                      strokeDasharray="6 4"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </g>
-                ))}
-                {ordered.map((id) => (
-                  <polyline
-                    key={id}
-                    data-testid={`read-score-line-${labelOf(id)}`}
-                    fill="none"
-                    stroke={colorOf(id)}
-                    strokeWidth={2}
-                    vectorEffect="non-scaling-stroke"
-                    points={scoreFrames
-                      .map((f) => `${x(f.t).toFixed(1)},${y(f.qb!.scores[id] ?? 0).toFixed(1)}`)
-                      .join(' ')}
-                  />
-                ))}
-                <line
-                  x1={x(t)}
-                  x2={x(t)}
-                  y1={0}
-                  y2={CHART_H}
-                  stroke="currentColor"
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-                <line
-                  data-testid="read-decision-line"
-                  x1={x(decision.t)}
-                  x2={x(decision.t)}
-                  y1={0}
-                  y2={CHART_H}
-                  stroke="#dc2626"
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              {dotScore !== undefined && (
-                <span
-                  data-testid="read-decision-dot"
-                  className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600"
-                  style={{ left: `${pct(decision.t)}%`, top: y(dotScore) }}
-                />
-              )}
-              {thresholds.map((v) => (
-                <span
-                  key={v}
-                  className="pointer-events-none absolute right-1 text-[10px] text-slate-600 dark:text-slate-300"
-                  style={{ top: Math.max(0, y(v) - 12) }}
+          {!hideScores && (
+            <div className="flex items-stretch gap-2">
+              <div className="w-14 shrink-0 text-[10px] text-slate-600 dark:text-slate-300">{s.scores}</div>
+              <div className="relative flex-1">
+                <svg
+                  data-testid="read-scores"
+                  viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+                  preserveAspectRatio="none"
+                  className="block w-full rounded bg-white dark:bg-slate-900"
+                  style={{ height: CHART_H }}
+                  role="img"
+                  aria-label={s.scores}
                 >
-                  {s.threshold(v)}
-                </span>
-              ))}
-            </div>
-            <ul className="flex w-24 shrink-0 flex-col justify-center gap-0.5">
-              {ordered.map((id) => {
-                const label = labelOf(id);
-                const v = cur?.scores[id];
-                return (
-                  <li key={id} className="flex items-center gap-1">
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{ backgroundColor: colorOf(id) }}
+                  {thresholds.map((v) => (
+                    <g key={v} data-testid={`read-threshold-${v}`}>
+                      <line
+                        x1={0}
+                        x2={CHART_W}
+                        y1={y(v)}
+                        y2={y(v)}
+                        stroke="#64748b"
+                        strokeWidth={1}
+                        strokeDasharray="6 4"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </g>
+                  ))}
+                  {ordered.map((id) => (
+                    <polyline
+                      key={id}
+                      data-testid={`read-score-line-${labelOf(id)}`}
+                      fill="none"
+                      stroke={colorOf(id)}
+                      strokeWidth={2}
+                      vectorEffect="non-scaling-stroke"
+                      points={scoreFrames
+                        .map((f) => `${x(f.t).toFixed(1)},${y(f.qb!.scores[id] ?? 0).toFixed(1)}`)
+                        .join(' ')}
                     />
-                    <span>{label}</span>
-                    <span data-testid={`read-score-${label}`} className="ml-auto tabular-nums">
-                      {v === undefined ? strings.result.none : Math.round(v)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                  ))}
+                  <line
+                    x1={x(t)}
+                    x2={x(t)}
+                    y1={0}
+                    y2={CHART_H}
+                    stroke="currentColor"
+                    strokeWidth={1}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <line
+                    data-testid="read-decision-line"
+                    x1={x(decision.t)}
+                    x2={x(decision.t)}
+                    y1={0}
+                    y2={CHART_H}
+                    stroke="#dc2626"
+                    strokeWidth={1}
+                    strokeDasharray="2 2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                {dotScore !== undefined && (
+                  <span
+                    data-testid="read-decision-dot"
+                    className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600"
+                    style={{ left: `${pct(decision.t)}%`, top: y(dotScore) }}
+                  />
+                )}
+                {thresholds.map((v) => (
+                  <span
+                    key={v}
+                    className="pointer-events-none absolute right-1 text-[10px] text-slate-600 dark:text-slate-300"
+                    style={{ top: Math.max(0, y(v) - 12) }}
+                  >
+                    {s.threshold(v)}
+                  </span>
+                ))}
+              </div>
+              <ul className="flex w-24 shrink-0 flex-col justify-center gap-0.5">
+                {ordered.map((id) => {
+                  const label = labelOf(id);
+                  const v = cur?.scores[id];
+                  return (
+                    <li key={id} className="flex items-center gap-1">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ backgroundColor: colorOf(id) }}
+                      />
+                      <span>{label}</span>
+                      <span data-testid={`read-score-${label}`} className="ml-auto tabular-nums">
+                        {v === undefined ? strings.result.none : Math.round(v)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </section>

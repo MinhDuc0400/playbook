@@ -13,12 +13,17 @@ import { zoneKind, zonePolygon } from '@/domain/zones';
 import { frameAt } from '@/engine/frames';
 import { useMatchupStore } from '@/store/matchupStore';
 import type { BuiltSim } from './buildSimInput';
+import type { QbKey } from './useQbMode';
 
 export interface OverlayProps {
   built: BuiltSim;
   result: SimResult;
   t: number;
   hideDefenseOverlays?: boolean;
+  /** D-23: QB mode before the throw hides the separation numbers. */
+  hideReadInfo?: boolean;
+  /** D-23: key badges next to receivers. */
+  qbKeys?: readonly QbKey[];
 }
 
 const TRAIL_STEP = 3;
@@ -155,10 +160,10 @@ function sepAt(series: { t: number; d: number }[] | undefined, t: number): numbe
   return found;
 }
 
-export function SeparationOverlay({ built, result, t }: OverlayProps): JSX.Element | null {
+export function SeparationOverlay({ built, result, t, hideReadInfo }: OverlayProps): JSX.Element | null {
   const on = useMatchupStore((s) => s.overlays.separation);
   const { viewport } = useFieldContext();
-  if (!on) return null;
+  if (!on || hideReadInfo) return null;
   const frame = frameAt(result.frames, t);
   if (!frame) return null;
   const { separationTight, separationOpen } = built.input.tuning;
@@ -273,6 +278,39 @@ export function PerceptionOverlay({ built, result, t }: OverlayProps): JSX.Eleme
   );
 }
 
+/** D-23: key badge (Q W E R T) next to each receiver; positions from the frame only. */
+export function QbKeyBadges({ result, t, qbKeys }: OverlayProps): JSX.Element | null {
+  const { viewport } = useFieldContext();
+  if (!qbKeys || qbKeys.length === 0) return null;
+  const frame = frameAt(result.frames, t);
+  if (!frame) return null;
+  return (
+    <g data-testid="overlay-qbKeys" pointerEvents="none">
+      {qbKeys.map((k) => {
+        const pos = frame.players[k.id]?.pos;
+        if (!pos) return null;
+        const c = toScreen(pos, viewport);
+        return (
+          <g key={k.key} data-testid={`qb-key-${k.label}`}>
+            <rect x={c.x + 8} y={c.y - 24} width={18} height={18} rx={3} fill="#111827" stroke="white" />
+            <text
+              x={c.x + 17}
+              y={c.y - 15}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={12}
+              fontWeight={700}
+              fill="white"
+            >
+              {k.key}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 export function MatchupOverlays(props: OverlayProps): JSX.Element {
   return (
     <>
@@ -284,6 +322,7 @@ export function MatchupOverlays(props: OverlayProps): JSX.Element {
       <SeparationOverlay {...props} />
       <QbEyesOverlay {...props} />
       <PerceptionOverlay {...props} />
+      <QbKeyBadges {...props} />
     </>
   );
 }

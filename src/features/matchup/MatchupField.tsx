@@ -11,6 +11,7 @@ import { frameAt } from '@/engine/frames';
 import { useMatchupStore } from '@/store/matchupStore';
 import type { BuiltSim } from './buildSimInput';
 import { MatchupOverlays } from './overlays';
+import type { QbKey } from './useQbMode';
 
 export interface MatchupFieldProps {
   built: BuiltSim;
@@ -23,6 +24,12 @@ export interface MatchupFieldProps {
   /** Random defense (phase 6) hides zones/man lines. */
   hideDefenseOverlays?: boolean;
   theme?: 'normal' | 'contrast';
+  /** D-23 QB mode: hide separation numbers until the throw. */
+  hideReadInfo?: boolean;
+  /** D-23 QB mode: key badges on receivers. */
+  qbKeys?: readonly QbKey[];
+  /** D-23 QB mode: clicking an offense receiver throws to it. */
+  onQbPick?: (id: string) => void;
 }
 
 type FieldContentProps = Omit<MatchupFieldProps, 'field' | 'ballSpot' | 'theme'>;
@@ -49,6 +56,9 @@ function FieldContent({
   t,
   levels,
   hideDefenseOverlays,
+  hideReadInfo,
+  qbKeys,
+  onQbPick,
 }: FieldContentProps): JSX.Element | null {
   const selected = useMatchupStore((s) => s.selected);
   const frame = frameAt(result.frames, t);
@@ -72,6 +82,7 @@ function FieldContent({
         insideSign={slot.start.x > 0 ? -1 : 1}
         onPointerDown={(e) => {
           e.stopPropagation();
+          if (side === 'offense' && onQbPick && qbKeys?.some((k) => k.id === slot.id)) onQbPick(slot.id);
           useMatchupStore.getState().select({ side, slotId: slot.id, label: slot.label });
         }}
       />
@@ -84,7 +95,14 @@ function FieldContent({
 
   return (
     <>
-      <MatchupOverlays built={built} result={result} t={t} hideDefenseOverlays={hideDefenseOverlays} />
+      <MatchupOverlays
+        built={built}
+        result={result}
+        t={t}
+        hideDefenseOverlays={hideDefenseOverlays}
+        hideReadInfo={hideReadInfo}
+        qbKeys={qbKeys}
+      />
       {built.defense.players.map((s) => token(s, 'defense'))}
       {built.offense.players.map((s) => token(s, 'offense'))}
       <Ball pos={ballPos} />

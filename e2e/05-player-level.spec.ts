@@ -15,8 +15,10 @@ async function separation(page: Page, label: string, times: number[]): Promise<n
 // Scenario 5: CB1 set to the weak level -> the receiver CB1 covers gets more separation.
 // The engine is deterministic for a fixed seed (noise off), so no averaging over seeds is needed.
 test('05 CB1 set to weak increases the separation of its receiver', async ({ page }) => {
-  await createMatchup(page, SEED.flood, SEED.cover1);
-  const times = [2, 2.5];
+  // Smash vs Cover 1: CB1 covers Z's hitch; a weak CB1 reacts late to the break (D-22 timing).
+  await createMatchup(page, SEED.smash, SEED.cover1);
+  // Sample around the hitch break, before the QB throws (~1.5 s).
+  const times = [1.4, 1.5];
 
   const { label } = await manTarget(page);
   const before = await separation(page, label, times);

@@ -73,7 +73,7 @@ Live tracker. Status: todo / in progress / review / done.
 | 0 | PASS | phase-0-report.md | phase-0 |
 | 1 | PASS | phase-1-report.md | phase-1 |
 | 2 | PASS | phase-2-report.md | phase-2 |
-| 3 | todo | | |
+| 3 | PASS | phase-3-report.md | phase-3 |
 | 4 | todo | | |
 | 5 | todo | | |
 | 6 | todo | | |
@@ -81,9 +81,3 @@ Live tracker. Status: todo / in progress / review / done.
 ## Open questions / blockers
 
 None.
-
-## Paused (usage limit, 2026-10-25)
-
-Stopped mid phase 3. Done: phases 0–2 (tagged), C3 contracts, T3.1, T3.2.
-T3.3, T3.4 and T3.6 were stopped mid-work; their files may hold uncommitted WIP: review or redo them.
-Next: T3.5, then T3.7 (simulate + T-ENG tests), T3.8 (benchmark + tuning), then the Matchup UI (T3.9–T3.12).

@@ -31,16 +31,16 @@ Live tracker. Status: todo / in progress / review / done.
 | C3 | Contracts phase 3 | done | 14ffecf |
 | T3.1 | Implement RNG, ball flight, catch resolution | done | 1fb086a |
 | T3.2 | Implement world history and perception | done | 7d1c6a6 |
-| T3.3 | Implement matchup prep: flips, binding, stats noise | in progress (stopped, uncommitted WIP) |  |
-| T3.4 | Implement receiver and rusher agents | in progress (stopped, uncommitted WIP) |  |
-| T3.5 | Implement man and zone defenders | todo | |
-| T3.6 | Implement QB agent | in progress (stopped, uncommitted WIP) |  |
-| T3.7 | Implement simulate loop and metrics | todo | |
-| T3.8 | Implement tuning benchmark runner | todo | |
-| T3.9 | Build matchup sim hook and store | todo | |
-| T3.10 | Build matchup page, create dialog, controls | todo | |
-| T3.11 | Build matchup field, overlays, player panel | todo | |
-| T3.12 | Build result panel | todo | |
+| T3.3 | Implement matchup prep: flips, binding, stats noise | done | 3c30c21 |
+| T3.4 | Implement receiver and rusher agents | done | f568818 |
+| T3.5 | Implement man and zone defenders | done | 7f9bc44 |
+| T3.6 | Implement QB agent | done | 641a248 |
+| T3.7 | Implement simulate loop and metrics | done | b6cb683 |
+| T3.8 | Implement tuning benchmark runner | done | 7720d69 |
+| T3.9 | Build matchup sim hook and store | done | 1f8d3ea |
+| T3.10 | Build matchup page, create dialog, controls | done | 40b9f4b |
+| T3.11 | Build matchup field, overlays, player panel | done | 2a379e0 |
+| T3.12 | Build result panel | done | 1a50157 |
 | C4 | Contracts phase 4 | todo | |
 | T4.1 | Build thumbnails and playbook grid with filters | todo | |
 | T4.2 | Build play actions, delete cascade dialog, matchup list | todo | |

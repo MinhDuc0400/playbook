@@ -1,0 +1,38 @@
+/** playbook card, delete dialog and matchup list strings (NFR-UX-04). */
+export const playbookActions = {
+  card: {
+    open: 'Mở play',
+    duplicate: 'Nhân bản',
+    delete: 'Xóa',
+    createMatchup: 'Tạo matchup',
+    matchupCount: (n: number): string => `${n} matchup`,
+    matchupCountLabel: (n: number): string => `Đang dùng trong ${n} matchup`,
+    duplicateFailed: 'Không thể nhân bản play.',
+  },
+  deleteDialog: {
+    title: 'Xóa play',
+    confirm: (name: string): string => `Xóa play "${name}"? Thao tác này không hoàn tác được.`,
+    confirmButton: 'Xóa',
+    cancel: 'Hủy',
+    loading: 'Đang kiểm tra các matchup liên quan…',
+    inUse: (name: string, n: number): string => `Play "${name}" đang được ${n} matchup sử dụng:`,
+    installsHeading: 'Các matchup này sẽ bị gỡ khỏi Install:',
+    cascade: 'Xóa cả matchup',
+    installItems: (n: number): string => `${n} mục`,
+    failed: 'Không thể xóa play.',
+  },
+  matchupList: {
+    empty: 'Chưa có matchup nào.',
+    emptyFiltered: 'Không có matchup nào khớp bộ lọc.',
+    filterOffense: 'Play offense',
+    filterDefense: 'Play defense',
+    filterAll: 'Tất cả',
+    open: 'Mở matchup',
+    delete: 'Xóa',
+    missingPlay: 'Lỗi: play không còn tồn tại',
+    versus: (offense: string, defense: string): string => `${offense} vs ${defense}`,
+    unknownPlay: '(không rõ)',
+    confirmDelete: (name: string): string => `Xóa matchup "${name}"? Matchup cũng sẽ bị gỡ khỏi Install.`,
+    deleteFailed: 'Không thể xóa matchup.',
+  },
+} as const;

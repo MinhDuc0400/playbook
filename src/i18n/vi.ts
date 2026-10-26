@@ -8,6 +8,7 @@ import { editor } from './vi/editor';
 import { field } from './vi/field';
 import { install } from './vi/install';
 import { playbook } from './vi/playbook';
+import { playbookActions } from './vi/playbookActions';
 import { present } from './vi/present';
 import { settings } from './vi/settings';
 import { matchup } from './vi/matchup';
@@ -29,6 +30,7 @@ export const vi = {
   matchupField,
   result,
   playbook,
+  playbookActions,
   install,
   present,
   settings,

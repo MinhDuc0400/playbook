@@ -56,7 +56,7 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
         <Link
           to={`/install/${working.id}/present`}
           data-testid="install-present"
-          className="ml-auto rounded-md bg-blue-600 px-3 py-1.5 font-medium text-white"
+          className="ml-auto inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 py-1.5 font-medium text-white lg:min-h-0"
         >
           {t.install.present}
         </Link>
@@ -120,15 +120,15 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
               onDragEnd={() => setDragId(null)}
               className="flex flex-col gap-2 rounded-md border p-3"
             >
-              <div className="flex items-center gap-2">
-                <span aria-hidden title={t.install.drag} className="cursor-grab select-none">
+              <div className="flex flex-wrap items-center gap-2">
+                <span aria-hidden title={t.install.drag} className="hidden cursor-grab select-none lg:inline">
                   ⠿
                 </span>
                 <span className="w-6 text-slate-500">{idx + 1}</span>
                 {m ? (
-                  <span className="flex-1 font-medium">{matchupLabel(m, playMap)}</span>
+                  <span className="min-w-0 flex-1 basis-40 break-words font-medium">{matchupLabel(m, playMap)}</span>
                 ) : (
-                  <span role="alert" className="flex-1 text-red-700 dark:text-red-300">
+                  <span role="alert" className="min-w-0 flex-1 basis-40 text-red-700 dark:text-red-300">
                     {t.install.missingMatchup}
                   </span>
                 )}

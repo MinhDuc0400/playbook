@@ -53,8 +53,8 @@ export function AddToInstallButton({ matchupId }: { matchupId: ID }): JSX.Elemen
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex items-end gap-2">
-          <div className="flex-1">
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <div className="min-w-0 flex-1 basis-40">
             <TextInput
               label={t.install.addToInstallNew}
               data-testid="add-to-install-new-name"

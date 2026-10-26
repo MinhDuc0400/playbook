@@ -102,14 +102,14 @@ export function MatchupList({ plays, settings }: MatchupListProps): JSX.Element 
               <li
                 key={m.id}
                 data-testid={`mrow-${m.id}`}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="flex flex-col gap-3 rounded-lg sm:flex-row sm:flex-wrap sm:items-center border border-slate-200 bg-white p-3 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               >
                 {shown && offense && defense ? (
                   <Link
                     to={`/matchup/${m.id}`}
                     data-testid={`mrow-open-${m.id}`}
                     aria-label={`${s.open}: ${label}`}
-                    className="flex gap-2"
+                    className="flex min-w-0 max-w-full gap-2"
                   >
                     <PlayThumbnail
                       play={offense}
@@ -117,6 +117,7 @@ export function MatchupList({ plays, settings }: MatchupListProps): JSX.Element 
                       flipped={m.offenseFlipped}
                       width={THUMB_W}
                       height={THUMB_H}
+                      className="min-w-0 max-w-[calc(50%-0.25rem)] !h-auto"
                     />
                     <PlayThumbnail
                       play={defense}
@@ -124,6 +125,7 @@ export function MatchupList({ plays, settings }: MatchupListProps): JSX.Element 
                       flipped={shown.defenseFlipped}
                       width={THUMB_W}
                       height={THUMB_H}
+                      className="min-w-0 max-w-[calc(50%-0.25rem)] !h-auto"
                     />
                   </Link>
                 ) : null}
@@ -148,6 +150,7 @@ export function MatchupList({ plays, settings }: MatchupListProps): JSX.Element 
                 <Button
                   size="sm"
                   variant="danger"
+                  className="self-start sm:self-auto"
                   data-testid={`mrow-delete-${m.id}`}
                   onClick={() => void remove(m, label)}
                 >

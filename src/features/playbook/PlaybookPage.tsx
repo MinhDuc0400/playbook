@@ -6,6 +6,7 @@ import { useMatchupCountByPlay, usePlays, useSettings } from '@/db/hooks';
 import type { Format, ID, Side } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { downloadBlob } from '@/lib/export/download';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { exportPlays } from '@/lib/export/selective';
 import { serializeExport } from '@/lib/io/exportData';
 import { facets, filterPlays, type PlayFilter } from './filterPlays';
@@ -19,6 +20,8 @@ export default function PlaybookPage(): JSX.Element {
   const plays = usePlays();
   const settings = useSettings();
   const counts = useMatchupCountByPlay();
+  const isDesktop = useIsDesktop();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<ID>>(new Set());
   const toggleSelected = (id: ID): void =>
@@ -72,11 +75,86 @@ export default function PlaybookPage(): JSX.Element {
   if (!plays || !settings) return <p className="p-6">{t.common.loading}</p>;
 
   const tabClass = (active: boolean): string =>
-    `rounded-md px-3 py-1.5 text-sm font-medium ${
+    `inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium lg:min-h-0 ${
       active
         ? 'bg-blue-600 text-white'
         : 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100'
     }`;
+
+  const filterGrid = (cols: string, withSearch: boolean): JSX.Element => (
+    <div id="playbook-filters" className={`grid gap-3 ${cols}`}>
+      <Select
+        label={t.playbook.filter.side}
+        data-testid="filter-side"
+        value={filter.side ?? ''}
+        onChange={(e) => setParam('side', e.target.value)}
+      >
+        <option value="">{t.playbook.filter.sideAll}</option>
+        <option value="offense">{t.playbook.filter.sideOffense}</option>
+        <option value="defense">{t.playbook.filter.sideDefense}</option>
+      </Select>
+      <Select
+        label={t.playbook.filter.format}
+        data-testid="filter-format"
+        value={filter.format ?? ''}
+        onChange={(e) => setParam('format', e.target.value)}
+      >
+        <option value="">{t.playbook.filter.formatAll}</option>
+        {FORMATS.map((f) => (
+          <option key={f} value={f}>
+            {f}
+          </option>
+        ))}
+      </Select>
+      <Select
+        label={t.playbook.filter.formation}
+        data-testid="filter-formation"
+        value={filter.formation ?? ''}
+        onChange={(e) => setParam('formation', e.target.value)}
+      >
+        <option value="">{t.playbook.filter.formationAll}</option>
+        {formations.map((f) => (
+          <option key={f} value={f}>
+            {f}
+          </option>
+        ))}
+      </Select>
+      <Select
+        label={t.playbook.filter.tag}
+        data-testid="filter-tag"
+        value={filter.tag ?? ''}
+        onChange={(e) => setParam('tag', e.target.value)}
+      >
+        <option value="">{t.playbook.filter.tagAll}</option>
+        {tags.map((tag) => (
+          <option key={tag} value={tag}>
+            {tag}
+          </option>
+        ))}
+      </Select>
+      {withSearch ? searchEl : null}
+      <Select
+        label={t.playbook.filter.sort}
+        data-testid="filter-sort"
+        value={filter.sort}
+        onChange={(e) => setParam('sort', e.target.value === 'name' ? 'name' : '')}
+      >
+        <option value="updated">{t.playbook.filter.sortUpdated}</option>
+        <option value="name">{t.playbook.filter.sortName}</option>
+      </Select>
+    </div>
+  );
+
+  const searchEl = (
+    <TextInput
+      label={t.playbook.filter.search}
+      type="search"
+      placeholder={t.playbook.filter.searchPlaceholder}
+      data-testid="filter-search"
+      value={params.get('q') ?? ''}
+      onChange={(e) => setParam('q', e.target.value)}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-4 p-4" data-testid="playbook-page">
@@ -103,7 +181,7 @@ export default function PlaybookPage(): JSX.Element {
             {t.playbook.tabs.matchups}
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {tab === 'plays' ? (
             <Button
               data-testid="pb-select-mode"
@@ -129,7 +207,7 @@ export default function PlaybookPage(): JSX.Element {
           <Link
             to="/play/new"
             data-testid="btn-new-play"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 lg:min-h-0"
           >
             {t.playbook.newPlay}
           </Link>
@@ -140,77 +218,25 @@ export default function PlaybookPage(): JSX.Element {
         <MatchupList plays={allPlays} settings={settings} />
       ) : (
         <>
-          <div
-            role="search"
-            aria-label={t.playbook.filter.label}
-            className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6"
-          >
-            <Select
-              label={t.playbook.filter.side}
-              data-testid="filter-side"
-              value={filter.side ?? ''}
-              onChange={(e) => setParam('side', e.target.value)}
-            >
-              <option value="">{t.playbook.filter.sideAll}</option>
-              <option value="offense">{t.playbook.filter.sideOffense}</option>
-              <option value="defense">{t.playbook.filter.sideDefense}</option>
-            </Select>
-            <Select
-              label={t.playbook.filter.format}
-              data-testid="filter-format"
-              value={filter.format ?? ''}
-              onChange={(e) => setParam('format', e.target.value)}
-            >
-              <option value="">{t.playbook.filter.formatAll}</option>
-              {FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label={t.playbook.filter.formation}
-              data-testid="filter-formation"
-              value={filter.formation ?? ''}
-              onChange={(e) => setParam('formation', e.target.value)}
-            >
-              <option value="">{t.playbook.filter.formationAll}</option>
-              {formations.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </Select>
-            <Select
-              label={t.playbook.filter.tag}
-              data-testid="filter-tag"
-              value={filter.tag ?? ''}
-              onChange={(e) => setParam('tag', e.target.value)}
-            >
-              <option value="">{t.playbook.filter.tagAll}</option>
-              {tags.map((tag) => (
-                <option key={tag} value={tag}>
-                  {tag}
-                </option>
-              ))}
-            </Select>
-            <TextInput
-              label={t.playbook.filter.search}
-              type="search"
-              placeholder={t.playbook.filter.searchPlaceholder}
-              data-testid="filter-search"
-              value={params.get('q') ?? ''}
-              onChange={(e) => setParam('q', e.target.value)}
-            />
-            <Select
-              label={t.playbook.filter.sort}
-              data-testid="filter-sort"
-              value={filter.sort}
-              onChange={(e) => setParam('sort', e.target.value === 'name' ? 'name' : '')}
-            >
-              <option value="updated">{t.playbook.filter.sortUpdated}</option>
-              <option value="name">{t.playbook.filter.sortName}</option>
-            </Select>
+          <div role="search" aria-label={t.playbook.filter.label} className="flex flex-col gap-3">
+            {isDesktop ? (
+              filterGrid('grid-cols-6', true)
+            ) : (
+              <>
+                <div className="flex items-end gap-2">
+                  <div className="min-w-0 flex-1">{searchEl}</div>
+                  <Button
+                    data-testid="filter-toggle"
+                    aria-expanded={filtersOpen}
+                    aria-controls="playbook-filters"
+                    onClick={() => setFiltersOpen((v) => !v)}
+                  >
+                    {t.playbook.filter.label}
+                  </Button>
+                </div>
+                {filtersOpen ? filterGrid('grid-cols-1 sm:grid-cols-2 md:grid-cols-3', false) : null}
+              </>
+            )}
           </div>
 
           {visible.length === 0 ? (
@@ -231,7 +257,7 @@ export default function PlaybookPage(): JSX.Element {
                       aria-label={`${t.exportx.select.selectPlay}: ${play.name}`}
                       checked={selected.has(play.id)}
                       onChange={() => toggleSelected(play.id)}
-                      className="absolute left-2 top-2 z-10 h-5 w-5"
+                      className="absolute left-2 top-2 z-10 h-6 w-6"
                     />
                   ) : null}
                   <PlayCard

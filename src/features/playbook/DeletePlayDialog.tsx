@@ -83,7 +83,7 @@ export function DeletePlayDialog({ play, open, onClose }: DeletePlayDialogProps)
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button data-testid="delete-cancel" onClick={onClose}>
             {s.cancel}
           </Button>

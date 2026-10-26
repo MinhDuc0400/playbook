@@ -13,7 +13,7 @@ export default function RosterPage(): JSX.Element {
   return (
     <div className="p-4" data-testid="roster-page">
       <h1 className="mb-2 text-xl font-semibold">{t.roster.title}</h1>
-      <div role="tablist" aria-label={t.roster.tabsLabel} className="mb-4 flex gap-2 border-b">
+      <div role="tablist" aria-label={t.roster.tabsLabel} className="mb-4 flex gap-2 overflow-x-auto border-b">
         <button
           role="tab"
           type="button"

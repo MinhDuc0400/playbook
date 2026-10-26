@@ -42,10 +42,11 @@ export function MatchupPicker({ open, onClose, onPick }: MatchupPickerProps): JS
       <ul className="flex flex-col gap-1">
         {(matchups ?? []).map((m) => (
           <li key={m.id}>
-            <label className="flex min-h-[44px] items-center gap-2">
+            <label className="flex min-h-[44px] items-center gap-3 break-words">
               <input
                 type="checkbox"
                 data-testid={`picker-${m.id}`}
+                className="h-5 w-5 shrink-0"
                 checked={selected.includes(m.id)}
                 onChange={() => toggle(m.id)}
               />
@@ -54,7 +55,7 @@ export function MatchupPicker({ open, onClose, onPick }: MatchupPickerProps): JS
           </li>
         ))}
       </ul>
-      <div className="mt-3 flex justify-end gap-2">
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
         <Button onClick={close}>{t.install.cancel}</Button>
         <Button variant="primary" data-testid="picker-confirm" onClick={confirm}>
           {t.install.pickerConfirm}

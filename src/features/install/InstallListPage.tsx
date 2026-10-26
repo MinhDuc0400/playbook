@@ -58,11 +58,11 @@ export default function InstallListPage(): JSX.Element {
       {installs && installs.length === 0 ? <p>{t.install.empty}</p> : null}
       <ul className="flex flex-col gap-2">
         {(installs ?? []).map((i) => (
-          <li key={i.id} className="flex items-center gap-2 rounded-md border p-2">
+          <li key={i.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
             <Link
               to={`/install/${i.id}`}
               data-testid={`install-row-${i.id}`}
-              className="flex min-h-[44px] flex-1 flex-col justify-center"
+              className="flex min-h-[44px] min-w-0 flex-1 flex-col justify-center break-words"
             >
               <span className="font-medium">{i.name}</span>
               <span className="text-sm text-slate-600 dark:text-slate-300">
@@ -77,7 +77,7 @@ export default function InstallListPage(): JSX.Element {
       </ul>
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)} title={t.install.deleteTitle}>
         <p>{toDelete ? t.install.deleteConfirm(toDelete.name) : null}</p>
-        <div className="mt-3 flex justify-end gap-2">
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
           <Button onClick={() => setToDelete(null)}>{t.install.cancel}</Button>
           <Button
             variant="danger"

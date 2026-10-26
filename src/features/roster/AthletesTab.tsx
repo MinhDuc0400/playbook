@@ -51,7 +51,7 @@ function StatNumber({ testId, label, min, max, step, value, onValid }: StatNumbe
         if (e.target.value.trim() !== '' && v >= min && v <= max) onValid(v);
       }}
       onBlur={() => setText(String(value))}
-      className="w-20 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
+      className="min-h-10 w-20 rounded-md border border-slate-300 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-800"
     />
   );
 }
@@ -158,11 +158,11 @@ export function AthletesTab(): JSX.Element {
         {(athletes ?? []).map((a) => {
           const level = classifyStats(a.stats, presets);
           return (
-            <li key={a.id} className="flex items-center gap-2 rounded-md border p-2">
+            <li key={a.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
               <button
                 type="button"
                 data-testid={`athlete-row-${a.id}`}
-                className="flex min-h-[44px] flex-1 items-center gap-2 text-left"
+                className="flex min-h-[44px] min-w-0 flex-1 flex-wrap items-center gap-2 text-left"
                 onClick={() => setDraft({ isNew: false, athlete: { ...a, stats: { ...a.stats } } })}
               >
                 <span
@@ -171,7 +171,7 @@ export function AthletesTab(): JSX.Element {
                   title={t.roster.athletes.levelLabel(t.roster.athletes.presets[level])}
                   className={`inline-block h-3 w-3 rounded-full ${LEVEL_DOT[level]}`}
                 />
-                <span className="font-medium">{a.name}</span>
+                <span className="break-words font-medium">{a.name}</span>
                 <span className="text-sm text-slate-600 dark:text-slate-300">{a.positions.join(', ')}</span>
               </button>
               <Button
@@ -242,8 +242,8 @@ export function AthletesTab(): JSX.Element {
               const step = r.max <= 1 ? 0.05 : 0.1;
               const label = t.roster.athletes.statNames[key];
               return (
-                <div key={key} className="flex items-center gap-2 text-sm">
-                  <span className="w-56 shrink-0">{label}</span>
+                <div key={key} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <span className="basis-full sm:w-56 sm:basis-auto sm:shrink-0">{label}</span>
                   <input
                     type="range"
                     aria-label={`${label} slider`}
@@ -252,7 +252,7 @@ export function AthletesTab(): JSX.Element {
                     step={step}
                     value={draft.athlete.stats[key]}
                     onChange={(e) => setStat(key, Number(e.target.value))}
-                    className="flex-1"
+                    className="min-w-0 flex-1 basis-40"
                   />
                   <StatNumber
                     testId={`athlete-stat-${key}`}
@@ -280,7 +280,7 @@ export function AthletesTab(): JSX.Element {
               className="rounded-md border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-600 dark:bg-slate-800"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="primary" type="submit" data-testid="athlete-save" disabled={!nameOk}>
               {t.roster.common.save}
             </Button>
@@ -297,7 +297,7 @@ export function AthletesTab(): JSX.Element {
         title={t.roster.athletes.deleteTitle}
       >
         <p>{toDelete ? t.roster.athletes.deleteConfirm(toDelete.name, toDeleteLineups) : null}</p>
-        <div className="mt-3 flex justify-end gap-2">
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
           <Button onClick={() => setToDelete(null)}>{t.roster.common.cancel}</Button>
           <Button variant="danger" data-testid="athlete-delete-confirm" onClick={() => void confirmDelete()}>
             {t.roster.common.confirmDelete}

@@ -81,7 +81,7 @@ export function LineupsTab(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-3" data-testid="lineups-tab">
-      <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 rounded-md border p-3 sm:grid-cols-2">
         <TextInput
           label={t.roster.lineups.name}
           data-testid="lineup-new-name"
@@ -141,11 +141,11 @@ export function LineupsTab(): JSX.Element {
       ) : null}
       <ul className="flex flex-col gap-2">
         {(lineups ?? []).map((l) => (
-          <li key={l.id} className="flex items-center gap-2 rounded-md border p-2">
+          <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
             <button
               type="button"
               data-testid={`lineup-row-${l.id}`}
-              className="flex min-h-[44px] flex-1 flex-col justify-center text-left"
+              className="flex min-h-[44px] min-w-0 flex-1 flex-col justify-center break-words text-left"
               onClick={() => setDraft({ ...l, slots: l.slots.map((s) => ({ ...s })) })}
             >
               <span className="font-medium">{l.name}</span>
@@ -184,7 +184,7 @@ export function LineupsTab(): JSX.Element {
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">{t.roster.lineups.slots}</span>
             {draft.slots.map((s, i) => (
-              <div key={i} data-testid={`lineup-slot-${s.label}`} className="flex flex-wrap items-end gap-2">
+              <div key={i} data-testid={`lineup-slot-${s.label}`} className="grid grid-cols-1 items-end gap-2 sm:flex sm:flex-wrap">
                 <TextInput
                   label={t.roster.lineups.slotLabel}
                   data-testid={`lineup-label-${i}`}
@@ -240,7 +240,7 @@ export function LineupsTab(): JSX.Element {
               </Button>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="primary" type="submit" data-testid="lineup-save" disabled={!nameOk || !labelsOk}>
               {t.roster.common.save}
             </Button>
@@ -253,7 +253,7 @@ export function LineupsTab(): JSX.Element {
 
       <Dialog open={toDelete !== null} onClose={() => setToDelete(null)} title={t.roster.lineups.deleteTitle}>
         <p>{toDelete ? t.roster.lineups.deleteConfirm(toDelete.name) : null}</p>
-        <div className="mt-3 flex justify-end gap-2">
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
           <Button onClick={() => setToDelete(null)}>{t.roster.common.cancel}</Button>
           <Button
             variant="danger"

@@ -14,6 +14,10 @@ import { settings } from './vi/settings';
 import { matchup } from './vi/matchup';
 import { matchupField } from './vi/matchupField';
 import { result } from './vi/result';
+import { exportx } from './vi/exportx';
+import { randomDef } from './vi/randomDef';
+import { roster } from './vi/roster';
+import { suggest } from './vi/suggest';
 import { rules } from './vi/rules';
 import { tuning } from './vi/tuning';
 import { offense } from './vi/offense';
@@ -38,6 +42,10 @@ export const vi = {
   settings,
   rules,
   tuning,
+  suggest,
+  roster,
+  randomDef,
+  exportx,
 } as const;
 export const t = vi;
 export type Strings = typeof vi;

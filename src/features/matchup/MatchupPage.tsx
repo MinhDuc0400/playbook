@@ -77,7 +77,8 @@ function MatchupEditor({
 
   const { built, result, error } = useMatchupSim(working, offense, defense, snapshot);
   const duration = result && result.frames.length > 0 ? result.frames[result.frames.length - 1]!.t : 0;
-  const playback = usePlayback({ duration });
+  const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
+  const playback = usePlayback({ duration, minT });
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
@@ -185,7 +186,7 @@ function MatchupEditor({
       </aside>
 
       <div className="px-3 py-2">
-        <Timeline playback={playback} duration={duration} markers={markers} />
+        <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
       </div>
     </div>
   );

@@ -96,9 +96,17 @@ export function simulate(input: SimInput): SimResult {
   const { tuning, seed } = input;
   const dt = tuning.simDt;
   const prepared = prepareSim(input);
-  const { info, bindings, stats, plans, numbering } = prepared;
+  const { info, bindings, stats, plans, options, motions, snapStart, numbering } = prepared;
   const field = input.field;
-  const events: SimEvent[] = [{ t: 0, type: 'snap' }];
+  // Pre-snap motion: the clock starts at t = −preTicks × dt; t = 0 is exactly the snap tick.
+  const preTicks = Math.round(prepared.motionDuration / dt);
+  const tStart = 0 - preTicks * dt;
+  const events: SimEvent[] = [];
+  for (const slot of input.offense.players) {
+    const m = motions[slot.id];
+    if (m) events.push({ t: tStart, type: 'motion', playerId: slot.id, data: { duration: m.duration } });
+  }
+  events.push({ t: 0, type: 'snap' });
 
   const qbSlot =
     prepared.qbId === null ? undefined : input.offense.players.find((s) => s.id === prepared.qbId);
@@ -129,17 +137,18 @@ export function simulate(input: SimInput): SimResult {
       .filter((s) => s.id !== qbId)
       .map((s) => {
         const ref = numbering.refs[s.id];
-        const outward = outwardSign(s.start, strongSide);
+        const at = snapStart[s.id] as Point;
+        const outward = outwardSign(at, strongSide);
         return {
           id: s.id,
-          start: { x: s.start.x, y: s.start.y },
+          start: { x: at.x, y: at.y },
           outward,
           key: priorKeyFor(
             ref && ref.kind === 'number' ? ref.number : null,
             numbering.rbId === s.id,
-            outward === 1 ? info.maxX - s.start.x : s.start.x - info.minX,
+            outward === 1 ? info.maxX - at.x : at.x - info.minX,
           ),
-          side: s.start.x >= 0 ? ('right' as const) : ('left' as const),
+          side: at.x >= 0 ? ('right' as const) : ('left' as const),
         };
       }),
     oracle:
@@ -199,7 +208,17 @@ export function simulate(input: SimInput): SimResult {
       });
       makeEntity(slot, 'offense', agent);
     } else {
-      makeEntity(slot, 'offense', createReceiverAgent({ id: slot.id, plan: plans[slot.id] ?? null, info }));
+      makeEntity(
+        slot,
+        'offense',
+        createReceiverAgent({
+          id: slot.id,
+          plan: plans[slot.id] ?? null,
+          info,
+          motion: motions[slot.id] ?? null,
+          option: options[slot.id] ?? null,
+        }),
+      );
     }
   }
   for (const slot of input.defense.players) {
@@ -287,7 +306,7 @@ export function simulate(input: SimInput): SimResult {
     return snap;
   };
 
-  const history = createHistory(snapshotAt(0));
+  const history = createHistory(snapshotAt(tStart));
 
   const frames: Frame[] = [];
   const pushFrame = (t: number): void => {
@@ -352,13 +371,20 @@ export function simulate(input: SimInput): SimResult {
 
   let nextFrame = 0;
   for (let tick = 0; ; tick++) {
-    const t = tick * dt;
+    const t = (tick - preTicks) * dt;
+    const preSnap = t < -TIME_EPS;
 
     // ---- 2. agents decide ----
     let eyeNext = eyeTarget;
     let throwIntent: AgentIntent | null = null;
     for (const e of entities) {
       e.state.t = t;
+      // Pre-snap only offense receivers act (motion); the QB and the defense stand.
+      if (preSnap && (e.state.side === 'defense' || e === qb)) {
+        e.frameState = 'idle';
+        e.intent = STAND;
+        continue;
+      }
       const p = buildPerception(history, roster, e.viewer, t, tuning.leverageReactionFactor);
       const intent = e.agent.step(e.state, p, dt, e.rng);
       if (e.tells && e.tellRng) {
@@ -388,8 +414,9 @@ export function simulate(input: SimInput): SimResult {
       e.intent = intent;
     }
     if (tick === 0) {
-      pushFrame(0);
-      nextFrame = 1;
+      const k0 = 0 - Math.floor(preTicks * dt * FRAME_RATE + TIME_EPS);
+      pushFrame(k0 / FRAME_RATE);
+      nextFrame = k0 + 1;
     }
     eyeTarget = eyeNext;
 
@@ -426,7 +453,7 @@ export function simulate(input: SimInput): SimResult {
       e.state.pos = e.kin.pos;
       e.state.vel = e.kin.vel;
     }
-    const time = (tick + 1) * dt;
+    const time = (tick + 1 - preTicks) * dt;
 
     // ---- 4b. release ----
     if (qb && pending !== null && ball.state === 'held' && time >= pending.tRelease - TIME_EPS) {

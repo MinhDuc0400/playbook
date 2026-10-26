@@ -48,7 +48,8 @@ export function PreviewOverlay({
     [offensePlay, field, ballSpot, tuning],
   );
   const duration = result?.duration ?? 0;
-  const playback = usePlayback({ duration, autoPlay: true });
+  const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
+  const playback = usePlayback({ duration, minT, autoPlay: true });
 
   const { toggle } = playback;
   useEffect(() => {
@@ -110,7 +111,7 @@ export function PreviewOverlay({
           ))}
         </FieldStage>
       </div>
-      <Timeline playback={playback} duration={duration} markers={markers} />
+      <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
     </div>
   );
 }

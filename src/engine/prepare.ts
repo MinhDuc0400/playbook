@@ -1,14 +1,25 @@
 /** Pre-snap preparation (SRS §8.2 steps 2–4, FR-ENG-02, D-10). Pure. */
 import { fieldBounds, sidelineBounds } from '@/domain/field';
-import { alignedPlayers, numberReceivers, resolveReceiverRef } from '@/domain/numbering';
+import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Numbering } from '@/domain/numbering';
 import { DEFAULT_PRESETS } from '@/domain/presets';
 import { STAT_KEYS } from '@/domain/types';
-import type { Action, ID, Play, PlayerSlot, ReceiverRef, RouteAction, SimInput, Stats } from '@/domain/types';
+import type {
+  Action,
+  ID,
+  OptionRouteAction,
+  Play,
+  PlayerSlot,
+  Point,
+  ReceiverRef,
+  RouteAction,
+  SimInput,
+  Stats,
+} from '@/domain/types';
 import { hookZoneForX, isDeepZone, zonePolygon, zonePreset } from '@/domain/zones';
 import { forkRng, uniform } from './rng';
-import { planRoute } from './routeFollower';
-import type { RoutePlan } from './routeFollower';
+import { planMotion, planOption, planRoute } from './routeFollower';
+import type { MotionPlan, OptionPlan, RoutePlan } from './routeFollower';
 import type { DefenderBinding, FieldInfo } from './types';
 
 export interface PreparedSim {
@@ -21,8 +32,16 @@ export interface PreparedSim {
   bindings: Record<ID, DefenderBinding>;
   /** All players' stats after noise. */
   stats: Record<ID, Stats>;
-  /** Offense receivers' route plans (first RouteAction), by slot id. */
+  /** Offense receivers' route plans (first RouteAction), by slot id; they start at the motion end, if any. */
   plans: Record<ID, RoutePlan>;
+  /** Offense option-route plans (first action is an OptionRouteAction), by slot id. Excluded from `plans`. */
+  options: Record<ID, OptionPlan>;
+  /** Pre-snap motion plans, by slot id (D-08: the route/option starts at the motion end). */
+  motions: Record<ID, MotionPlan>;
+  /** Longest motion duration over the offense (s); 0 without motion. The sim starts at t = −this. */
+  motionDuration: number;
+  /** Offense alignment at the snap: motion end, else the slot start. */
+  snapStart: Record<ID, Point>;
   qbId: ID | null;
   /** Human-readable warnings (English, engine-level), e.g. "CB2: man target weak #2 not found → hook-L". */
   warnings: string[];
@@ -33,13 +52,15 @@ export const UNIT_STATS = ['cutLoss', 'iq', 'hands', 'ballSkills', 'accuracy', '
 
 /**
  * - info: sidelines from sidelineBounds, minY/maxY from fieldBounds (src/domain/field.ts).
- * - numbering = numberReceivers(alignedPlayers(offense)) (computed strength, not Play.strength).
+ * - numbering = numberReceivers(alignment at the snap = motion end) (computed strength, not Play.strength);
+ *   defenders therefore bind to post-motion numbers ("đánh số lại", §8.2.5).
  * - bindings per defense slot from its first coverage/rush action: man → resolveReceiverRef (missing →
  *   fallback zone + warning); zone → polygon via zonePolygon(zone, field), dropPoint, deep = isDeepZone;
  *   rush → path + delay (default 0); spy → QB id; none → { kind: 'none' }.
  * - stats: input stats by slot id (missing → DEFAULT_PRESETS.avg). If input.noise: every stat × uniform
  *   [0.9, 1.1) from forkRng(seed, 'noise:' + slotId) in STAT_KEYS order; UNIT_STATS clamped to [0, 1].
- * - plans: planRoute(slot.id, slot.start, route) for offense slots with a RouteAction.
+ * - motions: planMotion per offense slot; plans: planRoute from the motion end for slots whose first
+ *   route-like action is a RouteAction (delay passed through); options: planOption for an OptionRouteAction.
  */
 export function prepareSim(input: SimInput): PreparedSim {
   const { offense, defense, field, ballSpot, tuning } = input;
@@ -47,7 +68,21 @@ export function prepareSim(input: SimInput): PreparedSim {
   const bounds = fieldBounds(field, ballSpot);
   const info: FieldInfo = { field, ballSpot, minX, maxX, minY: bounds.minY, maxY: bounds.maxY, tuning };
 
-  const numbering = numberReceivers(alignedPlayers(offense));
+  const motions: Record<ID, MotionPlan> = {};
+  const snapStart: Record<ID, Point> = {};
+  let motionDuration = 0;
+  for (const slot of offense.players) {
+    const motion = planMotion(slot.id, slot.start, slot.actions);
+    if (motion) {
+      motions[slot.id] = motion;
+      motionDuration = Math.max(motionDuration, motion.duration);
+    }
+    const at = motion ? motion.end : slot.start;
+    snapStart[slot.id] = { x: at.x, y: at.y };
+  }
+  const numbering = numberReceivers(
+    offense.players.map((s) => ({ id: s.id, role: s.role, pos: snapStart[s.id] as Point })),
+  );
   const warnings: string[] = [];
 
   const bindings: Record<ID, DefenderBinding> = {};
@@ -60,11 +95,19 @@ export function prepareSim(input: SimInput): PreparedSim {
   for (const slot of defense.players) stats[slot.id] = resolveStats(slot.id, input.defenseStats, input);
 
   const plans: Record<ID, RoutePlan> = {};
+  const options: Record<ID, OptionPlan> = {};
   for (const slot of offense.players) {
-    const route = slot.actions.find((a): a is RouteAction => a.type === 'route');
-    if (!route) continue;
-    const plan = planRoute(slot.id, slot.start, route);
-    if (plan) plans[slot.id] = plan;
+    const first = slot.actions.find(
+      (a): a is RouteAction | OptionRouteAction => a.type === 'route' || a.type === 'option',
+    );
+    if (!first) continue;
+    const at = snapStart[slot.id] as Point;
+    if (first.type === 'option') {
+      options[slot.id] = planOption(slot.id, at, first);
+    } else {
+      const plan = planRoute(slot.id, at, first);
+      if (plan) plans[slot.id] = plan;
+    }
   }
 
   return {
@@ -75,6 +118,10 @@ export function prepareSim(input: SimInput): PreparedSim {
     bindings,
     stats,
     plans,
+    options,
+    motions,
+    motionDuration,
+    snapStart,
     qbId: numbering.qbId ?? null,
     warnings,
   };

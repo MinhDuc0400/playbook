@@ -3,7 +3,7 @@
  * Shared by the offense-only preview (phase 1) and the receiver agent (phase 3). Pure.
  */
 import { EPS, clamp, distance, length, normalize, sub, turnAngle } from '@/domain/geometry';
-import type { ID, Point, RouteAction } from '@/domain/types';
+import type { Action, ID, MotionAction, OptionRouteAction, Point, RouteAction } from '@/domain/types';
 import { DECEL_FACTOR, brakingSpeed } from './movement';
 import type { Intent, Kinematic, MoveLimits } from './types';
 
@@ -174,4 +174,191 @@ export function followRoute(
   const result: FollowResult = { intent, state: { index, done, heading }, telling };
   if (brokeAt !== undefined) result.brokeAt = brokeAt;
   return result;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pre-snap motion (SRS §8.2.5, D-08) and option routes (SRS §8.5 receiver, FR-ENG-09 part).
+// ---------------------------------------------------------------------------------------------
+
+/** Arrival radius at the last motion point (yd): the mover is done and stands. */
+const MOTION_ARRIVE = 0.1;
+/** Smallest "time left" (s) used to compute the catch-up speed of a late motion. */
+const MOTION_MIN_TIME_LEFT = 0.05;
+/** Same safety factor as movement.brakingSpeed, so the cruise speed matches the braking curve. */
+const MOTION_BRAKE = 0.8;
+
+export interface MotionPlan {
+  slotId: ID;
+  start: Point;
+  path: Point[]; // absolute, start excluded
+  duration: number; // s, > 0; the motion occupies t ∈ [−duration, 0]
+  /** Last point of the path (alignment at the snap). */
+  end: Point;
+}
+
+/** First usable MotionAction of an action list: non-empty path and duration > 0; otherwise null. */
+export function planMotion(slotId: ID, start: Point, actions: readonly Action[]): MotionPlan | null {
+  const m = actions.find((a): a is MotionAction => a.type === 'motion');
+  if (!m || m.path.length === 0 || !(m.duration > 0)) return null;
+  const path = m.path.map((p) => ({ x: p.x, y: p.y }));
+  const end = path[path.length - 1] as Point;
+  return {
+    slotId,
+    start: { x: start.x, y: start.y },
+    path,
+    duration: m.duration,
+    end: { x: end.x, y: end.y },
+  };
+}
+
+export interface MotionState {
+  index: number;
+  done: boolean;
+}
+
+export function initialMotionState(): MotionState {
+  return { index: 0, done: false };
+}
+
+/**
+ * Intent for one tick of the motion at time t (s, negative before the snap): stand until t = −duration,
+ * then run the path at the speed that reaches the end exactly at t = 0 (remaining length / time left,
+ * capped at limits.speed; a mover that cannot make it arrives late). Brakes onto the last point.
+ */
+export function followMotion(
+  plan: MotionPlan,
+  state: MotionState,
+  self: Kinematic,
+  limits: MoveLimits,
+  t: number,
+): { intent: Intent; state: MotionState } {
+  if (state.done || t < -plan.duration - 1e-9) {
+    return { intent: { heading: { x: 0, y: 0 }, speed: 0 }, state };
+  }
+  const n = plan.path.length;
+  let index = state.index;
+  const isLast = (i: number): boolean => i === n - 1;
+  while (index < n) {
+    const d = distance(self.pos, plan.path[index] as Point);
+    if (d <= (isLast(index) ? MOTION_ARRIVE : ARRIVE_RADIUS)) index += 1;
+    else break;
+  }
+  if (index >= n) return { intent: { heading: { x: 0, y: 0 }, speed: 0 }, state: { index, done: true } };
+
+  const target = plan.path[index] as Point;
+  const dist = distance(self.pos, target);
+  let remaining = dist;
+  for (let i = index; i < n - 1; i++) remaining += distance(plan.path[i] as Point, plan.path[i + 1] as Point);
+  const timeLeft = Math.max(-t, MOTION_MIN_TIME_LEFT);
+  // Cruise speed that covers `remaining` in the time left *including* the final braking to a stop:
+  // v²/(2a) − v·T + L = 0 (smaller root); impossible → full speed.
+  const decel = limits.accel > 0 ? MOTION_BRAKE * ((DECEL_FACTOR * limits.speed) / limits.accel) : Infinity;
+  let needed: number;
+  if (!Number.isFinite(decel)) needed = remaining / timeLeft;
+  else {
+    const disc = timeLeft * timeLeft - (2 * remaining) / decel;
+    needed = disc >= 0 ? decel * (timeLeft - Math.sqrt(disc)) : limits.speed;
+  }
+  let speed = Math.min(limits.speed, needed);
+  if (isLast(index)) speed = Math.min(speed, brakingSpeed(dist, limits));
+  return { intent: { heading: sub(target, self.pos), speed }, state: { index, done: false } };
+}
+
+export type OptionBranch = 'man' | 'zone';
+
+export interface OptionPlan {
+  slotId: ID;
+  start: Point;
+  /** Null when the stem is empty (the decision is taken at once). */
+  stem: RoutePlan | null;
+  /** Branch plans start at the end of the stem (D-08); null when the branch has no points. */
+  vsMan: RoutePlan | null;
+  vsZone: RoutePlan | null;
+}
+
+/** Build the plans of an option route; `start` is the player's position at the snap (motion end). */
+export function planOption(slotId: ID, start: Point, option: OptionRouteAction): OptionPlan {
+  const stem = planRoute(slotId, start, { type: 'route', path: option.stem, endBehavior: 'continue' });
+  const stemEnd = stem ? (stem.waypoints[stem.waypoints.length - 1] as Point) : start;
+  const branch = (path: Point[]): RoutePlan | null =>
+    planRoute(slotId, stemEnd, { type: 'route', path, endBehavior: 'continue' });
+  return {
+    slotId,
+    start: { x: start.x, y: start.y },
+    stem,
+    vsMan: branch(option.vsMan),
+    vsZone: branch(option.vsZone),
+  };
+}
+
+export interface OptionState {
+  /** Set once the receiver has decided. */
+  branch?: OptionBranch;
+  plan: RoutePlan | null;
+  follow: FollowState | null;
+}
+
+export function initialOptionState(op: OptionPlan): OptionState {
+  return { plan: op.stem, follow: op.stem ? initialFollowState(op.stem) : null };
+}
+
+export interface OptionResult {
+  intent: Intent;
+  state: OptionState;
+  brokeAt?: number;
+  telling: boolean;
+  /** Set on the tick the receiver decides. */
+  chose?: OptionBranch;
+}
+
+/**
+ * Follow the stem; when it ends call `decide()` once, switch to that branch (starting at the end of the
+ * stem) and keep following it with followRoute. Indexes in `brokeAt` are relative to the active plan.
+ */
+export function followOption(
+  op: OptionPlan,
+  state: OptionState,
+  self: Kinematic,
+  limits: MoveLimits,
+  t: number,
+  tellWindow: number,
+  bounds: { minX: number; maxX: number; maxY: number },
+  decide: () => OptionBranch,
+): OptionResult {
+  let st = state;
+  let chose: OptionBranch | undefined;
+  if (st.branch === undefined) {
+    if (st.plan && st.follow) {
+      const res = followRoute(st.plan, st.follow, self, limits, t, tellWindow, bounds);
+      if (res.state.index < st.plan.waypoints.length) {
+        const out: OptionResult = {
+          intent: res.intent,
+          state: { plan: st.plan, follow: res.state },
+          telling: res.telling,
+        };
+        if (res.brokeAt !== undefined) out.brokeAt = res.brokeAt;
+        return out;
+      }
+    }
+    chose = decide();
+    const plan = chose === 'man' ? op.vsMan : op.vsZone;
+    st = { branch: chose, plan, follow: plan ? initialFollowState(plan) : null };
+  }
+  if (!st.plan || !st.follow) {
+    return {
+      intent: { heading: { x: 0, y: 0 }, speed: 0 },
+      state: st,
+      telling: false,
+      ...(chose ? { chose } : {}),
+    };
+  }
+  const res = followRoute(st.plan, st.follow, self, limits, t, tellWindow, bounds);
+  const out: OptionResult = {
+    intent: res.intent,
+    state: { branch: st.branch as OptionBranch, plan: st.plan, follow: res.state },
+    telling: res.telling,
+  };
+  if (res.brokeAt !== undefined) out.brokeAt = res.brokeAt;
+  if (chose) out.chose = chose;
+  return out;
 }

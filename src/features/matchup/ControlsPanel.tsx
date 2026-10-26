@@ -1,0 +1,146 @@
+/** Matchup parameter controls (FR-MU-02). Every change re-simulates through the working matchup. */
+import { useEffect, useState } from 'react';
+import { IconButton, Select } from '@/components/ui';
+import type { Matchup } from '@/domain/types';
+import { t } from '@/i18n/vi';
+import { randomSeed } from './buildSimInput';
+
+export interface ControlsPanelProps {
+  matchup: Matchup;
+  onChange(m: Matchup): void;
+}
+
+const s = t.matchup.controls;
+
+interface NumberFieldProps {
+  label: string;
+  testId: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  integer?: boolean;
+  onValid(v: number): void;
+}
+
+/** Number input with a local draft: only valid, in-range values are applied. */
+function NumberField({
+  label,
+  testId,
+  value,
+  min,
+  max,
+  step,
+  integer,
+  onValid,
+}: NumberFieldProps): JSX.Element {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => {
+    setDraft((d) => (d.trim() !== '' && Number(d) === value ? d : String(value)));
+  }, [value]);
+  const parsed = draft.trim() === '' ? NaN : Number(draft);
+  const valid =
+    Number.isFinite(parsed) && parsed >= min && parsed <= max && (!integer || Number.isInteger(parsed));
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+      {label}
+      <input
+        type="number"
+        data-testid={testId}
+        value={draft}
+        min={min}
+        max={max}
+        step={step}
+        aria-invalid={!valid}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        onChange={(e) => {
+          const text = e.target.value;
+          setDraft(text);
+          const n = text.trim() === '' ? NaN : Number(text);
+          if (Number.isFinite(n) && n >= min && n <= max && (!integer || Number.isInteger(n))) onValid(n);
+        }}
+        onBlur={() => {
+          if (!valid) setDraft(String(value));
+        }}
+      />
+    </label>
+  );
+}
+
+export function ControlsPanel({ matchup, onChange }: ControlsPanelProps): JSX.Element {
+  return (
+    <section data-testid="controls-panel" className="flex flex-col gap-3 rounded border p-3 text-sm">
+      <h2 className="font-semibold">{s.title}</h2>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-testid="ctl-offense-flipped"
+          checked={matchup.offenseFlipped}
+          onChange={(e) => onChange({ ...matchup, offenseFlipped: e.target.checked })}
+        />
+        {s.offenseFlipped}
+      </label>
+      <Select
+        label={s.defenseFlip}
+        data-testid="ctl-defense-flip"
+        value={matchup.defenseFlip}
+        onChange={(e) => onChange({ ...matchup, defenseFlip: e.target.value as Matchup['defenseFlip'] })}
+      >
+        {(['auto', 'none', 'flip'] as const).map((v) => (
+          <option key={v} value={v}>
+            {s.defenseFlipOptions[v]}
+          </option>
+        ))}
+      </Select>
+      <NumberField
+        label={s.ballX}
+        testId="ctl-ball-x"
+        value={matchup.ballSpot.x}
+        min={-10}
+        max={10}
+        step={0.5}
+        onValid={(x) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, x } })}
+      />
+      <NumberField
+        label={s.ballYardLine}
+        testId="ctl-ball-yardline"
+        value={matchup.ballSpot.yardLine}
+        min={1}
+        max={49}
+        step={1}
+        integer
+        onValid={(yardLine) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, yardLine } })}
+      />
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <NumberField
+            label={s.seed}
+            testId="ctl-seed"
+            value={matchup.seed}
+            min={0}
+            max={2 ** 31 - 1}
+            step={1}
+            integer
+            onValid={(seed) => onChange({ ...matchup, seed })}
+          />
+        </div>
+        <IconButton
+          data-testid="ctl-seed-dice"
+          label={s.seedDice}
+          onClick={() => onChange({ ...matchup, seed: randomSeed() })}
+        >
+          🎲
+        </IconButton>
+      </div>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-testid="ctl-noise"
+          checked={matchup.noise}
+          onChange={(e) => onChange({ ...matchup, noise: e.target.checked })}
+        />
+        {s.noise}
+      </label>
+    </section>
+  );
+}

@@ -1,2 +1,42 @@
 /** Matchup page + controls strings (NFR-UX-04). Owned by T3.10. */
-export const matchup = {} as const;
+export const matchup = {
+  loading: 'Đang tải matchup…',
+  notFound: 'Không tìm thấy matchup này.',
+  back: 'Về Playbook',
+  missingPlay: {
+    offense: 'Play tấn công của matchup này không còn tồn tại.',
+    defense: 'Play phòng thủ của matchup này không còn tồn tại.',
+    both: 'Cả play tấn công và play phòng thủ của matchup này không còn tồn tại.',
+  },
+  simError: 'Không chạy được mô phỏng',
+  name: 'Tên matchup',
+  notes: 'Ghi chú',
+  overlayMenu: 'Lớp hiển thị',
+  fieldSection: 'Sân',
+  newMatchup: {
+    title: 'Matchup mới',
+    offense: 'Play tấn công',
+    defense: 'Play phòng thủ',
+    choose: 'Chọn một play…',
+    noPlays: 'Chưa có play nào để chọn.',
+    formatHint: 'Chỉ chọn được play cùng format.',
+    create: 'Tạo matchup',
+    cancel: 'Hủy',
+    loading: 'Đang tải…',
+  },
+  controls: {
+    title: 'Tham số',
+    offenseFlipped: 'Flip tấn công',
+    defenseFlip: 'Flip phòng thủ',
+    defenseFlipOptions: {
+      auto: 'Tự động',
+      none: 'Không flip',
+      flip: 'Flip',
+    },
+    ballX: 'Vị trí bóng ngang (yard)',
+    ballYardLine: 'Yard line',
+    seed: 'Seed',
+    seedDice: 'Đổi seed ngẫu nhiên',
+    noise: 'Nhiễu chỉ số (±10%)',
+  },
+} as const;

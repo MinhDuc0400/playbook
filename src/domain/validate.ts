@@ -14,6 +14,7 @@ export type WarningCode =
   | 'too-many-rushers' // params: { count, max }; rushers = slots with a 'rush' action
   | 'rush-delay' // slotId; rush.delay > 0 while field.rusherGoesOnSnap
   | 'catch-behind-los' // slotId; route/option whose every point (incl. start) has y ≤ 0
+  | 'too-many-motions' // params: { count }; offense slots with a 'motion' action, count > 1 (D-01)
   | 'man-target-missing'; // slotId; man target ref does not resolve against the ghost formation
 
 export interface PlayWarning {
@@ -75,6 +76,11 @@ export function validatePlay(
   if (rusherCount > field.maxRushers) {
     out.push({ code: 'too-many-rushers', params: { count: rusherCount, max: field.maxRushers } });
   }
+
+  const motionCount = isDefense
+    ? 0
+    : play.players.filter((s) => s.actions.some((a) => a.type === 'motion')).length;
+  if (motionCount > 1) out.push({ code: 'too-many-motions', params: { count: motionCount } });
 
   let numbering: Numbering | undefined;
   const ghostNumbering = (): Numbering => {

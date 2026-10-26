@@ -57,6 +57,7 @@ export const editor = {
       'too-many-rushers': 'Quá nhiều rusher: {count} (tối đa {max})',
       'rush-delay': '{slot}: rush có delay > 0',
       'catch-behind-los': '{slot}: route có điểm bắt ở sau LOS',
+      'too-many-motions': 'Quá nhiều người motion: {count} (nên chỉ 1)',
       'man-target-missing': '{slot}: man target không tồn tại',
     },
   },

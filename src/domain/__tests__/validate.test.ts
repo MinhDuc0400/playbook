@@ -434,3 +434,16 @@ describe('FR-ED-07 ordering', () => {
     expect(JSON.stringify(play)).toBe(snapshot);
   });
 });
+
+describe('too-many-motions (D-01)', () => {
+  const motion = (): Action => ({ type: 'motion', path: [{ x: 0, y: 0 }], duration: 1 });
+  it('warns for 2 motions, not for 1', () => {
+    const play = offense();
+    const wrs = play.players.filter((p) => p.role === 'WR');
+    wrs[0]?.actions.push(motion());
+    expect(codes(validatePlay(play, field5))).not.toContain('too-many-motions');
+    wrs[1]?.actions.push(motion());
+    const w = validatePlay(play, field5).find((x) => x.code === 'too-many-motions');
+    expect(w?.params).toEqual({ count: 2 });
+  });
+});

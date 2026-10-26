@@ -10,12 +10,24 @@ import { FieldStage } from '@/components/field/FieldStage';
 import { PlayerToken } from '@/components/field/PlayerToken';
 import { RoutePath } from '@/components/field/RoutePath';
 import { toField, toScreen, type Viewport } from '@/components/field/viewport';
-import type { BallSpot, FieldConfig, ID, PlayerSlot, RouteAction, Side } from '@/domain/types';
+import type {
+  BallSpot,
+  FieldConfig,
+  ID,
+  MotionAction,
+  OptionRouteAction,
+  PlayerSlot,
+  Point,
+  RouteAction,
+  Side,
+} from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
 import { AssignmentLayer } from './defense/AssignmentLayer';
 import { GhostLayer } from './defense/GhostLayer';
+import { routeStart } from './ops';
 import { snapPoint } from './snap';
 import { TOOLS } from './tools';
+import { readOptionDraft } from './tools/optionTool';
 import type { FieldPointerEvent, HitTarget, ToolContext } from './tools/types';
 
 export interface EditorCanvasProps {
@@ -124,9 +136,7 @@ const TokenView = memo(function TokenView({ slot, side, selected, progressionInd
 function RouteDraftLayer(): JSX.Element | null {
   const { viewport } = useFieldContext();
   const draft = useEditorStore((s) => (s.draft?.kind === 'route' ? s.draft : null));
-  const start = useEditorStore((s) =>
-    draft ? s.play?.players.find((p) => p.id === draft.slotId)?.start : undefined,
-  );
+  const start = useEditorStore((s) => (draft && s.play ? routeStart(s.play, draft.slotId) : undefined));
   if (!draft || !start) return null;
   const pts = [start, ...draft.points, ...(draft.cursor ? [draft.cursor] : [])].map((p) =>
     toScreen(p, viewport),
@@ -148,6 +158,124 @@ function RouteDraftLayer(): JSX.Element | null {
   );
 }
 
+/** Motion (zigzag, from the start) and route / option (from the motion end) of one slot. */
+const ActionViews = memo(function ActionViews({
+  slot,
+  primary,
+  selected,
+}: {
+  slot: PlayerSlot;
+  primary: boolean;
+  selected: boolean;
+}) {
+  const motion = slot.actions.find((a): a is MotionAction => a.type === 'motion');
+  const route = slot.actions.find((a): a is RouteAction => a.type === 'route');
+  const option = slot.actions.find((a): a is OptionRouteAction => a.type === 'option');
+  const from = motion?.path[motion.path.length - 1] ?? slot.start;
+  const stemEnd = option?.stem[option.stem.length - 1] ?? from;
+  return (
+    <>
+      {motion && (
+        <RoutePath
+          from={slot.start}
+          path={motion.path}
+          variant="motion"
+          slotId={slot.id}
+          testId={`motion-${slot.label}`}
+        />
+      )}
+      {route && (
+        <RouteView
+          slotId={slot.id}
+          label={slot.label}
+          start={from}
+          route={route}
+          primary={primary}
+          selected={selected}
+        />
+      )}
+      {option && (
+        <>
+          <RoutePath
+            from={from}
+            path={option.stem}
+            variant="route"
+            slotId={slot.id}
+            testId={`option-stem-${slot.label}`}
+          />
+          <RoutePath
+            from={stemEnd}
+            path={option.vsMan}
+            variant="option-man"
+            slotId={slot.id}
+            testId={`option-man-${slot.label}`}
+          />
+          <RoutePath
+            from={stemEnd}
+            path={option.vsZone}
+            variant="option-zone"
+            slotId={slot.id}
+            testId={`option-zone-${slot.label}`}
+          />
+        </>
+      )}
+    </>
+  );
+});
+
+function DashedLine({ pts, testId }: { pts: Point[]; testId?: string }): JSX.Element {
+  const { viewport } = useFieldContext();
+  const sp = pts.map((p) => toScreen(p, viewport));
+  return (
+    <g data-testid={testId}>
+      <polyline
+        points={sp.map((p) => `${p.x},${p.y}`).join(' ')}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeDasharray="6 4"
+        strokeLinejoin="round"
+      />
+      {sp.slice(1).map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={4} className="fill-white stroke-current" strokeWidth={2} />
+      ))}
+    </g>
+  );
+}
+
+/** Dashed preview of the motion / option route being drawn (generic drafts). */
+function MotionOptionDraftLayer(): JSX.Element | null {
+  const draft = useEditorStore((s) => (s.draft?.kind === 'generic' ? s.draft : null));
+  const play = useEditorStore((s) => s.play);
+  if (!draft || !play) return null;
+  const motion = draft.data['tool'] === 'motion';
+  const option = readOptionDraft(draft);
+  if (!motion && !option) return null;
+  const slotId = (draft.data['slotId'] as ID | undefined) ?? '';
+  const slot = play.players.find((p) => p.id === slotId);
+  if (!slot) return null;
+  const cursor = (draft.data['cursor'] as Point | null | undefined) ?? null;
+  const points = (draft.data['points'] as Point[] | undefined) ?? [];
+  if (motion) {
+    return (
+      <g pointerEvents="none" className="text-amber-600 dark:text-amber-400">
+        <DashedLine testId="motion-draft" pts={[slot.start, ...points, ...(cursor ? [cursor] : [])]} />
+      </g>
+    );
+  }
+  if (!option) return null;
+  const base = routeStart(play, slotId);
+  const stemEnd = option.stem[option.stem.length - 1] ?? base;
+  const from = option.phase === 'stem' ? base : stemEnd;
+  return (
+    <g pointerEvents="none" className="text-purple-700 dark:text-purple-300">
+      {option.phase !== 'stem' && <DashedLine pts={[base, ...option.stem]} />}
+      {option.phase === 'vsZone' && <DashedLine pts={[stemEnd, ...option.vsMan]} />}
+      <DashedLine testId="option-draft" pts={[from, ...points, ...(cursor ? [cursor] : [])]} />
+    </g>
+  );
+}
+
 function SlotLayers(): JSX.Element | null {
   const play = useEditorStore((s) => s.play);
   const selection = useEditorStore((s) => s.selection);
@@ -156,20 +284,14 @@ function SlotLayers(): JSX.Element | null {
   const primaryId = play.progression?.[0];
   return (
     <>
-      {play.players.map((slot) => {
-        const route = slot.actions.find((a): a is RouteAction => a.type === 'route');
-        return route ? (
-          <RouteView
-            key={slot.id}
-            slotId={slot.id}
-            label={slot.label}
-            start={slot.start}
-            route={route}
-            primary={primaryId === slot.id}
-            selected={selected.has(slot.id)}
-          />
-        ) : null;
-      })}
+      {play.players.map((slot) => (
+        <ActionViews
+          key={slot.id}
+          slot={slot}
+          primary={primaryId === slot.id}
+          selected={selected.has(slot.id)}
+        />
+      ))}
       {play.players.map((slot) => {
         const order = play.progression?.indexOf(slot.id) ?? -1;
         return (
@@ -346,6 +468,7 @@ export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasPr
         )}
         <SlotLayers />
         <RouteDraftLayer />
+        <MotionOptionDraftLayer />
       </FieldStage>
     </div>
   );

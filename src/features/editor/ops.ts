@@ -9,6 +9,8 @@ import { buildRoute, outwardSign, type RouteTemplateId } from '@/domain/routeTre
 import type {
   Action,
   ID,
+  MotionAction,
+  OptionRouteAction,
   Play,
   PlayerSlot,
   Point,
@@ -264,8 +266,96 @@ export function setRouteEndBehavior(slotId: ID, endBehavior: 'stop' | 'continue'
 export function applyRouteTemplate(slotId: ID, templateId: RouteTemplateId, depth?: number): Recipe {
   return (play) =>
     replaceSlot(play, slotId, (slot) => {
-      const outward = outwardSign(slot.start, play.strength === 'left' ? 'left' : 'right');
-      return putRoute(slot, buildRoute(templateId, slot.start, { depth, outward }));
+      const start = slotRouteStart(slot);
+      const outward = outwardSign(start, play.strength === 'left' ? 'left' : 'right');
+      return putRoute(slot, buildRoute(templateId, start, { depth, outward }));
+    });
+}
+
+// ---------- motion, option, delay (FR-OFF-07/08/09) ----------
+
+function slotRouteStart(slot: PlayerSlot): Point {
+  const motion = slot.actions.find((a): a is MotionAction => a.type === 'motion');
+  return motion?.path[motion.path.length - 1] ?? slot.start;
+}
+
+/** Where the slot's route begins: the end of its pre-snap motion, else its start (D-08). */
+export function routeStart(play: Play, slotId: ID): Point {
+  const slot = play.players.find((s) => s.id === slotId);
+  return slot ? slotRouteStart(slot) : { x: 0, y: 0 };
+}
+
+/** The slot's motion action, if any. */
+export function getMotion(play: Play, slotId: ID): MotionAction | undefined {
+  return play.players
+    .find((s) => s.id === slotId)
+    ?.actions.find((a): a is MotionAction => a.type === 'motion');
+}
+
+/** Set (or add) the pre-snap motion; null or an empty path removes it. Duration defaults to 1 s. */
+export function setMotion(slotId: ID, path: readonly Point[] | null, duration = 1): Recipe {
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      const i = slot.actions.findIndex((a) => a.type === 'motion');
+      if (path === null || path.length === 0) {
+        return i < 0 ? slot : { ...slot, actions: slot.actions.filter((_, j) => j !== i) };
+      }
+      const motion: MotionAction = { type: 'motion', path: path.map((p) => ({ x: p.x, y: p.y })), duration };
+      const actions = slot.actions.slice();
+      if (i < 0) actions.push(motion);
+      else actions[i] = motion;
+      return { ...slot, actions };
+    });
+}
+
+export function setMotionDuration(slotId: ID, duration: number): Recipe {
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      const i = slot.actions.findIndex((a) => a.type === 'motion');
+      const cur = slot.actions[i];
+      if (cur?.type !== 'motion' || cur.duration === duration) return slot;
+      const actions = slot.actions.slice();
+      actions[i] = { ...cur, duration };
+      return { ...slot, actions };
+    });
+}
+
+/** Seconds the route waits after the snap; 0 (or less) removes the field. */
+export function setRouteDelay(slotId: ID, delay: number): Recipe {
+  return editRoute(slotId, (r) => {
+    if (delay <= 0) {
+      if (r.delay === undefined) return r;
+      const next: RouteAction = { ...r };
+      delete next.delay;
+      return next;
+    }
+    return r.delay === delay ? r : { ...r, delay };
+  });
+}
+
+/** Replace the slot's route/option action with an option route; null removes the option action only. */
+export function setOptionRoute(
+  slotId: ID,
+  option: Pick<OptionRouteAction, 'stem' | 'vsMan' | 'vsZone'> | null,
+): Recipe {
+  return (play) =>
+    replaceSlot(play, slotId, (slot) => {
+      if (option === null) {
+        const i = slot.actions.findIndex((a) => a.type === 'option');
+        return i < 0 ? slot : { ...slot, actions: slot.actions.filter((_, j) => j !== i) };
+      }
+      const action: OptionRouteAction = {
+        type: 'option',
+        stem: translate(option.stem, 0, 0),
+        vsMan: translate(option.vsMan, 0, 0),
+        vsZone: translate(option.vsZone, 0, 0),
+        decideAtStemEnd: true,
+      };
+      const i = slot.actions.findIndex((a) => a.type === 'route' || a.type === 'option');
+      const actions = slot.actions.slice();
+      if (i < 0) actions.push(action);
+      else actions[i] = action;
+      return { ...slot, actions };
     });
 }
 

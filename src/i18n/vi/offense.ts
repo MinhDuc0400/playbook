@@ -35,6 +35,13 @@ export const offense = {
     continue: 'Chạy tiếp',
     remove: 'Xóa route',
   },
+  timing: {
+    title: 'Motion, delay & option',
+    delay: 'Delay route (giây)',
+    motionDuration: 'Thời lượng motion (giây)',
+    removeMotion: 'Xóa motion',
+    removeOption: 'Xóa option route',
+  },
   qb: {
     title: 'QB drop',
     depth: 'Độ sâu drop (yd)',

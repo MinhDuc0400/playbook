@@ -5,7 +5,7 @@
 import { pointsEqual, snapAngle45 } from '@/domain/geometry';
 import type { Point } from '@/domain/types';
 import type { EditorDraft } from '@/store/editorStore';
-import { setRoute } from '../ops';
+import { routeStart, setRoute } from '../ops';
 import { selectTool } from './selectTool';
 import type { EditorTool, FieldPointerEvent, ToolContext } from './types';
 
@@ -16,9 +16,10 @@ function routeDraft(ctx: ToolContext): RouteDraft | null {
   return draft?.kind === 'route' ? draft : null;
 }
 
-/** The slot's start, used as the anchor of the first segment. */
+/** Where the route begins (motion end or start), used as the anchor of the first segment. */
 function startOf(draft: RouteDraft, ctx: ToolContext): Point | null {
-  return ctx.getState().play?.players.find((s) => s.id === draft.slotId)?.start ?? null;
+  const play = ctx.getState().play;
+  return play?.players.some((s) => s.id === draft.slotId) ? routeStart(play, draft.slotId) : null;
 }
 
 /** Point to use for a click: Shift locks the angle relative to the previous point. */

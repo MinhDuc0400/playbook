@@ -14,8 +14,14 @@ import type { Play, PlayerSlot, QbDropAction, RouteAction, Strength } from '@/do
 import {
   applyRouteTemplate,
   clearProgression,
+  getMotion,
   getRoute,
+  routeStart,
   setLabel,
+  setMotion,
+  setMotionDuration,
+  setOptionRoute,
+  setRouteDelay,
   setQbDrop,
   setRoute,
   setRouteEndBehavior,
@@ -62,9 +68,10 @@ function samePath(a: RouteAction['path'], b: RouteAction['path']): boolean {
 /** Depth the route was built with: the template depth (0.5 grid) whose route equals the current path. */
 function deriveDepth(play: Play, slot: PlayerSlot, templateId: RouteTemplateId, route: RouteAction): number {
   const tpl = ROUTE_TEMPLATES[templateId];
-  const outward = outwardSign(slot.start, play.strength === 'left' ? 'left' : 'right');
+  const start = routeStart(play, slot.id);
+  const outward = outwardSign(start, play.strength === 'left' ? 'left' : 'right');
   for (let d = tpl.minDepth; d <= tpl.maxDepth + DEPTH_EPS; d += DEPTH_STEP) {
-    const built = buildRoute(templateId, slot.start, { depth: d, outward });
+    const built = buildRoute(templateId, start, { depth: d, outward });
     if (samePath(built.path, route.path)) return d;
   }
   return tpl.defaultDepth;
@@ -145,6 +152,78 @@ function RouteControls({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.El
   );
 }
 
+const DELAY_MAX = 3;
+const MOTION_MIN = 0.2;
+const MOTION_MAX = 3;
+const TIME_STEP = 0.1;
+
+/** FR-OFF-07/09: route delay, pre-snap motion duration / removal, option route removal. */
+function TimingControls({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.Element {
+  const apply = useEditorStore.getState().apply;
+  const route = getRoute(play, slot.id);
+  const motion = getMotion(play, slot.id);
+  const hasOption = slot.actions.some((a) => a.type === 'option');
+  const [delayDraft, setDelayDraft] = useState<string | null>(null);
+  const [durDraft, setDurDraft] = useState<string | null>(null);
+
+  return (
+    <Section title={s.timing.title}>
+      <TextInput
+        label={s.timing.delay}
+        type="number"
+        data-testid="route-delay"
+        min={0}
+        max={DELAY_MAX}
+        step={TIME_STEP}
+        disabled={!route}
+        value={delayDraft ?? String(route?.delay ?? 0)}
+        onChange={(e) => {
+          setDelayDraft(e.target.value);
+          const n = parseNumber(e.target.value);
+          if (n === null || n < 0 || n > DELAY_MAX) return;
+          apply('route-delay', setRouteDelay(slot.id, n));
+        }}
+        onBlur={() => setDelayDraft(null)}
+      />
+      <TextInput
+        label={s.timing.motionDuration}
+        type="number"
+        data-testid="motion-duration"
+        min={MOTION_MIN}
+        max={MOTION_MAX}
+        step={TIME_STEP}
+        disabled={!motion}
+        value={durDraft ?? (motion ? String(motion.duration) : '')}
+        onChange={(e) => {
+          setDurDraft(e.target.value);
+          const n = parseNumber(e.target.value);
+          if (n === null || n < MOTION_MIN || n > MOTION_MAX) return;
+          apply('motion-duration', setMotionDuration(slot.id, n));
+        }}
+        onBlur={() => setDurDraft(null)}
+      />
+      <Button
+        variant="danger"
+        size="sm"
+        data-testid="motion-remove"
+        disabled={!motion}
+        onClick={() => apply('motion-remove', setMotion(slot.id, null))}
+      >
+        {s.timing.removeMotion}
+      </Button>
+      <Button
+        variant="danger"
+        size="sm"
+        data-testid="option-remove"
+        disabled={!hasOption}
+        onClick={() => apply('option-remove', setOptionRoute(slot.id, null))}
+      >
+        {s.timing.removeOption}
+      </Button>
+    </Section>
+  );
+}
+
 function QbControls({ slot }: { slot: PlayerSlot }): JSX.Element {
   const apply = useEditorStore.getState().apply;
   const drop = slot.actions.find((a): a is QbDropAction => a.type === 'qbDrop') ?? DEFAULT_QB_DROP;
@@ -205,7 +284,14 @@ function SelectedPlayer({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.E
           onBlur={() => setDraft(null)}
         />
       </Section>
-      {slot.role === 'QB' ? <QbControls slot={slot} /> : <RouteControls play={play} slot={slot} />}
+      {slot.role === 'QB' ? (
+        <QbControls slot={slot} />
+      ) : (
+        <>
+          <RouteControls play={play} slot={slot} />
+          <TimingControls play={play} slot={slot} />
+        </>
+      )}
     </>
   );
 }

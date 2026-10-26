@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ROUTE_TEMPLATES } from '@/domain/routeTree';
 import { SCHEMA_VERSION, type Play, type PlayerSlot, type Point } from '@/domain/types';
-import { getRoute } from '@/features/editor/ops';
+import { getMotion, getRoute, setMotion, setOptionRoute } from '@/features/editor/ops';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { OffensePanel } from '../OffensePanel';
@@ -226,5 +226,39 @@ describe('OffensePanel (T1.10)', () => {
     act(() => store().undo());
     expect(getRoute(play(), 'x')).toBeUndefined();
     expect(store().canUndo()).toBe(false);
+  });
+});
+
+describe('OffensePanel timing (T5.6)', () => {
+  beforeEach(() => {
+    act(() => store().load(null));
+  });
+
+  it('delay input sets and clears the route delay', () => {
+    setup(['x']);
+    fireEvent.click(screen.getByTestId('route-template-slant'));
+    fireEvent.change(screen.getByTestId('route-delay'), { target: { value: '0.5' } });
+    expect(getRoute(play(), 'x')?.delay).toBe(0.5);
+    fireEvent.change(screen.getByTestId('route-delay'), { target: { value: '0' } });
+    expect(getRoute(play(), 'x')?.delay).toBeUndefined();
+  });
+
+  it('motion duration and removal; option removal', () => {
+    setup(['z']);
+    expect(screen.getByTestId('motion-duration')).toBeDisabled();
+    act(() => store().apply('m', setMotion('z', [{ x: 6, y: 0 }])));
+    fireEvent.change(screen.getByTestId('motion-duration'), { target: { value: '2' } });
+    expect(getMotion(play(), 'z')?.duration).toBe(2);
+    fireEvent.click(screen.getByTestId('motion-remove'));
+    expect(getMotion(play(), 'z')).toBeUndefined();
+
+    act(() =>
+      store().apply(
+        'o',
+        setOptionRoute('z', { stem: [{ x: 8, y: 6 }], vsMan: [{ x: 4, y: 9 }], vsZone: [{ x: 12, y: 9 }] }),
+      ),
+    );
+    fireEvent.click(screen.getByTestId('option-remove'));
+    expect(slotOf('z').actions).toEqual([]);
   });
 });

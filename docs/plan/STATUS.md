@@ -76,8 +76,92 @@ Live tracker. Status: todo / in progress / review / done.
 | 3 | PASS | phase-3-report.md | phase-3 |
 | 4 + MVP | PASS | phase-4-report.md | phase-4 |
 | 5 | PASS | phase-5-report.md | phase-5 |
-| 6 | todo | | |
+| 6 + final | PASS | phase-6-report.md | phase-6 |
 
 ## Open questions / blockers
 
 None.
+
+## Final summary (2026-10-26)
+
+Phases 0–6 complete; every phase gate passed and is tagged (`phase-0` … `phase-6`). MVP gate (§14.5)
+passed at the end of phase 4. Phase 7 (P2) is out of scope.
+
+### FR status
+| FR | Pri | Status | Covering test |
+| --- | --- | --- | --- |
+| FR-FLD-01 | P0 | done | `FieldSvg.test.tsx` |
+| FR-FLD-02 | P0 | done | `viewport.test.ts` (T-DOM-07) |
+| FR-FLD-03 | P0 | done | `FieldStage.test.tsx` |
+| FR-FLD-04 | P0 | done | `viewport.test.ts` |
+| FR-DAT-01 | P0 | done | `migrations.test.ts` |
+| FR-DAT-02 | P0 | done | `cascade.test.ts`, `DeletePlayDialog.test.tsx` |
+| FR-DAT-03 | P0 | done | `bundle.test.ts`, `MatchupPage.test.tsx` |
+| FR-DAT-04 | P0 | done | `useAutoSave.test.tsx`, `repos.test.ts` |
+| FR-DAT-05 | P0 | done | `seed.test.ts` |
+| FR-ED-01 | P0 | done | `NewPlayDialog.test.tsx` |
+| FR-ED-02 | P0 | done | `tools.test.ts`, `EditorCanvas.test.tsx` |
+| FR-ED-03 | P0 | done | `snap.test.ts` |
+| FR-ED-04 | P0 | done | `editorStore.test.ts` |
+| FR-ED-05 | P0 | done | `MetaPanel.test.tsx` |
+| FR-ED-06 | P0 | done | `EditorPage.test.tsx` |
+| FR-ED-07 | P0 | done | `validate.test.ts`, `WarningsPanel.test.tsx` |
+| FR-ED-08 | P1 | partial | multi-select (Shift), delete, Ctrl+D duplicate — `tools.test.ts`, `useEditorShortcuts.test.tsx`; no clipboard copy/paste |
+| FR-ED-09 | P1 | done | `EditorPage.test.tsx`, `export.test.ts` |
+| FR-OFF-01..06 | P0 | done | `tools.test.ts`, `ops.test.ts`, `routeTree.test.ts`, `OffensePanel.test.tsx`, `numbering.test.ts`, `preview.test.ts` |
+| FR-OFF-07 | P1 | done | `motionOption.test.tsx`, `optionMotion.test.ts`, E2E 14 |
+| FR-OFF-08 | P1 | done | `motionOption.test.tsx`, `optionMotion.test.ts` (T-ENG-04) |
+| FR-OFF-09 | P1 | done | `motionOption.test.tsx`, `optionMotion.test.ts` |
+| FR-DEF-01..06 | P0 | done | `GhostLayer/manTool/zoneRushTools/align/DefensePanel` tests, E2E 02 |
+| FR-DEF-07 | P1 | done | `MatchRulesForm.test.tsx`, `ruleOps.test.ts` |
+| FR-DEF-08 | P2 | not done | — |
+| FR-FLP-01..04 | P0 | done | `flip.test.ts`, `matchupFlip.test.ts`, E2E 04 |
+| FR-FLP-05 | P2 | not done | — |
+| FR-ATH-01/02 | P0 | done | `PlayerPanel.test.tsx`, `MatchupField.test.tsx`, E2E 05 |
+| FR-ATH-03..06 | P1 | done | `PlayerPanel.test.tsx`, `roster.test.tsx`, `ControlsPanel.test.tsx`, E2E 11 |
+| FR-ATH-07 | P2 | not done | — |
+| FR-ENG-01..07 | P0 | done | `simulate.test.ts` (T-ENG-01/02/05/06/08/10), agent/world/perception/metrics tests, `perf.test.ts` |
+| FR-ENG-08 | P1 | done | `anticipation(-sim).test.ts` (T-ENG-03/07) |
+| FR-ENG-09 | P1 | done | `rulesSim.test.ts` (T-ENG-09), `optionMotion.test.ts` |
+| FR-ENG-10 | P1 | done | `outcome.test.ts` (100k ±1 pp), `ball.test.ts` |
+| FR-ENG-11 | P1 | done | `aggregate.test.ts`, `simClient.test.ts`, E2E 08/13 |
+| FR-ENG-12 | P2 | not done | — |
+| FR-MU-01..09 | P0 | done | Matchup tests, E2E 03–05 |
+| FR-MU-10..14 | P1 | done | `ControlsPanel`, `advancedOverlays`, `RunManyPanel`, `MatchupPage` tests |
+| FR-PB-01..04 | P0 | done | `PlaybookPage/PlayCard/filterPlays/MatchupList` tests |
+| FR-PB-05/06 | P1 | done | `PlayCard.test.tsx`, `PlaybookPage.test.tsx` |
+| FR-IN-01..04 | P0 | done | `install.test.tsx`, `PresentPage.test.tsx`, E2E 06 |
+| FR-IN-05/06 | P1 | done | `PresentPage.test.tsx`, `export.test.ts` |
+| FR-SG-01..04, 06 | P1 | done | `suggest.test.ts`, `SuggestPage.test.tsx`, E2E 09 |
+| FR-SG-05 | P2 | not done | — |
+| FR-RD-01..03 | P1 | done | `RandomDefense.test.tsx`, E2E 10 |
+| FR-RD-04 | P2 | done (simple session counter) | `RandomDefense.test.tsx` |
+| FR-IO-01..04 | P0 | done | `io.test.ts`, `bootstrap.test.ts`, E2E 07 |
+| FR-IO-05..07 | P1 | done | `BackupBanner.test.tsx`, `export.test.ts` |
+| FR-IO-08 | P2 | not done | — |
+| FR-TUN-01..03 | P1 | done | `tuning/presets/field/benchmark` tests, E2E 12 |
+| FR-TUN-04 | P2 | not done | — |
+
+NFRs: PERF-01..04 measured and met (E2E 13 + unit perf); REL-01..04, UX-01..04, OFF-01 (offline after
+load; PWA install not done — P1), PRV-01, CODE-01/02, ARC-01..05 verified.
+
+### Deviations from the SRS
+See `DECISIONS.md` (D-01 … D-21). Notable: `inaccuracyK` tuned 0.05 → 0.34 (D-20); outcome logic
+(FR-ENG-10) shipped in phase 3 (D-11); push-apart between teammates only (D-10); `Play.strengthOverridden`
+added (D-17); i18n split into namespaces behind `src/i18n/vi.ts` (D-06); WebKit stands in for Safari.
+
+### Known issues
+- 0 % sacks with TB players in the seed pairings (QB throws before the single rusher arrives);
+  Mesh averages < 1 yd per attempt and ~68 % vs every coverage.
+- A hard reload within the 800 ms auto-save window can lose the last edit (pagehide flush is best-effort).
+- Editor clipboard copy/paste (FR-ED-08) and PWA install (NFR-OFF-01 P1) not implemented.
+- Viewport does not refit on window resize (fit button does).
+
+### Suggested next steps (phase 7)
+1. YAC after the catch (FR-ENG-12) — would also fix Mesh's near-zero yards.
+2. Mismatch tier in Suggest (FR-SG-05) using lineups.
+3. Lineup comparison (FR-ATH-07), flipped thumbnails (FR-FLP-05), spy QB (FR-DEF-08).
+4. GIF/video export (FR-IO-08), route-prior table editor (FR-TUN-04).
+5. PWA manifest + service worker; clipboard copy/paste in the editor.
+6. Pass-rush tuning so a TB rusher produces some sacks vs long-developing concepts.
+

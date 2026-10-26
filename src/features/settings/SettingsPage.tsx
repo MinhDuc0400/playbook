@@ -1,11 +1,74 @@
-/** Placeholder screen (lead stub). Replaced by its phase task. */
+/** Settings screen (SRS §12.1). Sections render in order; Phase 5 appends field/tuning/preset/benchmark. */
+import type { ReactNode } from 'react';
+import { Select } from '@/components/ui';
+import { settingsRepo } from '@/db/repos';
+import { useSettings } from '@/db/hooks';
+import type { ThemePref } from '@/domain/types';
 import { t } from '@/i18n/vi';
+import { DataSection } from './DataSection';
+
+function AppearanceSection(): JSX.Element {
+  const settings = useSettings();
+  const ui = settings?.ui ?? { theme: 'system' as ThemePref, snap: true, showGrid: true };
+  const patch = (next: Partial<typeof ui>): void => {
+    void settingsRepo.update({ ui: { ...ui, ...next } });
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <Select
+        label={t.settings.appearance.theme}
+        data-testid="settings-theme"
+        value={ui.theme}
+        onChange={(e) => patch({ theme: e.target.value as ThemePref })}
+      >
+        <option value="light">{t.settings.appearance.themeLight}</option>
+        <option value="dark">{t.settings.appearance.themeDark}</option>
+        <option value="system">{t.settings.appearance.themeSystem}</option>
+      </Select>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-testid="settings-snap"
+          checked={ui.snap}
+          onChange={(e) => patch({ snap: e.target.checked })}
+        />
+        {t.settings.appearance.snap}
+      </label>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          data-testid="settings-grid"
+          checked={ui.showGrid}
+          onChange={(e) => patch({ showGrid: e.target.checked })}
+        />
+        {t.settings.appearance.grid}
+      </label>
+    </div>
+  );
+}
+
+interface SectionDef {
+  id: string;
+  title: string;
+  render: () => ReactNode;
+}
+
+/** Phase 5 adds: field config, tuning, presets, benchmark. */
+const SECTIONS: SectionDef[] = [
+  { id: 'data', title: t.settings.sections.data, render: () => <DataSection /> },
+  { id: 'appearance', title: t.settings.sections.appearance, render: () => <AppearanceSection /> },
+];
 
 export default function SettingsPage(): JSX.Element {
   return (
-    <div className="p-6" data-testid="page-placeholder">
-      <h1 className="text-xl font-semibold">SettingsPage</h1>
-      <p>{t.common.comingSoon}</p>
+    <div className="mx-auto flex max-w-3xl flex-col gap-8 p-6" data-testid="page-settings">
+      <h1 className="text-xl font-semibold">{t.settings.title}</h1>
+      {SECTIONS.map((s) => (
+        <section key={s.id} data-testid={`settings-section-${s.id}`} className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">{s.title}</h2>
+          {s.render()}
+        </section>
+      ))}
     </div>
   );
 }

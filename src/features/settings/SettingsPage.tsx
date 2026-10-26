@@ -5,7 +5,11 @@ import { settingsRepo } from '@/db/repos';
 import { useSettings } from '@/db/hooks';
 import type { ThemePref } from '@/domain/types';
 import { t } from '@/i18n/vi';
+import { BenchmarkSection } from './BenchmarkSection';
 import { DataSection } from './DataSection';
+import { FieldSection } from './FieldSection';
+import { PresetsSection } from './PresetsSection';
+import { TuningSection } from './TuningSection';
 
 function AppearanceSection(): JSX.Element {
   const settings = useSettings();
@@ -53,8 +57,11 @@ interface SectionDef {
   render: () => ReactNode;
 }
 
-/** Phase 5 adds: field config, tuning, presets, benchmark. */
 const SECTIONS: SectionDef[] = [
+  { id: 'field', title: t.tuning.sections.field, render: () => <FieldSection /> },
+  { id: 'presets', title: t.tuning.sections.presets, render: () => <PresetsSection /> },
+  { id: 'tuning', title: t.tuning.sections.tuning, render: () => <TuningSection /> },
+  { id: 'benchmark', title: t.tuning.sections.benchmark, render: () => <BenchmarkSection /> },
   { id: 'data', title: t.settings.sections.data, render: () => <DataSection /> },
   { id: 'appearance', title: t.settings.sections.appearance, render: () => <AppearanceSection /> },
 ];

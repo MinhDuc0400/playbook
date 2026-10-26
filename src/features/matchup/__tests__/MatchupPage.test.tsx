@@ -12,9 +12,16 @@ import MatchupPage from '../MatchupPage';
 
 // MatchupField is built by another task (stub at test time): record what the page passes to it.
 vi.mock('../MatchupField', () => ({
-  MatchupField: (p: { built: { input: { seed: number } }; t: number; ballSpot: { yardLine: number } }) => (
+  MatchupField: (p: {
+    built: { input: { seed: number } };
+    result: { frames: { players: Record<string, { pos: { x: number; y: number } }> }[]; debug?: unknown };
+    t: number;
+    ballSpot: { yardLine: number };
+  }) => (
     <div
       data-testid="mock-field"
+      data-sig={JSON.stringify(p.result.frames[Math.min(10, p.result.frames.length - 1)]?.players)}
+      data-debug={p.result.debug ? 'yes' : 'no'}
       data-seed={p.built.input.seed}
       data-t={p.t}
       data-yardline={p.ballSpot.yardLine}
@@ -172,5 +179,68 @@ describe('MatchupPage: shortcuts and overlays', () => {
     await user.click(screen.getByTestId('overlay-toggle-zones'));
     expect(useMatchupStore.getState().overlays.zones).toBe(false);
     expect(screen.getByTestId('overlay-toggle-zones')).not.toBeChecked();
+  });
+});
+
+describe('MatchupPage: advanced (FR-MU-10, FR-MU-11, FR-MU-13, FR-MU-14)', () => {
+  it('anticipation slider re-simulates and shows the Oracle label only above 0.5', async () => {
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    expect(screen.queryByTestId('ctl-oracle-label')).toBeNull();
+    fireEvent.change(screen.getByTestId('ctl-anticipation'), { target: { value: '0.8' } });
+    expect(screen.getByTestId('ctl-oracle-label')).toHaveTextContent(t.matchup.controls.oracle);
+    fireEvent.change(screen.getByTestId('ctl-anticipation'), { target: { value: '0.5' } });
+    expect(screen.queryByTestId('ctl-oracle-label')).toBeNull();
+    await waitFor(async () => expect((await matchupsRepo.get('mu1'))?.anticipation).toBe(0.5), {
+      timeout: 3000,
+    });
+  });
+
+  it('requests debug data only when the perception overlay is on, with a defender select', async () => {
+    const user = userEvent.setup();
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    expect(screen.getByTestId('mock-field')).toHaveAttribute('data-debug', 'no');
+    expect(screen.queryByTestId('debug-defender')).toBeNull();
+    await user.click(screen.getByTestId('overlay-toggle-perception'));
+    expect(screen.getByTestId('mock-field')).toHaveAttribute('data-debug', 'yes');
+    const select = screen.getByTestId('debug-defender');
+    const opt = (select as HTMLSelectElement).options[1]!;
+    await user.selectOptions(select, opt.value);
+    expect(useMatchupStore.getState().debugDefenderId).toBe(opt.value);
+    expect(useMatchupStore.getState().overlays.qbEyes).toBe(true);
+  });
+
+  it('edit links point to the offense and defense plays', async () => {
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    expect(screen.getByTestId('edit-offense')).toHaveAttribute('href', `/play/${SEED_IDS.mesh}`);
+    expect(screen.getByTestId('edit-defense')).toHaveAttribute('href', `/play/${SEED_IDS.cover1}`);
+  });
+
+  it('FR-MU-14 editing the defense play in the DB re-runs the sim', async () => {
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    const before = screen.getByTestId('mock-field').getAttribute('data-sig');
+    const cover1 = (await playsRepo.get(SEED_IDS.cover1))!;
+    const moved = {
+      ...cover1,
+      players: cover1.players.map((p, i) =>
+        i === 0 ? { ...p, start: { x: p.start.x + 6, y: p.start.y + 4 } } : p,
+      ),
+    };
+    await playsRepo.put(moved);
+    await waitFor(() => expect(screen.getByTestId('mock-field').getAttribute('data-sig')).not.toBe(before));
+  });
+
+  it('shows the run-many panel', async () => {
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    expect(screen.getByTestId('run-many')).toHaveTextContent(t.matchup.runMany.run);
   });
 });

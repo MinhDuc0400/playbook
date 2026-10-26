@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { useFieldContext } from '@/components/field/FieldContext';
-import { toScreen } from '@/components/field/viewport';
+import { toScreen, yardsToPx } from '@/components/field/viewport';
 import { alignedPlayers, numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Frame, ManAction, Point, RouteAction, SimResult, ZoneAction } from '@/domain/types';
 import { zoneKind, zonePolygon } from '@/domain/zones';
@@ -193,6 +193,86 @@ export function SeparationOverlay({ built, result, t }: OverlayProps): JSX.Eleme
   );
 }
 
+/** FR-MU-12: dashed line QB → the player the QB is looking at (frame.eyeTarget). */
+export function QbEyesOverlay({ built, result, t }: OverlayProps): JSX.Element | null {
+  const on = useMatchupStore((s) => s.overlays.qbEyes);
+  const { viewport } = useFieldContext();
+  if (!on) return null;
+  const frame = frameAt(result.frames, t);
+  const qb = built.offense.players.find((p) => p.role === 'QB');
+  if (!frame || !qb || !frame.eyeTarget) return null;
+  const from = frame.players[qb.id]?.pos;
+  const to = frame.players[frame.eyeTarget]?.pos;
+  if (!from || !to) return null;
+  const a = toScreen(from, viewport);
+  const b = toScreen(to, viewport);
+  return (
+    <g data-testid="overlay-qbEyes" pointerEvents="none">
+      <line
+        data-testid="qb-eye-line"
+        x1={a.x}
+        y1={a.y}
+        x2={b.x}
+        y2={b.y}
+        stroke="#0891b2"
+        strokeWidth={1.5}
+        strokeDasharray="5 4"
+      />
+    </g>
+  );
+}
+
+/** FR-MU-11: what the selected defender "sees" (delayed ghosts) and where it aims. Debug data only. */
+export function PerceptionOverlay({ built, result, t }: OverlayProps): JSX.Element | null {
+  const on = useMatchupStore((s) => s.overlays.perception);
+  const defId = useMatchupStore((s) => s.debugDefenderId);
+  const { viewport } = useFieldContext();
+  if (!on || !defId || !result.debug) return null;
+  const frame = frameAt(result.frames, t);
+  if (!frame) return null;
+  const dbg = result.debug.defenders[result.frames.indexOf(frame)]?.[defId];
+  if (!dbg) return null;
+  const defPos = frame.players[defId]?.pos;
+  const aim = dbg.aim ? toScreen(dbg.aim, viewport) : null;
+  const from = defPos ? toScreen(defPos, viewport) : null;
+  const r = Math.max(6, yardsToPx(0.8, viewport));
+  return (
+    <g data-testid="overlay-perception" pointerEvents="none">
+      {built.offense.players.map((slot) => {
+        const seen = dbg.seen[slot.id];
+        if (!seen) return null;
+        const c = toScreen(seen, viewport);
+        return (
+          <g key={slot.id} data-testid={`perceived-${slot.label}`} opacity={0.4}>
+            <circle cx={c.x} cy={c.y} r={r} className="fill-slate-400 stroke-slate-700" strokeWidth={1.5} />
+            <text x={c.x} y={c.y + 4} textAnchor="middle" fontSize={11} className="fill-slate-900">
+              {slot.label}
+            </text>
+          </g>
+        );
+      })}
+      {aim && from && (
+        <line
+          data-testid="perceived-aim-line"
+          x1={from.x}
+          y1={from.y}
+          x2={aim.x}
+          y2={aim.y}
+          stroke="#7c3aed"
+          strokeWidth={1}
+        />
+      )}
+      {aim && (
+        <g data-testid="perceived-aim" stroke="#7c3aed" strokeWidth={2}>
+          <line x1={aim.x - 7} y1={aim.y} x2={aim.x + 7} y2={aim.y} />
+          <line x1={aim.x} y1={aim.y - 7} x2={aim.x} y2={aim.y + 7} />
+          <circle cx={aim.x} cy={aim.y} r={5} fill="none" />
+        </g>
+      )}
+    </g>
+  );
+}
+
 export function MatchupOverlays(props: OverlayProps): JSX.Element {
   return (
     <>
@@ -202,6 +282,8 @@ export function MatchupOverlays(props: OverlayProps): JSX.Element {
       <ManLinesOverlay {...props} />
       <BallPathOverlay {...props} />
       <SeparationOverlay {...props} />
+      <QbEyesOverlay {...props} />
+      <PerceptionOverlay {...props} />
     </>
   );
 }

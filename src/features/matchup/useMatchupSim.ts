@@ -12,21 +12,22 @@ export interface MatchupSim {
 
 const EMPTY: MatchupSim = { built: null, result: null, error: null };
 
-/** Recomputes only when matchup/plays/snapshot change (by reference). null inputs → all null. */
+/** Recomputes only when matchup/plays/snapshot/debug change (by reference). null inputs → all null. */
 export function useMatchupSim(
   matchup: Matchup | null,
   offense: Play | null,
   defense: Play | null,
   snapshot: DbSnapshot | undefined,
+  debug = false,
 ): MatchupSim {
   return useMemo(() => {
     if (!matchup || !offense || !defense || !snapshot) return EMPTY;
     let built: BuiltSim | null = null;
     try {
       built = buildSimInput(matchup, offense, defense, snapshot);
-      return { built, result: simulate(built.input), error: null };
+      return { built, result: simulate(built.input, debug ? { debug: true } : undefined), error: null };
     } catch (e) {
       return { built, result: null, error: e instanceof Error ? e.message : String(e) };
     }
-  }, [matchup, offense, defense, snapshot]);
+  }, [matchup, offense, defense, snapshot, debug]);
 }

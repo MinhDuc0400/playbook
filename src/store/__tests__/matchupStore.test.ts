@@ -13,8 +13,11 @@ describe('matchupStore', () => {
       manLines: true,
       ballPath: true,
       separation: true,
+      perception: false,
+      qbEyes: true,
     });
     expect(s.selected).toBeNull();
+    expect(s.debugDefenderId).toBeNull();
   });
 
   it('toggles and sets overlays', () => {

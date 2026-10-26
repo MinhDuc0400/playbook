@@ -38,4 +38,11 @@ describe('useMatchupSim', () => {
     expect(result.current.result).toBeNull();
     expect(typeof result.current.error).toBe('string');
   });
+
+  it('requests debug data only when the debug flag is set', () => {
+    const off = renderHook(() => useMatchupSim(m, mesh, cover1, snap));
+    expect(off.result.current.result?.debug).toBeUndefined();
+    const on = renderHook(() => useMatchupSim(m, mesh, cover1, snap, true));
+    expect(on.result.current.result?.debug?.defenders.length).toBe(on.result.current.result?.frames.length);
+  });
 });

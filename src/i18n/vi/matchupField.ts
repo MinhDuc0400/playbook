@@ -7,7 +7,11 @@ export const matchupField = {
     manLines: 'Đường man',
     ballPath: 'Đường bóng bay',
     separation: 'Separation',
+    perception: 'Perception (defender thấy gì)',
+    qbEyes: 'Mắt QB',
   },
+  debugDefender: 'Defender cần debug',
+  debugDefenderNone: 'Chọn defender…',
   levels: {
     weak: 'Kém',
     avg: 'TB',

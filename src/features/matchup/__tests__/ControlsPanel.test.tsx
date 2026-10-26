@@ -65,3 +65,26 @@ describe('ControlsPanel (FR-MU-02)', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('ControlsPanel anticipation (FR-MU-10)', () => {
+  it('slider emits anticipation; datalist has 0 / 0.5 / 1 ticks', () => {
+    const { onChange, container } = setup();
+    const slider = screen.getByTestId('ctl-anticipation');
+    expect(slider).toHaveAttribute('step', '0.05');
+    fireEvent.change(slider, { target: { value: '0.25' } });
+    expect(onChange).toHaveBeenLastCalledWith({ ...base, anticipation: 0.25 });
+    const values = Array.from(container.querySelectorAll('datalist option')).map((o) =>
+      o.getAttribute('value'),
+    );
+    expect(values).toEqual(['0', '0.5', '1']);
+  });
+
+  it('Oracle label shows only above 0.5', () => {
+    const { rerender } = render(
+      <ControlsPanel matchup={{ ...base, anticipation: 0.5 }} onChange={vi.fn()} />,
+    );
+    expect(screen.queryByTestId('ctl-oracle-label')).toBeNull();
+    rerender(<ControlsPanel matchup={{ ...base, anticipation: 0.55 }} onChange={vi.fn()} />);
+    expect(screen.getByTestId('ctl-oracle-label')).toHaveTextContent('Oracle: defense biết trước');
+  });
+});

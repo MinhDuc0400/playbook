@@ -4,6 +4,7 @@
  */
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Select } from '@/components/ui';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { usePlayback } from '@/components/field/usePlayback';
 import { useDbSnapshot, useMatchupBundle } from '@/db/hooks';
@@ -19,6 +20,7 @@ import { MatchupField } from './MatchupField';
 import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
 import { ResultPanel } from './ResultPanel';
+import { RunManyPanel } from './RunManyPanel';
 import { useMatchupShortcuts } from './useMatchupShortcuts';
 import { useMatchupSim } from './useMatchupSim';
 
@@ -33,7 +35,16 @@ const MARKER_TYPES: ReadonlySet<SimEventType> = new Set([
   'deflect',
   'incomplete',
 ]);
-const OVERLAY_KEYS: OverlayKey[] = ['plannedRoutes', 'trails', 'zones', 'manLines', 'ballPath', 'separation'];
+const OVERLAY_KEYS: OverlayKey[] = [
+  'plannedRoutes',
+  'trails',
+  'zones',
+  'manLines',
+  'ballPath',
+  'separation',
+  'qbEyes',
+  'perception',
+];
 const frame = 'h-[calc(100vh-3.5rem)] min-h-[480px]';
 
 function NewMatchupEntry(): JSX.Element {
@@ -75,7 +86,16 @@ function MatchupEditor({
   const [working, setWorking] = useState<Matchup>(initial);
   const autosave = useAutoSave(working, (m) => matchupsRepo.put({ ...m, updatedAt: Date.now() }));
 
-  const { built, result, error } = useMatchupSim(working, offense, defense, snapshot);
+  const overlays = useMatchupStore((s) => s.overlays);
+  const toggleOverlay = useMatchupStore((s) => s.toggleOverlay);
+  const debugDefenderId = useMatchupStore((s) => s.debugDefenderId);
+  const setDebugDefender = useMatchupStore((s) => s.setDebugDefender);
+  const { built, result, error } = useMatchupSim(working, offense, defense, snapshot, overlays.perception);
+  const labels = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const p of built?.offense.players ?? []) out[p.id] = p.label;
+    return out;
+  }, [built]);
   const duration = result && result.frames.length > 0 ? result.frames[result.frames.length - 1]!.t : 0;
   const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
   const playback = usePlayback({ duration, minT });
@@ -102,8 +122,6 @@ function MatchupEditor({
     return out;
   }, [built, snapshot]);
 
-  const overlays = useMatchupStore((s) => s.overlays);
-  const toggleOverlay = useMatchupStore((s) => s.toggleOverlay);
   const field = snapshot.settings.fields[offense.format];
 
   return (
@@ -163,6 +181,21 @@ function MatchupEditor({
                 {t.matchupField.overlays[k]}
               </label>
             ))}
+            {overlays.perception && built && (
+              <Select
+                label={t.matchupField.debugDefender}
+                data-testid="debug-defender"
+                value={debugDefenderId ?? ''}
+                onChange={(e) => setDebugDefender(e.target.value === '' ? null : e.target.value)}
+              >
+                <option value="">{t.matchupField.debugDefenderNone}</option>
+                {built.defense.players.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
         </details>
       </div>
@@ -170,6 +203,23 @@ function MatchupEditor({
       <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto border-l border-slate-200 p-3 dark:border-slate-700">
         <ControlsPanel matchup={working} onChange={setWorking} />
         {built && <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />}
+        <div className="flex gap-3 text-sm">
+          <Link
+            data-testid="edit-offense"
+            to={`/play/${offense.id}`}
+            className="text-blue-700 underline dark:text-blue-300"
+          >
+            {t.matchup.edit.offense}
+          </Link>
+          <Link
+            data-testid="edit-defense"
+            to={`/play/${defense.id}`}
+            className="text-blue-700 underline dark:text-blue-300"
+          >
+            {t.matchup.edit.defense}
+          </Link>
+        </div>
+        {built && <RunManyPanel input={built.input} labels={labels} />}
         {built && result && (
           <ResultPanel result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
         )}

@@ -132,6 +132,41 @@ export function ControlsPanel({ matchup, onChange }: ControlsPanelProps): JSX.El
           🎲
         </IconButton>
       </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="ctl-anticipation" className="font-medium text-slate-700 dark:text-slate-200">
+          {s.anticipation}: {matchup.anticipation.toFixed(2)}
+        </label>
+        <input
+          id="ctl-anticipation"
+          type="range"
+          data-testid="ctl-anticipation"
+          list="ctl-anticipation-ticks"
+          min={0}
+          max={1}
+          step={0.05}
+          value={matchup.anticipation}
+          onChange={(e) => onChange({ ...matchup, anticipation: Number(e.target.value) })}
+        />
+        <datalist id="ctl-anticipation-ticks">
+          <option value="0" label={s.anticipationTicks.low} />
+          <option value="0.5" label={s.anticipationTicks.mid} />
+          <option value="1" label={s.anticipationTicks.high} />
+        </datalist>
+        <div aria-hidden="true" className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
+          <span>{s.anticipationTicks.low}</span>
+          <span>{s.anticipationTicks.mid}</span>
+          <span>{s.anticipationTicks.high}</span>
+        </div>
+        {matchup.anticipation > 0.5 && (
+          <p
+            data-testid="ctl-oracle-label"
+            role="status"
+            className="rounded border border-amber-500 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-100"
+          >
+            {s.oracle}
+          </p>
+        )}
+      </div>
       <label className="flex items-center gap-2">
         <input
           type="checkbox"

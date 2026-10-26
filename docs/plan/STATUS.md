@@ -49,14 +49,14 @@ Live tracker. Status: todo / in progress / review / done.
 | T4.5 | Implement JSON export/import and data settings | done | b5c6391 |
 | T4.6 | Write E2E scenarios 1–7 | done | fe44891 |
 | C5 | Contracts phase 5 | todo | |
-| T5.1 | Implement anticipation: route prior, tells, QB eyes, oracle | todo | |
-| T5.2 | Implement pattern-match rules | todo | |
-| T5.3 | Implement option routes, motion, route delay in engine | todo | |
-| T5.4 | Integrate rules into sim; add simulateMany and Worker | todo | |
-| T5.5 | Build advanced matchup UI | todo | |
-| T5.6 | Build motion, option route, route delay editing | todo | |
-| T5.7 | Build match-rule form | todo | |
-| T5.8 | Build tuning screen and benchmark UI | todo | |
+| T5.1 | Implement anticipation: route prior, tells, QB eyes, oracle | done | 213ae0c |
+| T5.2 | Implement pattern-match rules | done | a70b882 |
+| T5.3 | Implement option routes, motion, route delay in engine | done | ae851a5 |
+| T5.4 | Integrate rules into sim; add simulateMany and Worker | done | 9d8f6ea |
+| T5.5 | Build advanced matchup UI | done | d6dde11 |
+| T5.6 | Build motion, option route, route delay editing | done | 9299c20 |
+| T5.7 | Build match-rule form | done | 551e9af |
+| T5.8 | Build tuning screen and benchmark UI | done | 8d78e53 |
 | C6 | Contracts phase 6 | todo | |
 | T6.1 | Implement suggest scoring and cache | todo | |
 | T6.2 | Build roster and lineup screens | todo | |

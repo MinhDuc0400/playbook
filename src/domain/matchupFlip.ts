@@ -1,5 +1,6 @@
 /** Matchup flips (SRS §6.4, FR-FLP-03, FR-FLP-04). Pure; plays are never copied into the DB. */
-import { notImplemented } from './notImplemented';
+import { flipPlay } from './flip';
+import { alignedPlayers, computeStrength, strongSideOf } from './numbering';
 import type { Matchup, Play } from './types';
 
 /**
@@ -14,5 +15,20 @@ export function applyMatchupFlips(
   defense: Play,
   m: Pick<Matchup, 'offenseFlipped' | 'defenseFlip'>,
 ): { offense: Play; defense: Play; defenseFlipped: boolean } {
-  return notImplemented(`applyMatchupFlips ${offense.id}${defense.id}${String(m)}`);
+  const flippedOffense = m.offenseFlipped ? flipPlay(offense) : offense;
+  const defenseFlipped = shouldFlipDefense(flippedOffense, defense, m.defenseFlip);
+  return {
+    offense: flippedOffense,
+    defense: defenseFlipped ? flipPlay(defense) : defense,
+    defenseFlipped,
+  };
+}
+
+function shouldFlipDefense(offense: Play, defense: Play, mode: Matchup['defenseFlip']): boolean {
+  if (mode === 'flip') return true;
+  if (mode === 'none') return false;
+  if (defense.alignTo !== 'strength') return false;
+  if (defense.strength !== 'left' && defense.strength !== 'right') return false;
+  const aligned = alignedPlayers(offense);
+  return strongSideOf(aligned, computeStrength(aligned)) !== defense.strength;
 }

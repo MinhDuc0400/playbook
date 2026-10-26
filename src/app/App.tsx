@@ -20,6 +20,7 @@ export function App(): JSX.Element {
   if (!ready) return <div className="p-6">{t.common.loading}</div>;
   return (
     <>
+
       <ThemeApplier />
       <RouterProvider router={router} />
     </>

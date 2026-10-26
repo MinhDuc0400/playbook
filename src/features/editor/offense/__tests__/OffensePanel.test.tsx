@@ -1,11 +1,24 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROUTE_TEMPLATES } from '@/domain/routeTree';
 import { SCHEMA_VERSION, type Play, type PlayerSlot, type Point } from '@/domain/types';
 import { getMotion, getRoute, setMotion, setOptionRoute } from '@/features/editor/ops';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { OffensePanel } from '../OffensePanel';
+
+vi.mock('@/engine/readModel', () => ({
+  readOrder: (
+    mode: string,
+    progression: string[],
+    receivers: { id: string; pos: { x: number } }[],
+  ): string[] => {
+    const byX = [...receivers].sort((a, b) => a.pos.x - b.pos.x).map((r) => r.id);
+    if (mode === 'rightToLeft') return byX.reverse();
+    if (mode === 'leftToRight') return byX;
+    return progression;
+  },
+}));
 
 function slot(
   id: string,
@@ -260,5 +273,60 @@ describe('OffensePanel timing (T5.6)', () => {
     );
     fireEvent.click(screen.getByTestId('option-remove'));
     expect(slotOf('z').actions).toEqual([]);
+  });
+
+  describe('read plan (D-22)', () => {
+    const setupProg = (): void => {
+      setup([]);
+      act(() => {
+        store().apply('p', (p) => ({ ...p, progression: ['y', 'x'] }));
+      });
+    };
+    const rowLabels = (): string[] =>
+      screen.getAllByTestId(/^read-row-/).map((el) => el.getAttribute('data-testid')?.slice(9) ?? '');
+
+    it('mode select writes the mode; progression clears readPlan; one undo each', () => {
+      setupProg();
+      fireEvent.change(screen.getByTestId('read-mode'), { target: { value: 'leftToRight' } });
+      expect(play().readPlan?.mode).toBe('leftToRight');
+      act(() => store().undo());
+      expect(play().readPlan).toBeUndefined();
+      expect(screen.getByTestId('read-mode')).toHaveValue('progression');
+    });
+
+    it('rows follow the progression, then x order for side modes', () => {
+      setupProg();
+      expect(rowLabels()).toEqual(['Y', 'X']);
+      fireEvent.change(screen.getByTestId('read-mode'), { target: { value: 'leftToRight' } });
+      expect(rowLabels()).toEqual(['X', 'C', 'Y', 'Z']);
+      fireEvent.change(screen.getByTestId('read-mode'), { target: { value: 'rightToLeft' } });
+      expect(rowLabels()).toEqual(['Z', 'Y', 'C', 'X']);
+    });
+
+    it('unchecking auto stores a default window, editing applies valid values, re-check removes it', () => {
+      setupProg();
+      fireEvent.click(screen.getByTestId('read-auto-X'));
+      expect(play().readPlan?.windows?.x).toEqual({ from: 1.5, to: 2 });
+      expect(screen.getByTestId('read-from-X')).toHaveValue(1.5);
+      fireEvent.change(screen.getByTestId('read-to-X'), { target: { value: '2.5' } });
+      expect(play().readPlan?.windows?.x).toEqual({ from: 1.5, to: 2.5 });
+      fireEvent.change(screen.getByTestId('read-to-X'), { target: { value: '1' } });
+      expect(play().readPlan?.windows?.x).toEqual({ from: 1.5, to: 2.5 });
+      fireEvent.click(screen.getByTestId('read-auto-X'));
+      expect(play().readPlan).toBeUndefined();
+      expect(screen.queryByTestId('read-from-X')).toBeNull();
+    });
+
+    it('min score is stored, ignored when out of range, and cleared when emptied', () => {
+      setupProg();
+      const input = screen.getByTestId('read-min-Y');
+      expect(input).toHaveAttribute('placeholder', expect.stringContaining('55'));
+      fireEvent.change(input, { target: { value: '70' } });
+      expect(play().readPlan?.minScore?.y).toBe(70);
+      fireEvent.change(input, { target: { value: '150' } });
+      expect(play().readPlan?.minScore?.y).toBe(70);
+      fireEvent.change(input, { target: { value: '' } });
+      expect(play().readPlan).toBeUndefined();
+    });
   });
 });

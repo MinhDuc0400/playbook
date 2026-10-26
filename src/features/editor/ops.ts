@@ -15,6 +15,9 @@ import type {
   PlayerSlot,
   Point,
   QbDropAction,
+  ReadMode,
+  ReadPlan,
+  ReadWindowSpec,
   Role,
   RouteAction,
   Strength,
@@ -162,14 +165,40 @@ export function movePlayer(slotId: ID, pos: Point): Recipe {
   };
 }
 
+/** Remove slot ids from a read plan's windows / minScore. */
+function dropSlots(plan: ReadPlan, gone: ReadonlySet<ID>): ReadPlan {
+  const out: ReadPlan = { mode: plan.mode };
+  const keep = <T>(m: Record<ID, T>): Record<ID, T> =>
+    Object.fromEntries(Object.entries(m).filter(([id]) => !gone.has(id)));
+  if (plan.windows) out.windows = keep(plan.windows);
+  if (plan.minScore) out.minScore = keep(plan.minScore);
+  return out;
+}
+
+/** Drop empty maps; a default progression plan with nothing custom becomes undefined. */
+function cleanReadPlan(plan: ReadPlan): ReadPlan | undefined {
+  const out: ReadPlan = { mode: plan.mode };
+  if (plan.windows && Object.keys(plan.windows).length > 0) out.windows = plan.windows;
+  if (plan.minScore && Object.keys(plan.minScore).length > 0) out.minScore = plan.minScore;
+  return out.mode === 'progression' && !out.windows && !out.minScore ? undefined : out;
+}
+
+function withReadPlan(play: Play, plan: ReadPlan | undefined): Play {
+  const next: Play = { ...play };
+  if (plan) next.readPlan = plan;
+  else delete next.readPlan;
+  return next;
+}
+
 /** Remove players; also drops them from progression. Recomputes strength. */
 export function removePlayers(slotIds: readonly ID[]): Recipe {
   return (play) => {
     const gone = new Set(slotIds);
     const players = play.players.filter((s) => !gone.has(s.id));
     if (players.length === play.players.length) return play;
-    const next: Play = { ...play, players };
+    let next: Play = { ...play, players };
     if (play.progression) next.progression = play.progression.filter((id) => !gone.has(id));
+    if (play.readPlan) next = withReadPlan(next, cleanReadPlan(dropSlots(play.readPlan, gone)));
     return withStrength(next);
   };
 }
@@ -389,6 +418,56 @@ export function toggleProgression(slotId: ID): Recipe {
 
 export function clearProgression(): Recipe {
   return (play) => (play.progression && play.progression.length > 0 ? { ...play, progression: [] } : play);
+}
+
+// ---------- read plan (D-22) ----------
+
+/** Set the QB read order mode. Progression with no windows / minScore removes `readPlan` entirely. */
+export function setReadMode(mode: ReadMode): Recipe {
+  return (play) => {
+    if ((play.readPlan?.mode ?? 'progression') === mode) return play;
+    return withReadPlan(play, cleanReadPlan({ ...play.readPlan, mode }));
+  };
+}
+
+/** Manual read window for a receiver (0 <= from < to <= 9); null = back to auto. Invalid input is a no-op. */
+export function setReadWindow(slotId: ID, window: ReadWindowSpec | null): Recipe {
+  return (play) => {
+    const cur = play.readPlan?.windows?.[slotId];
+    const windows = { ...play.readPlan?.windows };
+    if (window === null) {
+      if (!cur) return play;
+      delete windows[slotId];
+    } else {
+      const { from, to } = window;
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to > 9 || from >= to) return play;
+      if (cur && cur.from === from && cur.to === to) return play;
+      windows[slotId] = { from, to };
+    }
+    return withReadPlan(
+      play,
+      cleanReadPlan({ ...play.readPlan, mode: play.readPlan?.mode ?? 'progression', windows }),
+    );
+  };
+}
+
+/** Minimum read score (0..100) to throw to a receiver; null = default. Invalid input is a no-op. */
+export function setReadMinScore(slotId: ID, score: number | null): Recipe {
+  return (play) => {
+    const cur = play.readPlan?.minScore?.[slotId];
+    const minScore = { ...play.readPlan?.minScore };
+    if (score === null) {
+      if (cur === undefined) return play;
+      delete minScore[slotId];
+    } else {
+      if (!Number.isFinite(score) || score < 0 || score > 100 || cur === score) return play;
+      minScore[slotId] = score;
+    }
+    return withReadPlan(
+      play,
+      cleanReadPlan({ ...play.readPlan, mode: play.readPlan?.mode ?? 'progression', minScore }),
+    );
+  };
 }
 
 // ---------- strength, meta, flip ----------

@@ -1,7 +1,8 @@
 /** Right panel for offense plays (FR-OFF-03/04/05): route tree, QB drop, progression, strength. */
 import { useState, type ReactNode } from 'react';
 import { Button, Select, TextInput } from '@/components/ui';
-import { alignedPlayers, computeStrength } from '@/domain/numbering';
+import { DEFAULT_TUNING } from '@/domain/defaults';
+import { alignedPlayers, computeStrength, numberReceivers } from '@/domain/numbering';
 import {
   buildRoute,
   isRouteTemplateId,
@@ -10,7 +11,8 @@ import {
   ROUTE_TEMPLATES,
   type RouteTemplateId,
 } from '@/domain/routeTree';
-import type { Play, PlayerSlot, QbDropAction, RouteAction, Strength } from '@/domain/types';
+import type { ID, Play, PlayerSlot, QbDropAction, ReadMode, RouteAction, Strength } from '@/domain/types';
+import { readOrder } from '@/engine/readModel';
 import {
   applyRouteTemplate,
   clearProgression,
@@ -23,6 +25,9 @@ import {
   setOptionRoute,
   setRouteDelay,
   setQbDrop,
+  setReadMinScore,
+  setReadMode,
+  setReadWindow,
   setRoute,
   setRouteEndBehavior,
   setStrength,
@@ -352,6 +357,159 @@ function ProgressionSection({ play }: { play: Play }): JSX.Element {
   );
 }
 
+const READ_MODES: readonly ReadMode[] = [
+  'progression',
+  'leftToRight',
+  'rightToLeft',
+  'strongToWeak',
+  'weakToStrong',
+  'best',
+];
+const READ_MAX = 9;
+const READ_STEP = 0.05;
+
+/** Effective read order of receiver ids for the play's read mode. */
+function effectiveReadOrder(play: Play, mode: ReadMode): ID[] {
+  if (mode === 'progression' || mode === 'best') return play.progression ?? [];
+  const receivers = play.players
+    .filter((p) => p.role !== 'QB')
+    .map((p) => ({ id: p.id, pos: routeStart(play, p.id) }));
+  const strongSide = numberReceivers(alignedPlayers(play), play.strength).strongSide;
+  return readOrder(mode, play.progression ?? [], receivers, strongSide);
+}
+
+function ReadRow({ play, id, index }: { play: Play; id: ID; index: number }): JSX.Element | null {
+  const apply = useEditorStore.getState().apply;
+  const label = play.players.find((p) => p.id === id)?.label;
+  const win = play.readPlan?.windows?.[id];
+  const min = play.readPlan?.minScore?.[id];
+  const [fromDraft, setFromDraft] = useState<string | null>(null);
+  const [toDraft, setToDraft] = useState<string | null>(null);
+  const [minDraft, setMinDraft] = useState<string | null>(null);
+  if (label === undefined) return null;
+
+  const onWindow = (rawFrom: string, rawTo: string): void => {
+    const from = parseNumber(rawFrom);
+    const to = parseNumber(rawTo);
+    if (from === null || to === null || from < 0 || to > READ_MAX || from >= to) return;
+    apply('read-window', setReadWindow(id, { from, to }));
+  };
+
+  return (
+    <li
+      data-testid={`read-row-${label}`}
+      className="flex flex-wrap items-center gap-2 rounded border border-slate-200 p-1 text-sm dark:border-slate-700"
+    >
+      <span className="font-bold">{index + 1}</span>
+      <span>{label}</span>
+      <label className="inline-flex items-center gap-1">
+        <input
+          type="checkbox"
+          data-testid={`read-auto-${label}`}
+          checked={!win}
+          onChange={(e) => {
+            setFromDraft(null);
+            setToDraft(null);
+            if (e.target.checked) apply('read-window', setReadWindow(id, null));
+            else {
+              const from = 1 + 0.5 * index;
+              apply('read-window', setReadWindow(id, { from, to: from + 0.5 }));
+            }
+          }}
+        />
+        {s.readPlan.auto}
+      </label>
+      {win ? (
+        <>
+          <TextInput
+            label={s.readPlan.from}
+            type="number"
+            data-testid={`read-from-${label}`}
+            min={0}
+            max={READ_MAX}
+            step={READ_STEP}
+            value={fromDraft ?? String(win.from)}
+            onChange={(e) => {
+              setFromDraft(e.target.value);
+              onWindow(e.target.value, toDraft ?? String(win.to));
+            }}
+            onBlur={() => setFromDraft(null)}
+          />
+          <TextInput
+            label={s.readPlan.to}
+            type="number"
+            data-testid={`read-to-${label}`}
+            min={0}
+            max={READ_MAX}
+            step={READ_STEP}
+            value={toDraft ?? String(win.to)}
+            onChange={(e) => {
+              setToDraft(e.target.value);
+              onWindow(fromDraft ?? String(win.from), e.target.value);
+            }}
+            onBlur={() => setToDraft(null)}
+          />
+        </>
+      ) : null}
+      <TextInput
+        label={s.readPlan.minScore}
+        type="number"
+        data-testid={`read-min-${label}`}
+        min={0}
+        max={100}
+        step={1}
+        placeholder={`${s.readPlan.minPlaceholder} (${DEFAULT_TUNING.scoreThrow})`}
+        value={minDraft ?? (min === undefined ? '' : String(min))}
+        onChange={(e) => {
+          setMinDraft(e.target.value);
+          const n = parseNumber(e.target.value);
+          if (n === null) apply('read-min', setReadMinScore(id, null));
+          else if (n >= 0 && n <= 100) apply('read-min', setReadMinScore(id, n));
+        }}
+        onBlur={() => setMinDraft(null)}
+      />
+    </li>
+  );
+}
+
+function ReadPlanSection({ play }: { play: Play }): JSX.Element {
+  const apply = useEditorStore.getState().apply;
+  const mode = play.readPlan?.mode ?? 'progression';
+  const order = effectiveReadOrder(play, mode);
+
+  return (
+    <Section title={s.readPlan.title}>
+      <div data-testid="read-plan" className="flex flex-col gap-2">
+        <Select
+          label={s.readPlan.mode}
+          data-testid="read-mode"
+          value={mode}
+          onChange={(e) => {
+            const m = READ_MODES.find((x) => x === e.target.value);
+            if (m) apply('read-mode', setReadMode(m));
+          }}
+        >
+          {READ_MODES.map((m) => (
+            <option key={m} value={m}>
+              {s.readPlan.modes[m]}
+            </option>
+          ))}
+        </Select>
+        {order.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">{s.readPlan.empty}</p>
+        ) : (
+          <ol aria-label={s.readPlan.rows} className="flex flex-col gap-1">
+            {order.map((id, i) => (
+              <ReadRow key={id} play={play} id={id} index={i} />
+            ))}
+          </ol>
+        )}
+        <p className="text-xs text-slate-500 dark:text-slate-400">{s.readPlan.hint}</p>
+      </div>
+    </Section>
+  );
+}
+
 function StrengthSection({ play }: { play: Play }): JSX.Element {
   const apply = useEditorStore.getState().apply;
   const computed = computeStrength(alignedPlayers(play));
@@ -396,6 +554,7 @@ export function OffensePanel(): JSX.Element | null {
         </Section>
       )}
       <ProgressionSection play={play} />
+      <ReadPlanSection play={play} />
       <StrengthSection play={play} />
     </aside>
   );

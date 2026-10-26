@@ -28,6 +28,10 @@ export const vi = {
   matchup,
   matchupField,
   result,
+  playbook,
+  install,
+  present,
+  settings,
 } as const;
 export const t = vi;
 export type Strings = typeof vi;

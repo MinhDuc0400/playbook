@@ -107,3 +107,33 @@ export async function playToEnd(page: Page): Promise<void> {
     )
     .toBe(true);
 }
+
+/** Starts a requestAnimationFrame recorder in the page (timestamps in ms). */
+export async function startFrameRecorder(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __frames: { stop: boolean; ts: number[] } };
+    w.__frames = { stop: false, ts: [] };
+    const loop = (t: number): void => {
+      w.__frames.ts.push(t);
+      if (!w.__frames.stop) requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+}
+
+/** Stops the recorder; returns the frame intervals (ms) between consecutive rAF callbacks. */
+export async function stopFrameRecorder(page: Page): Promise<number[]> {
+  const ts = await page.evaluate(() => {
+    const w = window as unknown as { __frames: { stop: boolean; ts: number[] } };
+    w.__frames.stop = true;
+    return w.__frames.ts;
+  });
+  return ts.slice(1).map((t, i) => t - (ts[i] ?? t));
+}
+
+/** q-quantile (0..1) of a numeric list. */
+export function quantile(values: number[], q: number): number {
+  if (values.length === 0) return NaN;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(q * s.length))] ?? NaN;
+}

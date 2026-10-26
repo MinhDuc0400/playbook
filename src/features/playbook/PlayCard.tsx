@@ -53,7 +53,7 @@ export function PlayCard({ play, field, matchupCount }: PlayCardProps): JSX.Elem
       >
         <PlayThumbnail play={play} field={field} className="mx-auto max-w-full" />
       </Link>
-      <h3 className="truncate text-base font-semibold">{play.name || t.editor.namePlaceholder}</h3>
+      <h3 className="truncate text-base font-semibold">{play.name || t.editor.topBar.namePlaceholder}</h3>
       <div className="flex flex-wrap items-center gap-1">
         <span className={badge}>{play.side === 'offense' ? 'Offense' : 'Defense'}</span>
         <span className={badge}>{play.format}</span>

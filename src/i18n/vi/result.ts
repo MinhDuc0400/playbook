@@ -20,4 +20,32 @@ export const result = {
   separationAtThrow: 'Separation lúc ném',
   openWindow: 'Open window',
   none: '—',
+  decision: 'Quyết định',
+  readTimeline: {
+    title: 'Timeline đọc',
+    toggle: 'Ẩn/hiện timeline đọc',
+    scores: 'Điểm đọc',
+    threshold: (v: number): string => `ngưỡng ${v}`,
+    window: (n: number, from: number, to: number, auto: boolean): string =>
+      `#${n} ${auto ? 'tự động' : 'thủ công'} ${from.toFixed(2)}–${to.toFixed(2)} s (${(to - from).toFixed(2)} s)`,
+    open: (from: number, to: number): string =>
+      `mở ${from.toFixed(2)}–${to.toFixed(2)} s (${(to - from).toFixed(2)} s)`,
+    duration: (sec: number): string => `${sec.toFixed(2)} s`,
+    decision: {
+      read: (n: number, label: string, score?: number): string =>
+        `Ném #${n} (${label})${score === undefined ? '' : ` · điểm ${Math.round(score)}`}`,
+      checkdown: (label: string): string => `Check-down (${label})`,
+      forced: (label: string): string => `Bị ép → ${label}`,
+      throwaway: 'Ném bỏ',
+      none: 'Không ném',
+    },
+  },
+  readDistribution: {
+    title: 'Phân bố quyết định',
+    read: (n: number): string => `Đọc #${n}`,
+    checkdown: 'Check-down',
+    forced: 'Bị ép',
+    throwaway: 'Ném bỏ',
+    none: 'Không ném',
+  },
 } as const;

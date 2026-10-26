@@ -27,6 +27,10 @@ describe('RunManyPanel (FR-MU-13)', () => {
     const sum = bars.reduce((a, b) => a + Number(b.getAttribute('data-fraction')), 0);
     expect(sum).toBeGreaterThan(0);
     expect(sum).toBeLessThanOrEqual(1.0001);
+    const reads = screen.getAllByTestId(/^run-many-read-/);
+    expect(reads.length).toBeGreaterThan(0);
+    const readSum = reads.reduce((a, b) => a + Number(b.getAttribute('data-fraction')), 0);
+    expect(readSum).toBeCloseTo(1, 3);
   }, 20000);
 
   it('cancel stops the run and shows no result', async () => {

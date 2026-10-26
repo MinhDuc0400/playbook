@@ -122,4 +122,24 @@ describe('FR-MU-07 ResultPanel', () => {
     rerender(<ResultPanel result={r} offense={offense} t={3} />);
     expect(within(screen.getByTestId('result-row-Z')).getByTestId('playhead').style.left).toBe('75%');
   });
+
+  it('shows the QB decision line when read metrics exist', () => {
+    const r = mkResult(
+      { kind: 'complete', targetId: 'z', yards: 5, t: 3 },
+      {
+        reads: {
+          mode: 'progression',
+          windows: [],
+          decision: { kind: 'read', t: 2, targetId: 'y', score: 72, readIndex: 1 },
+        },
+      },
+    );
+    render(<ResultPanel result={r} offense={offense} t={0} />);
+    expect(screen.getByTestId('result-decision').textContent).toBe('Ném #2 (Y) · điểm 72');
+  });
+
+  it('omits the decision line without read metrics', () => {
+    render(<ResultPanel result={mkResult({ kind: 'sack', t: 3 })} offense={offense} t={0} />);
+    expect(screen.queryByTestId('result-decision')).toBeNull();
+  });
 });

@@ -2,6 +2,7 @@
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import type { Play, SimResult, TuningParams } from '@/domain/types';
 import { t } from '@/i18n/vi';
+import { decisionText } from './ReadTimeline';
 
 export interface ResultPanelProps {
   result: SimResult;
@@ -59,6 +60,11 @@ export function ResultPanel({
           {s.outcomeTime}: {outcome.t.toFixed(2)} {s.secondsUnit}
         </span>
       </div>
+      {metrics.reads && (
+        <div>
+          {s.decision}: <span data-testid="result-decision">{decisionText(metrics.reads, labelOf)}</span>
+        </div>
+      )}
       <div>
         {s.timeToThrow}:{' '}
         <span data-testid="result-ttt">

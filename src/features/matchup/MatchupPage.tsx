@@ -20,6 +20,7 @@ import { ControlsPanel } from './ControlsPanel';
 import { MatchupField } from './MatchupField';
 import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
+import { ReadTimeline } from './ReadTimeline';
 import { RandomDefense } from './RandomDefense';
 import { ResultPanel } from './ResultPanel';
 import { RunManyPanel } from './RunManyPanel';
@@ -269,8 +270,11 @@ function MatchupEditor({
         </label>
       </aside>
 
-      <div className="px-3 py-2">
+      <div className="flex flex-col gap-1 px-3 py-2">
         <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
+        {built && result && (
+          <ReadTimeline result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
+        )}
       </div>
     </div>
   );

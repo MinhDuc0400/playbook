@@ -12,6 +12,17 @@ export interface RunManyPanelProps {
 }
 
 const s = t.matchup.runMany;
+const rd = t.result.readDistribution;
+
+function distKey(key: string): number {
+  const n = Number(key);
+  if (Number.isInteger(n)) return n;
+  return 1000 + ['checkdown', 'forced', 'throwaway', 'none'].indexOf(key);
+}
+function distLabel(key: string): string {
+  if (/^\d+$/.test(key)) return rd.read(Number(key));
+  return key === 'checkdown' || key === 'forced' || key === 'throwaway' || key === 'none' ? rd[key] : key;
+}
 const RUNS = 50;
 const pct = (v: number): string => `${(v * 100).toFixed(1)}%`;
 
@@ -140,6 +151,29 @@ export function RunManyPanel({ input, labels }: RunManyPanelProps): JSX.Element 
               );
             })}
           </ul>
+          {r.readDistribution && (
+            <>
+              <h3 className="mt-1 font-medium">{rd.title}</h3>
+              <ul className={`flex flex-col gap-1 ${stale ? 'opacity-60' : ''}`}>
+                {Object.entries(r.readDistribution)
+                  .sort(([a], [b]) => distKey(a) - distKey(b))
+                  .map(([k, frac]) => (
+                    <li key={k} className="flex items-center gap-2">
+                      <span className="w-20">{distLabel(k)}</span>
+                      <div className="h-3 flex-1 rounded bg-slate-200 dark:bg-slate-700">
+                        <div
+                          data-testid={`run-many-read-${k}`}
+                          data-fraction={frac}
+                          className="h-3 rounded bg-indigo-600"
+                          style={{ width: `${Math.round(frac * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-12 text-right">{pct(frac)}</span>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </section>

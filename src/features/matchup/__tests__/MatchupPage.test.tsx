@@ -88,6 +88,16 @@ describe('MatchupPage: loading (FR-DAT-03)', () => {
     const types = screen.getAllByTestId('timeline-marker').map((m) => m.getAttribute('data-type'));
     expect(types).toContain('snap');
   });
+
+  it('renders the read timeline under the timeline and collapses it', async () => {
+    const user = userEvent.setup();
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    expect(await screen.findByTestId('read-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId('read-scores')).toBeInTheDocument();
+    await user.click(screen.getByTestId('read-timeline-toggle'));
+    expect(screen.queryByTestId('read-scores')).toBeNull();
+  });
 });
 
 describe('MatchupPage: controls re-simulate and keep the playhead (§9)', () => {

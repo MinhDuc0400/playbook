@@ -19,6 +19,7 @@ import { ControlsPanel } from './ControlsPanel';
 import { MatchupField } from './MatchupField';
 import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
+import { RandomDefense } from './RandomDefense';
 import { ResultPanel } from './ResultPanel';
 import { RunManyPanel } from './RunManyPanel';
 import { useMatchupShortcuts } from './useMatchupShortcuts';
@@ -84,6 +85,7 @@ function MatchupEditor({
 }): JSX.Element {
   // Working copy: initialised once per id (the editor is keyed by id); our own saves do not reset it.
   const [working, setWorking] = useState<Matchup>(initial);
+  const [hidden, setHidden] = useState(false);
   const autosave = useAutoSave(working, (m) => matchupsRepo.put({ ...m, updatedAt: Date.now() }));
 
   const overlays = useMatchupStore((s) => s.overlays);
@@ -99,6 +101,7 @@ function MatchupEditor({
   const duration = result && result.frames.length > 0 ? result.frames[result.frames.length - 1]!.t : 0;
   const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
   const playback = usePlayback({ duration, minT });
+  const ended = duration > 0 && !playback.playing && playback.t >= duration;
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
@@ -163,6 +166,7 @@ function MatchupEditor({
             field={field}
             ballSpot={working.ballSpot}
             levels={levels}
+            hideDefenseOverlays={hidden}
           />
         ) : null}
         <details className="absolute right-2 top-2 rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
@@ -201,6 +205,14 @@ function MatchupEditor({
       </div>
 
       <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto border-l border-slate-200 p-3 dark:border-slate-700">
+        <RandomDefense
+          offense={offense}
+          defense={defense}
+          hidden={hidden}
+          ended={ended}
+          onPick={(id) => setWorking((m) => ({ ...m, defensePlayId: id }))}
+          onHiddenChange={setHidden}
+        />
         <ControlsPanel matchup={working} onChange={setWorking} />
         {built && <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />}
         <div className="flex gap-3 text-sm">
@@ -211,13 +223,17 @@ function MatchupEditor({
           >
             {t.matchup.edit.offense}
           </Link>
-          <Link
-            data-testid="edit-defense"
-            to={`/play/${defense.id}`}
-            className="text-blue-700 underline dark:text-blue-300"
-          >
-            {t.matchup.edit.defense}
-          </Link>
+          {hidden ? (
+            <span data-testid="defense-name-hidden">{t.randomDef.hiddenName}</span>
+          ) : (
+            <Link
+              data-testid="edit-defense"
+              to={`/play/${defense.id}`}
+              className="text-blue-700 underline dark:text-blue-300"
+            >
+              {t.matchup.edit.defense}
+            </Link>
+          )}
         </div>
         {built && <RunManyPanel input={built.input} labels={labels} />}
         {built && result && (

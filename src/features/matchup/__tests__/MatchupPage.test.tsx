@@ -244,3 +244,28 @@ describe('MatchupPage: advanced (FR-MU-10, FR-MU-11, FR-MU-13, FR-MU-14)', () =>
     expect(screen.getByTestId('run-many')).toHaveTextContent(t.matchup.runMany.run);
   });
 });
+
+describe('MatchupPage: random defense (FR-RD-01, FR-RD-02)', () => {
+  it('rd-random swaps the defense in the DB, hides the name/edit link and reveals', async () => {
+    const user = userEvent.setup();
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    await waitFor(() =>
+      expect((screen.getByTestId('rd-tag') as HTMLSelectElement).options.length).toBeGreaterThan(1),
+    );
+    await user.selectOptions(screen.getByTestId('rd-tag'), 'cov:cover-3');
+    await user.click(screen.getByTestId('rd-random'));
+    expect(screen.queryByTestId('edit-defense')).toBeNull();
+    expect(screen.getByTestId('defense-name-hidden')).toHaveTextContent(t.randomDef.hiddenName);
+    expect(screen.getByTestId('rd-name')).toHaveTextContent(t.randomDef.hiddenName);
+    await waitFor(async () => expect((await matchupsRepo.get('mu1'))?.defensePlayId).toBe(SEED_IDS.cover3), {
+      timeout: 3000,
+    });
+    await user.click(screen.getByTestId('rd-reveal'));
+    expect(screen.getByTestId('edit-defense')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('edit-defense')).toHaveAttribute('href', `/play/${SEED_IDS.cover3}`),
+    );
+  });
+});

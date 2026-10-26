@@ -57,14 +57,14 @@ Live tracker. Status: todo / in progress / review / done.
 | T5.6 | Build motion, option route, route delay editing | done | 9299c20 |
 | T5.7 | Build match-rule form | done | 551e9af |
 | T5.8 | Build tuning screen and benchmark UI | done | 8d78e53 |
-| C6 | Contracts phase 6 | todo | |
-| T6.1 | Implement suggest scoring and cache | todo | |
-| T6.2 | Build roster and lineup screens | todo | |
-| T6.3 | Build backup banner, selective export, PNG/PDF export | todo | |
-| T6.4 | Build suggest page | todo | |
-| T6.5 | Build random defense mode | todo | |
-| T6.6 | Build lineup picker and advanced stat sliders | todo | |
-| T6.7 | Extend E2E and perf checks | todo | |
+| C6 | Contracts phase 6 | done | af57972 |
+| T6.1 | Implement suggest scoring and cache | done | 06820dd |
+| T6.2 | Build roster and lineup screens | done | 7182477 |
+| T6.3 | Build backup banner, selective export, PNG/PDF export | done | fc0f9ad |
+| T6.4 | Build suggest page | done | 2fe24c9 |
+| T6.5 | Build random defense mode | done | 1d2d98b |
+| T6.6 | Build lineup picker and advanced stat sliders | done | 51bde41 |
+| T6.7 | Extend E2E and perf checks | done | 01ee99e |
 
 ## Phase gates
 

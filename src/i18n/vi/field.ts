@@ -3,4 +3,8 @@ export const field = {
   noRunBadge: 'Chỉ được chuyền',
   fit: 'Vừa màn hình',
   ariaLabel: 'Sân bóng',
+  zoomIn: 'Phóng to',
+  zoomOut: 'Thu nhỏ',
+  minimap: 'Bản đồ thu nhỏ của sân',
+  minimapToggle: 'Ẩn/hiện bản đồ thu nhỏ',
 } as const;

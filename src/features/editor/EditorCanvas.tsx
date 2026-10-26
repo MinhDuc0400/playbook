@@ -308,6 +308,30 @@ function SlotLayers(): JSX.Element | null {
   );
 }
 
+function MinimapDots(): JSX.Element | null {
+  const { viewport } = useFieldContext();
+  const play = useEditorStore((s) => s.play);
+  if (!play) return null;
+  return (
+    <>
+      {play.players.map((slot) => {
+        const c = toScreen(slot.start, viewport);
+        return (
+          <circle
+            key={slot.id}
+            data-testid={`mm-${slot.id}`}
+            cx={c.x}
+            cy={c.y}
+            r={2.5}
+            className={play.side === 'offense' ? 'fill-blue-600' : 'fill-red-600'}
+            pointerEvents="none"
+          />
+        );
+      })}
+    </>
+  );
+}
+
 export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasProps): JSX.Element {
   const side = useEditorStore((s) => s.play?.side);
   const tool = useEditorStore((s) => s.tool);
@@ -454,6 +478,7 @@ export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasPr
         field={field}
         ballSpot={ballSpot}
         showGrid={showGrid}
+        minimapContent={() => <MinimapDots />}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

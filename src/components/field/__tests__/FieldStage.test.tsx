@@ -4,7 +4,8 @@ import { createDefaultFields, DEFAULT_BALL_SPOT } from '@/domain/field';
 import { t } from '@/i18n/vi';
 import { useFieldContext } from '../FieldContext';
 import { FieldStage } from '../FieldStage';
-import { defaultViewport, type Viewport } from '../viewport';
+import { defaultViewport, visibleRect, type Viewport } from '../viewport';
+import { fieldBounds } from '@/domain/field';
 
 const field = createDefaultFields()['5v5'];
 const W = 800;
@@ -132,7 +133,8 @@ describe('FieldStage', () => {
     fireEvent.pointerUp(stage, { pointerId: 1, clientX: 150, clientY: 80 });
     fireEvent.keyUp(window, { code: 'Space', key: ' ' });
     expect(stage.className).not.toContain('cursor-grab');
-    expect(vp().center.x).toBeCloseTo(start.center.x - 50 / start.scale);
+    // default view spans the full width, so x is clamped; y moves freely
+    expect(vp().center.x).toBeCloseTo(start.center.x);
     expect(vp().center.y).toBeCloseTo(start.center.y - 20 / start.scale);
 
     const input = document.createElement('input');
@@ -172,6 +174,85 @@ describe('FieldStage', () => {
       />,
     );
     expect(screen.getByTestId('extra')).toBeInTheDocument();
+  });
+});
+
+describe('FieldStage zoom limits, buttons and minimap', () => {
+  const full = fieldBounds(field, DEFAULT_BALL_SPOT);
+
+  it('wheel zoom-out stops at the whole field', () => {
+    const { vp } = renderStage();
+    const stage = screen.getByTestId('field-stage');
+    for (let i = 0; i < 20; i++) fireEvent.wheel(stage, { deltaY: 800, clientX: 400, clientY: 300 });
+    const v = visibleRect(vp());
+    const fitsY = v.maxY - v.minY <= full.maxY - full.minY + 4 + 1e-6;
+    const fitsX = v.maxX - v.minX <= full.maxX - full.minX + 4 + 1e-6;
+    expect(fitsX || fitsY).toBe(true);
+    const s = vp().scale;
+    fireEvent.wheel(stage, { deltaY: 800, clientX: 400, clientY: 300 });
+    expect(vp().scale).toBeCloseTo(s);
+  });
+
+  it('Space-drag pan stops at the field edge', () => {
+    const { vp } = renderStage();
+    const stage = screen.getByTestId('field-stage');
+    fireEvent.keyDown(window, { code: 'Space', key: ' ' });
+    fireEvent.pointerDown(stage, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(stage, { pointerId: 1, clientX: 100, clientY: 100000 });
+    fireEvent.pointerUp(stage, { pointerId: 1 });
+    fireEvent.keyUp(window, { code: 'Space', key: ' ' });
+    expect(visibleRect(vp()).minY).toBeGreaterThanOrEqual(full.minY - 2 - 1e-6);
+    expect(visibleRect(vp()).maxY).toBeLessThanOrEqual(full.maxY + 2 + 1e-6);
+  });
+
+  it('zoom buttons change the scale by 1.25', () => {
+    const { vp } = renderStage();
+    const s0 = vp().scale;
+    expect(screen.getByTestId('btn-zoom-in')).toHaveAttribute('aria-label', t.field.zoomIn);
+    fireEvent.click(screen.getByTestId('btn-zoom-in'));
+    expect(vp().scale).toBeCloseTo(s0 * 1.25);
+    fireEvent.click(screen.getByTestId('btn-zoom-out'));
+    expect(vp().scale).toBeCloseTo(s0);
+  });
+
+  it('shows the minimap, toggles it, and a click recentres the main view', () => {
+    const { vp } = renderStage();
+    expect(screen.getByTestId('minimap')).toBeInTheDocument();
+    const svg = screen.getByTestId('minimap').querySelector('svg')!;
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 110,
+      bottom: 200,
+      width: 110,
+      height: 200,
+      toJSON: () => ({}),
+    });
+    fireEvent.click(screen.getByTestId('btn-zoom-in'));
+    fireEvent.pointerDown(svg, { pointerId: 5, clientX: 55, clientY: 150 });
+    fireEvent.pointerUp(svg, { pointerId: 5 });
+    // clicked low in the map => the view moved towards the own end zone (negative y), within clamp
+    expect(vp().center.y).toBeLessThan(0);
+    const v = visibleRect(vp());
+    expect(v.minY).toBeGreaterThanOrEqual(full.minY - 2 - 1e-6);
+
+    fireEvent.click(screen.getByTestId('btn-minimap'));
+    expect(screen.queryByTestId('minimap')).toBeNull();
+    fireEvent.click(screen.getByTestId('btn-minimap'));
+    expect(screen.getByTestId('minimap-view')).toBeInTheDocument();
+  });
+
+  it('renders minimapContent inside the minimap', () => {
+    render(
+      <FieldStage
+        field={field}
+        ballSpot={DEFAULT_BALL_SPOT}
+        minimapContent={() => <circle data-testid="mm-x" r={2} />}
+      />,
+    );
+    expect(screen.getByTestId('mm-x')).toBeInTheDocument();
   });
 });
 

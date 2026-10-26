@@ -17,6 +17,8 @@ export interface FieldSvgProps {
   /** 'contrast' = high-contrast projector theme (FR-IN-05). */
   theme?: 'normal' | 'contrast';
   showGrid?: boolean;
+  /** Prefix for every data-testid (the mini-map uses one so ids stay unique). */
+  testIdPrefix?: string;
   className?: string;
   children?: ReactNode;
   onPointerDown?: (e: React.PointerEvent<SVGSVGElement>) => void;
@@ -83,6 +85,7 @@ export function FieldSvg({
   viewport,
   theme = 'normal',
   showGrid = false,
+  testIdPrefix = '',
   className,
   children,
   onPointerDown,
@@ -90,6 +93,7 @@ export function FieldSvg({
   onPointerUp,
   onDoubleClick,
 }: FieldSvgProps): JSX.Element {
+  const tp = testIdPrefix;
   const pal = theme === 'contrast' ? CONTRAST : NORMAL;
   const ctx = useMemo(() => ({ viewport, field, ballSpot }), [viewport, field, ballSpot]);
 
@@ -133,7 +137,7 @@ export function FieldSvg({
 
   return (
     <svg
-      data-testid="field-svg"
+      data-testid={`${tp}field-svg`}
       data-theme={theme}
       role="group"
       aria-label={t.field.ariaLabel}
@@ -149,17 +153,17 @@ export function FieldSvg({
       <FieldContext.Provider value={ctx}>
         <g pointerEvents="none">
           <rect
-            data-testid="field-surface"
+            data-testid={`${tp}field-surface`}
             className={pal.surface}
             {...rect(b.minX, b.maxX, b.minY, b.maxY)}
           />
           <rect
-            data-testid="end-zone-own"
+            data-testid={`${tp}end-zone-own`}
             className={pal.endZone}
             {...rect(b.minX, b.maxX, b.minY, ownGoalY)}
           />
           <rect
-            data-testid="end-zone-opp"
+            data-testid={`${tp}end-zone-opp`}
             className={pal.endZone}
             {...rect(b.minX, b.maxX, oppGoalY, b.maxY)}
           />
@@ -171,7 +175,7 @@ export function FieldSvg({
               return (
                 <line
                   key={`gx${x}`}
-                  data-testid="grid-line"
+                  data-testid={`${tp}grid-line`}
                   className={pal.grid}
                   strokeWidth={pal.w.grid}
                   x1={a.x}
@@ -185,7 +189,7 @@ export function FieldSvg({
             gridYs.map((y) => (
               <line
                 key={`gy${y}`}
-                data-testid="grid-line"
+                data-testid={`${tp}grid-line`}
                 className={pal.grid}
                 strokeWidth={pal.w.grid}
                 {...hLine(y)}
@@ -197,7 +201,7 @@ export function FieldSvg({
             return (
               <line
                 key={`yl${n}`}
-                data-testid={`yardline-${n}`}
+                data-testid={`${tp}yardline-${n}`}
                 className={isGoal ? pal.goalLine : pal.yardLine}
                 strokeWidth={isGoal ? pal.w.goal : pal.w.yard}
                 {...hLine(yardLineToY(ballSpot, n))}
@@ -211,7 +215,7 @@ export function FieldSvg({
             return (
               <line
                 key={`sl${i}`}
-                data-testid="sideline"
+                data-testid={`${tp}sideline`}
                 className={pal.sideline}
                 strokeWidth={pal.w.side}
                 x1={a.x}
@@ -225,7 +229,7 @@ export function FieldSvg({
           {field.noRunZones.map((z, i) => (
             <rect
               key={`nr${i}`}
-              data-testid="no-run-zone"
+              data-testid={`${tp}no-run-zone`}
               className={pal.noRun}
               {...rect(b.minX, b.maxX, yardLineToY(ballSpot, z.from), yardLineToY(ballSpot, z.to))}
             />
@@ -234,7 +238,7 @@ export function FieldSvg({
           {field.lineToGain.map((n) => (
             <line
               key={`ltg${n}`}
-              data-testid="line-to-gain"
+              data-testid={`${tp}line-to-gain`}
               className={pal.lineToGain}
               strokeWidth={pal.w.ltg}
               {...hLine(yardLineToY(ballSpot, n))}
@@ -242,16 +246,16 @@ export function FieldSvg({
           ))}
 
           <line
-            data-testid="rush-line"
+            data-testid={`${tp}rush-line`}
             className={pal.rushLine}
             strokeWidth={pal.w.rush}
             strokeDasharray="8 6"
             {...hLine(field.rushLine)}
           />
-          <line data-testid="los" className={pal.los} strokeWidth={pal.w.los} {...hLine(0)} />
+          <line data-testid={`${tp}los`} className={pal.los} strokeWidth={pal.w.los} {...hLine(0)} />
 
           {showBadge && (
-            <g data-testid="no-run-badge">
+            <g data-testid={`${tp}no-run-badge`}>
               <rect
                 className={pal.badgeBg}
                 x={badgeX}

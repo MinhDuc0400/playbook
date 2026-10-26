@@ -92,3 +92,55 @@ export function panBy(vp: Viewport, dx: number, dy: number): Viewport {
 export function yardsToPx(yards: number, vp: Viewport): number {
   return yards * vp.scale;
 }
+
+export interface RectLike {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+/** Field-coordinate rectangle currently visible in the viewport. */
+export function visibleRect(vp: Viewport): RectLike {
+  const hx = vp.width / 2 / vp.scale;
+  const hy = vp.height / 2 / vp.scale;
+  return {
+    minX: vp.center.x - hx,
+    maxX: vp.center.x + hx,
+    minY: vp.center.y - hy,
+    maxY: vp.center.y + hy,
+  };
+}
+
+/** Same viewport, re-centred on `center` (unclamped). */
+export function viewportForCenter(vp: Viewport, center: Point): Viewport {
+  return { ...vp, center: { x: center.x, y: center.y } };
+}
+
+function clampAxis(center: number, half: number, min: number, max: number): number {
+  const lo = min + half;
+  const hi = max - half;
+  if (lo > hi) return (min + max) / 2;
+  return Math.min(hi, Math.max(lo, center));
+}
+
+/**
+ * Keep the view on the field: can't zoom out past "whole rect + margin", can't exceed MAX_SCALE, and the
+ * visible area never leaves rect ± marginYd (when it is smaller than that; otherwise it is centred).
+ */
+export function clampViewport(vp: Viewport, rect: RectLike, marginYd = 2): Viewport {
+  const rw = Math.max(rect.maxX - rect.minX + 2 * marginYd, 1e-6);
+  const rh = Math.max(rect.maxY - rect.minY + 2 * marginYd, 1e-6);
+  const minScale = Math.min(vp.width / rw, vp.height / rh);
+  const scale = Math.min(MAX_SCALE, Math.max(minScale, vp.scale));
+  const hx = vp.width / 2 / scale;
+  const hy = vp.height / 2 / scale;
+  return {
+    ...vp,
+    scale,
+    center: {
+      x: clampAxis(vp.center.x, hx, rect.minX - marginYd, rect.maxX + marginYd),
+      y: clampAxis(vp.center.y, hy, rect.minY - marginYd, rect.maxY + marginYd),
+    },
+  };
+}

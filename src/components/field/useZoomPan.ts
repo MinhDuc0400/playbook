@@ -1,12 +1,14 @@
 /** Zoom (wheel, pinch) and pan (Space + drag, or two-finger drag) state for a field (FR-FLD-03). */
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { panBy, zoomAt, type ScreenPoint, type Viewport } from './viewport';
+import { clampViewport, panBy, zoomAt, type RectLike, type ScreenPoint, type Viewport } from './viewport';
 
 export interface ZoomPan {
   viewport: Viewport | null; // null until the container has been measured
   setViewport(vp: Viewport): void;
   /** Reset to the fit() viewport ("Vừa màn hình"). */
   fit(): void;
+  /** Zoom by `factor` around the viewport centre (clamped). */
+  zoomBy(factor: number): void;
   /** True while Space is held (cursor should show grab and tools must ignore pointer events). */
   panning: boolean;
 }
@@ -34,6 +36,7 @@ function isActivatable(target: EventTarget | null): boolean {
 export function useZoomPan(
   containerRef: RefObject<HTMLElement>,
   makeFit: (width: number, height: number) => Viewport,
+  opts?: { bounds?: () => RectLike },
 ): ZoomPan {
   const [viewport, setViewportState] = useState<Viewport | null>(null);
   const [panning, setPanningState] = useState(false);
@@ -43,11 +46,23 @@ export function useZoomPan(
   const panningRef = useRef(false);
   const makeFitRef = useRef(makeFit);
   makeFitRef.current = makeFit;
+  const boundsRef = useRef(opts?.bounds);
+  boundsRef.current = opts?.bounds;
 
-  const commit = useCallback((vp: Viewport) => {
+  const commit = useCallback((raw: Viewport) => {
+    const bounds = boundsRef.current?.();
+    const vp = bounds ? clampViewport(raw, bounds) : raw;
     viewportRef.current = vp;
     setViewportState(vp);
   }, []);
+
+  const zoomBy = useCallback(
+    (factor: number) => {
+      const vp = viewportRef.current;
+      if (vp) commit(zoomAt(vp, { x: vp.width / 2, y: vp.height / 2 }, factor));
+    },
+    [commit],
+  );
 
   const fit = useCallback(() => {
     const size = sizeRef.current;
@@ -119,9 +134,11 @@ export function useZoomPan(
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
 
+    const ignored = (e: Event) => e.target instanceof Element && !!e.target.closest('[data-no-zoompan]');
+
     const onWheel = (e: WheelEvent) => {
       const vp = viewportRef.current;
-      if (!vp) return;
+      if (!vp || ignored(e)) return;
       e.preventDefault();
       const dy = e.deltaMode === 1 ? e.deltaY * LINE_HEIGHT_PX : e.deltaY;
       commit(zoomAt(vp, local(e), Math.exp(-dy * WHEEL_SENSITIVITY)));
@@ -141,6 +158,7 @@ export function useZoomPan(
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      if (ignored(e)) return;
       pointers.set(e.pointerId, local(e));
       if (pointers.size === 2) {
         dragId = null;
@@ -195,5 +213,5 @@ export function useZoomPan(
     };
   }, [containerRef, commit]);
 
-  return { viewport, setViewport: commit, fit, panning };
+  return { viewport, setViewport: commit, fit, zoomBy, panning };
 }

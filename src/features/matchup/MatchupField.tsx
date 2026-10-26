@@ -50,6 +50,47 @@ function Ball({ pos }: { pos: Point }): JSX.Element {
   );
 }
 
+function MinimapDots({
+  built,
+  result,
+  t,
+}: Pick<MatchupFieldProps, 'built' | 'result' | 't'>): JSX.Element | null {
+  const { viewport } = useFieldContext();
+  const frame = frameAt(result.frames, t);
+  if (!frame) return null;
+  const dot = (slot: PlayerSlot, side: Side) => {
+    const pos = frame.players[slot.id]?.pos;
+    if (!pos) return null;
+    const c = toScreen(pos, viewport);
+    return (
+      <circle
+        key={`${side}-${slot.id}`}
+        data-testid={`mm-${side}-${slot.id}`}
+        cx={c.x}
+        cy={c.y}
+        r={2.5}
+        className={side === 'offense' ? 'fill-blue-600' : 'fill-red-600'}
+        pointerEvents="none"
+      />
+    );
+  };
+  const c = toScreen(frame.ball.pos, viewport);
+  return (
+    <>
+      {built.defense.players.map((s) => dot(s, 'defense'))}
+      {built.offense.players.map((s) => dot(s, 'offense'))}
+      <circle
+        data-testid="mm-ball"
+        cx={c.x}
+        cy={c.y}
+        r={1.8}
+        className="fill-amber-700"
+        pointerEvents="none"
+      />
+    </>
+  );
+}
+
 function FieldContent({
   built,
   result,
@@ -113,7 +154,12 @@ function FieldContent({
 export function MatchupField({ field, ballSpot, theme, ...rest }: MatchupFieldProps): JSX.Element {
   return (
     <div data-testid="matchup-field" className="h-full w-full">
-      <FieldStage field={field} ballSpot={ballSpot} theme={theme}>
+      <FieldStage
+        field={field}
+        ballSpot={ballSpot}
+        theme={theme}
+        minimapContent={() => <MinimapDots built={rest.built} result={rest.result} t={rest.t} />}
+      >
         <FieldContent {...rest} />
       </FieldStage>
     </div>

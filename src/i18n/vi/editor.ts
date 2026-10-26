@@ -34,6 +34,19 @@ export const editor = {
     undo: 'Hoàn tác (Ctrl+Z)',
     redo: 'Làm lại (Ctrl+Shift+Z)',
     duplicate: 'Nhân bản play',
+    more: 'Thêm thao tác',
+    back: 'Về Playbook',
+  },
+  touch: {
+    done: 'Xong',
+    cancel: 'Hủy',
+    delete: 'Xóa',
+    actions: 'Thao tác nhanh',
+  },
+  panels: {
+    play: 'Play',
+    players: 'Cầu thủ',
+    warnings: 'Cảnh báo',
   },
   meta: {
     title: 'Thông tin play',

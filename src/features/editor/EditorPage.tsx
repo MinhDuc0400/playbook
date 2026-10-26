@@ -7,8 +7,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePlay, useSettings } from '@/db/hooks';
 import { playsRepo } from '@/db/repos/plays';
 import { DEFAULT_BALL_SPOT } from '@/domain/field';
+import type { FieldConfig, Settings } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useAutoSave } from '@/lib/useAutoSave';
+import { useIsDesktop } from '@/lib/useMediaQuery';
+import { PanelTabs } from '@/components/ui/PanelTabs';
 import { useEditorStore } from '@/store/editorStore';
 import { DefensePanel } from './defense/DefensePanel';
 import { EditorCanvas } from './EditorCanvas';
@@ -19,7 +22,7 @@ import { PreviewOverlay } from './offense/PreviewOverlay';
 import { Toolbar } from './Toolbar';
 import { TopBar } from './TopBar';
 import { useEditorShortcuts } from './useEditorShortcuts';
-import { WarningsPanel } from './WarningsPanel';
+import { usePlayWarnings, WarningsPanel } from './WarningsPanel';
 
 const frame = 'h-[calc(100vh-3.5rem)] min-h-[480px]';
 
@@ -79,8 +82,79 @@ function PlayEditor({ id }: { id: string }): JSX.Element {
   }
   if (!inStore || !storePlay || !settings) return <div className="p-6">{t.editor.loading}</div>;
 
-  const field = settings.fields[storePlay.format];
-  const isOffense = storePlay.side === 'offense';
+  return (
+    <EditorLayout
+      autosave={autosave}
+      field={settings.fields[storePlay.format]}
+      isOffense={storePlay.side === 'offense'}
+      snap={settings.ui.snap}
+      showGrid={settings.ui.showGrid}
+      tuning={settings.tuning}
+      previewing={previewing}
+      onClosePreview={() => setPreviewing(false)}
+    />
+  );
+}
+
+interface EditorLayoutProps {
+  autosave: ReturnType<typeof useAutoSave>;
+  field: FieldConfig;
+  isOffense: boolean;
+  snap: boolean;
+  showGrid: boolean;
+  tuning: Settings['tuning'];
+  previewing: boolean;
+  onClosePreview: () => void;
+}
+
+function EditorLayout(props: EditorLayoutProps): JSX.Element {
+  const { autosave, field, isOffense, previewing } = props;
+  const isDesktop = useIsDesktop();
+  const warnings = usePlayWarnings(field, DEFAULT_BALL_SPOT);
+
+  const fieldNode =
+    previewing && isOffense ? (
+      <PreviewOverlay
+        field={field}
+        ballSpot={DEFAULT_BALL_SPOT}
+        tuning={props.tuning}
+        onClose={props.onClosePreview}
+      />
+    ) : (
+      <EditorCanvas field={field} ballSpot={DEFAULT_BALL_SPOT} snap={props.snap} showGrid={props.showGrid} />
+    );
+
+  if (!isDesktop) {
+    // Phones/tablets (D-25): one column, field first, panels in a tab strip below.
+    return (
+      <div data-testid="editor-page" className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col">
+        <TopBar autosave={autosave} />
+        <Toolbar />
+        <div
+          data-testid="editor-field"
+          className="h-[max(50dvh,320px)] min-w-0 shrink-0 overflow-hidden border-y border-slate-200 dark:border-slate-700"
+        >
+          {fieldNode}
+        </div>
+        <PanelTabs
+          className="min-w-0"
+          tabs={[
+            { id: 'play', label: t.editor.panels.play, content: <MetaPanel /> },
+            {
+              id: 'players',
+              label: t.editor.panels.players,
+              content: isOffense ? <OffensePanel /> : <DefensePanel />,
+            },
+            {
+              id: 'warnings',
+              label: `${t.editor.panels.warnings}${warnings.length > 0 ? ` (${warnings.length})` : ''}`,
+              content: <WarningsPanel field={field} ballSpot={DEFAULT_BALL_SPOT} warnings={warnings} />,
+            },
+          ]}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -93,29 +167,13 @@ function PlayEditor({ id }: { id: string }): JSX.Element {
       <aside className="border-r border-slate-200 dark:border-slate-700">
         <Toolbar />
       </aside>
-      <div className="min-w-0 overflow-hidden">
-        {previewing && isOffense ? (
-          <PreviewOverlay
-            field={field}
-            ballSpot={DEFAULT_BALL_SPOT}
-            tuning={settings.tuning}
-            onClose={() => setPreviewing(false)}
-          />
-        ) : (
-          <EditorCanvas
-            field={field}
-            ballSpot={DEFAULT_BALL_SPOT}
-            snap={settings.ui.snap}
-            showGrid={settings.ui.showGrid}
-          />
-        )}
-      </div>
+      <div className="min-w-0 overflow-hidden">{fieldNode}</div>
       <aside className="overflow-y-auto border-l border-slate-200 dark:border-slate-700">
         <MetaPanel />
         {isOffense ? <OffensePanel /> : <DefensePanel />}
       </aside>
       <div className="col-span-3">
-        <WarningsPanel field={field} ballSpot={DEFAULT_BALL_SPOT} />
+        <WarningsPanel field={field} ballSpot={DEFAULT_BALL_SPOT} warnings={warnings} />
       </div>
     </div>
   );

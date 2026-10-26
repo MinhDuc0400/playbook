@@ -1,6 +1,7 @@
 /** Left toolbar: one IconButton per TOOLBAR[side] tool (aria-label, shortcut in title, aria-pressed). */
-import { IconButton } from '@/components/ui';
+import { Button, IconButton } from '@/components/ui';
 import { t } from '@/i18n/vi';
+import { useIsDesktop } from '@/lib/useMediaQuery';
 import { useEditorStore } from '@/store/editorStore';
 import { TOOLBAR, TOOLS } from './tools';
 import type { ToolId } from './tools/types';
@@ -42,7 +43,13 @@ function ToolIcon({ id }: { id: ToolId }): JSX.Element {
   );
 }
 
+/** Touch layouts have no keyboard: replay the key on window, where the canvas listens (D-25). */
+function pressKey(key: 'Enter' | 'Escape' | 'Delete'): void {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
 export function Toolbar(): JSX.Element {
+  const isDesktop = useIsDesktop();
   const side = useEditorStore((s) => s.play?.side ?? 'offense');
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
@@ -50,10 +57,10 @@ export function Toolbar(): JSX.Element {
   return (
     <div
       role="toolbar"
-      aria-orientation="vertical"
+      aria-orientation={isDesktop ? 'vertical' : 'horizontal'}
       aria-label={t.tools.toolbar}
       data-testid="toolbar"
-      className="flex flex-col gap-1 p-1"
+      className={isDesktop ? 'flex flex-col gap-1 p-1' : 'flex items-center gap-1 overflow-x-auto p-1'}
     >
       {TOOLBAR[side].map((id) => {
         const name = t.tools[id];
@@ -66,6 +73,7 @@ export function Toolbar(): JSX.Element {
             title={key ? `${name} (${key})` : name}
             data-testid={`tool-${id}`}
             aria-pressed={active}
+            className={isDesktop ? '' : 'h-10 w-10 shrink-0'}
             variant={active ? 'primary' : 'ghost'}
             onClick={() => setTool(id)}
           >
@@ -73,6 +81,28 @@ export function Toolbar(): JSX.Element {
           </IconButton>
         );
       })}
+      {isDesktop ? null : (
+        <div
+          role="group"
+          aria-label={t.editor.touch.actions}
+          className="ml-auto flex shrink-0 items-center gap-1 border-l border-slate-200 pl-2 dark:border-slate-700"
+        >
+          <Button data-testid="btn-tool-done" className="min-h-10" onClick={() => pressKey('Enter')}>
+            {t.editor.touch.done}
+          </Button>
+          <Button data-testid="btn-tool-cancel" className="min-h-10" onClick={() => pressKey('Escape')}>
+            {t.editor.touch.cancel}
+          </Button>
+          <Button
+            data-testid="btn-delete-selection"
+            variant="danger"
+            className="min-h-10"
+            onClick={() => pressKey('Delete')}
+          >
+            {t.editor.touch.delete}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

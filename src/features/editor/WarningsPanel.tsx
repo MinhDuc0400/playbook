@@ -11,6 +11,8 @@ import { useEditorStore } from '@/store/editorStore';
 export interface WarningsPanelProps {
   field: FieldConfig;
   ballSpot?: BallSpot;
+  /** Precomputed warnings (from `usePlayWarnings`); computed here when omitted. */
+  warnings?: readonly PlayWarning[];
 }
 
 function ghostPlayers(format: Play['format'], ghostFormationId: string | null): AlignedPlayer[] {
@@ -25,15 +27,11 @@ function message(w: PlayWarning, play: Play, field: FieldConfig): string {
   return t.editor.warnings.messages[w.code].replace(/\{(\w+)\}/g, (_, k: string) => String(values[k] ?? ''));
 }
 
-export function WarningsPanel({
-  field,
-  ballSpot = DEFAULT_BALL_SPOT,
-}: WarningsPanelProps): JSX.Element | null {
+/** Validation warnings of the play in the editor store. */
+export function usePlayWarnings(field: FieldConfig, ballSpot: BallSpot = DEFAULT_BALL_SPOT): PlayWarning[] {
   const play = useEditorStore((s) => s.play);
   const ghostFormationId = useEditorStore((s) => s.ghostFormationId);
-  const select = useEditorStore((s) => s.select);
-
-  const warnings = useMemo(
+  return useMemo(
     () =>
       play
         ? validatePlay(play, field, {
@@ -43,6 +41,36 @@ export function WarningsPanel({
         : [],
     [play, field, ballSpot, ghostFormationId],
   );
+}
+
+function ComputedWarnings({
+  field,
+  ballSpot,
+}: {
+  field: FieldConfig;
+  ballSpot: BallSpot;
+}): JSX.Element | null {
+  return <WarningsView field={field} warnings={usePlayWarnings(field, ballSpot)} />;
+}
+
+export function WarningsPanel({
+  field,
+  ballSpot = DEFAULT_BALL_SPOT,
+  warnings,
+}: WarningsPanelProps): JSX.Element | null {
+  if (warnings) return <WarningsView field={field} warnings={warnings} />;
+  return <ComputedWarnings field={field} ballSpot={ballSpot} />;
+}
+
+function WarningsView({
+  field,
+  warnings,
+}: {
+  field: FieldConfig;
+  warnings: readonly PlayWarning[];
+}): JSX.Element | null {
+  const play = useEditorStore((s) => s.play);
+  const select = useEditorStore((s) => s.select);
 
   if (!play) return null;
 
@@ -50,7 +78,7 @@ export function WarningsPanel({
     <section
       aria-label={t.editor.warnings.title}
       data-testid="warnings-panel"
-      className="max-h-32 overflow-y-auto border-t border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
+      className="overflow-y-auto lg:max-h-32 border-t border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800"
     >
       <h2 className="text-sm font-semibold">
         {t.editor.warnings.title}

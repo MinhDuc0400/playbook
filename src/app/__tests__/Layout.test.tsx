@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '@/i18n/vi';
 
 vi.mock('@/db/errors', () => ({ onDbError: vi.fn(() => () => undefined) }));
+vi.mock('../BackupBanner', () => ({ BackupBanner: () => null }));
 
 import { Layout } from '../Layout';
 

@@ -41,6 +41,9 @@ export const matchup = {
     anticipation: 'Anticipation (dự đoán)',
     anticipationTicks: { low: '0', mid: '0.5', high: '1' },
     oracle: 'Oracle: defense biết trước',
+    lineupOffense: 'Lineup tấn công',
+    lineupDefense: 'Lineup phòng thủ',
+    lineupNone: 'Không (mọi người TB)',
   },
   edit: {
     offense: 'Sửa play tấn công',

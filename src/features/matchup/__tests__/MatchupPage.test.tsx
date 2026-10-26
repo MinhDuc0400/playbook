@@ -2,7 +2,10 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { athletesRepo } from '@/db/repos/athletes';
+import { lineupsRepo } from '@/db/repos/lineups';
 import { matchupsRepo } from '@/db/repos/matchups';
+import { DEFAULT_PRESETS } from '@/domain/presets';
 import { playsRepo } from '@/db/repos/plays';
 import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import { t } from '@/i18n/vi';
@@ -267,5 +270,65 @@ describe('MatchupPage: random defense (FR-RD-01, FR-RD-02)', () => {
     await waitFor(() =>
       expect(screen.getByTestId('edit-defense')).toHaveAttribute('href', `/play/${SEED_IDS.cover3}`),
     );
+  });
+});
+
+describe('MatchupPage: lineups, flush, export (FR-ATH-06, FR-RD-01, FR-IO-07)', () => {
+  it('choosing an offense lineup changes the sim; "none" restores it', async () => {
+    const user = userEvent.setup();
+    await athletesRepo.put({
+      id: 'ath1',
+      schemaVersion: 1,
+      name: 'Fast',
+      preset: 'custom',
+      stats: { ...DEFAULT_PRESETS.avg, speed: 11.5 },
+      positions: [],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await lineupsRepo.put({
+      id: 'lu1',
+      schemaVersion: 1,
+      name: 'Speedy',
+      side: 'offense',
+      format: '5v5',
+      slots: [{ label: 'X', athleteId: 'ath1' }],
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    const sig = () => screen.getByTestId('mock-field').getAttribute('data-sig');
+    const before = sig();
+    const select = screen.getByTestId('ctl-lineup-offense') as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(2));
+    await user.selectOptions(select, 'lu1');
+    await waitFor(() => expect(sig()).not.toBe(before));
+    await user.selectOptions(screen.getByTestId('ctl-lineup-offense'), '');
+    await waitFor(() => expect(sig()).toBe(before));
+    await lineupsRepo.remove('lu1');
+    await athletesRepo.remove('ath1');
+  });
+
+  it('random pick flushes the save without waiting for the debounce', async () => {
+    const user = userEvent.setup();
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    await waitFor(() =>
+      expect((screen.getByTestId('rd-tag') as HTMLSelectElement).options.length).toBeGreaterThan(1),
+    );
+    await user.selectOptions(screen.getByTestId('rd-tag'), 'cov:cover-3');
+    await user.click(screen.getByTestId('rd-random'));
+    await waitFor(async () => expect((await matchupsRepo.get('mu1'))?.defensePlayId).toBe(SEED_IDS.cover3), {
+      timeout: 400,
+    });
+  });
+
+  it('shows the export PNG button', async () => {
+    await seedMatchup();
+    renderAt('/matchup/mu1');
+    expect(await screen.findByTestId('btn-export-png')).toBeInTheDocument();
   });
 });

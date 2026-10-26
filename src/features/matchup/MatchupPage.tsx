@@ -2,8 +2,9 @@
  * Matchup screen (SRS §12.1): `/matchup/new` (create dialog) and `/matchup/:id` (simulate, tweak,
  * play back, save). FR-MU-01..04, FR-MU-08, FR-DAT-03, FR-DAT-04.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ExportPngButton } from '@/components/ExportPngButton';
 import { Select } from '@/components/ui';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { usePlayback } from '@/components/field/usePlayback';
@@ -86,7 +87,15 @@ function MatchupEditor({
   // Working copy: initialised once per id (the editor is keyed by id); our own saves do not reset it.
   const [working, setWorking] = useState<Matchup>(initial);
   const [hidden, setHidden] = useState(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
   const autosave = useAutoSave(working, (m) => matchupsRepo.put({ ...m, updatedAt: Date.now() }));
+  // Random pick (FR-RD-01): flush right after the commit (effects run after useAutoSave's own) so the
+  // persisted defensePlayId is never stale.
+  const [pickedAt, setPickedAt] = useState(0);
+  const flush = autosave.flush;
+  useEffect(() => {
+    if (pickedAt > 0) void flush();
+  }, [pickedAt, flush]);
 
   const overlays = useMatchupStore((s) => s.overlays);
   const toggleOverlay = useMatchupStore((s) => s.toggleOverlay);
@@ -159,49 +168,54 @@ function MatchupEditor({
             {t.matchup.simError}: {error}
           </p>
         ) : built && result ? (
-          <MatchupField
-            built={built}
-            result={result}
-            t={playback.t}
-            field={field}
-            ballSpot={working.ballSpot}
-            levels={levels}
-            hideDefenseOverlays={hidden}
-          />
-        ) : null}
-        <details className="absolute right-2 top-2 rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
-          <summary data-testid="overlay-menu" className="cursor-pointer">
-            {t.matchup.overlayMenu}
-          </summary>
-          <div className="mt-2 flex flex-col gap-1">
-            {OVERLAY_KEYS.map((k) => (
-              <label key={k} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  data-testid={`overlay-toggle-${k}`}
-                  checked={overlays[k]}
-                  onChange={() => toggleOverlay(k)}
-                />
-                {t.matchupField.overlays[k]}
-              </label>
-            ))}
-            {overlays.perception && built && (
-              <Select
-                label={t.matchupField.debugDefender}
-                data-testid="debug-defender"
-                value={debugDefenderId ?? ''}
-                onChange={(e) => setDebugDefender(e.target.value === '' ? null : e.target.value)}
-              >
-                <option value="">{t.matchupField.debugDefenderNone}</option>
-                {built.defense.players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </Select>
-            )}
+          <div ref={fieldRef} className="h-full w-full">
+            <MatchupField
+              built={built}
+              result={result}
+              t={playback.t}
+              field={field}
+              ballSpot={working.ballSpot}
+              levels={levels}
+              hideDefenseOverlays={hidden}
+            />
           </div>
-        </details>
+        ) : null}
+        <div className="absolute right-2 top-2 flex items-start gap-2">
+          <ExportPngButton getNode={() => fieldRef.current} fileName={`${working.name || 'matchup'}.png`} />
+          <details className="rounded border bg-white p-2 text-sm shadow dark:bg-slate-800">
+            <summary data-testid="overlay-menu" className="cursor-pointer">
+              {t.matchup.overlayMenu}
+            </summary>
+            <div className="mt-2 flex flex-col gap-1">
+              {OVERLAY_KEYS.map((k) => (
+                <label key={k} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    data-testid={`overlay-toggle-${k}`}
+                    checked={overlays[k]}
+                    onChange={() => toggleOverlay(k)}
+                  />
+                  {t.matchupField.overlays[k]}
+                </label>
+              ))}
+              {overlays.perception && built && (
+                <Select
+                  label={t.matchupField.debugDefender}
+                  data-testid="debug-defender"
+                  value={debugDefenderId ?? ''}
+                  onChange={(e) => setDebugDefender(e.target.value === '' ? null : e.target.value)}
+                >
+                  <option value="">{t.matchupField.debugDefenderNone}</option>
+                  {built.defense.players.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
+          </details>
+        </div>
       </div>
 
       <aside className="row-span-2 flex flex-col gap-3 overflow-y-auto border-l border-slate-200 p-3 dark:border-slate-700">
@@ -210,10 +224,14 @@ function MatchupEditor({
           defense={defense}
           hidden={hidden}
           ended={ended}
-          onPick={(id) => setWorking((m) => ({ ...m, defensePlayId: id }))}
+          onPick={(id) => {
+            setWorking((m) => ({ ...m, defensePlayId: id }));
+            // Flush on the next commit so the bundle reloads with the new defense before the reveal.
+            setPickedAt((n) => n + 1);
+          }}
           onHiddenChange={setHidden}
         />
-        <ControlsPanel matchup={working} onChange={setWorking} />
+        <ControlsPanel matchup={working} format={offense.format} onChange={setWorking} />
         {built && <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />}
         <div className="flex gap-3 text-sm">
           <Link

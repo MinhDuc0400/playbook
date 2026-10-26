@@ -1,12 +1,15 @@
 /** Matchup parameter controls (FR-MU-02). Every change re-simulates through the working matchup. */
 import { useEffect, useState } from 'react';
 import { IconButton, Select } from '@/components/ui';
-import type { Matchup } from '@/domain/types';
+import { useLineups } from '@/db/hooks';
+import type { Format, Matchup, Side } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { randomSeed } from './buildSimInput';
 
 export interface ControlsPanelProps {
   matchup: Matchup;
+  /** Format of the matchup's plays; lineups are filtered by it when given. */
+  format?: Format;
   onChange(m: Matchup): void;
 }
 
@@ -67,7 +70,34 @@ function NumberField({
   );
 }
 
-export function ControlsPanel({ matchup, onChange }: ControlsPanelProps): JSX.Element {
+export function ControlsPanel({ matchup, format, onChange }: ControlsPanelProps): JSX.Element {
+  const lineups = useLineups();
+  const lineupSelect = (side: Side): JSX.Element => {
+    const key = side === 'offense' ? 'offenseLineupId' : 'defenseLineupId';
+    const options = (lineups ?? []).filter(
+      (l) => l.side === side && (format === undefined || l.format === format),
+    );
+    return (
+      <Select
+        label={side === 'offense' ? s.lineupOffense : s.lineupDefense}
+        data-testid={`ctl-lineup-${side}`}
+        value={matchup[key] ?? ''}
+        onChange={(e) => {
+          const next = { ...matchup };
+          if (e.target.value === '') delete next[key];
+          else next[key] = e.target.value;
+          onChange(next);
+        }}
+      >
+        <option value="">{s.lineupNone}</option>
+        {options.map((l) => (
+          <option key={l.id} value={l.id}>
+            {l.name}
+          </option>
+        ))}
+      </Select>
+    );
+  };
   return (
     <section data-testid="controls-panel" className="flex flex-col gap-3 rounded border p-3 text-sm">
       <h2 className="font-semibold">{s.title}</h2>
@@ -92,6 +122,8 @@ export function ControlsPanel({ matchup, onChange }: ControlsPanelProps): JSX.El
           </option>
         ))}
       </Select>
+      {lineupSelect('offense')}
+      {lineupSelect('defense')}
       <NumberField
         label={s.ballX}
         testId="ctl-ball-x"

@@ -94,3 +94,48 @@ describe('PlayerPanel', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('PlayerPanel advanced (FR-ATH-03)', () => {
+  it('sliders show resolved values and write overrides[].stats, keeping the preset', () => {
+    const onChange = vi.fn();
+    const m = matchup([{ side: 'offense', label: 'Z', preset: 'good' }]);
+    render(<PlayerPanel matchup={m} built={built} snapshot={snapshot} onChange={onChange} />);
+    select();
+    const slider = screen.getByTestId('player-stat-speed') as HTMLInputElement;
+    expect(Number(slider.value)).toBeCloseTo(snapshot.settings.presets.good.speed);
+    fireEvent.change(slider, { target: { value: '9' } });
+    expect(onChange.mock.calls.at(-1)![0].overrides).toEqual([
+      { side: 'offense', label: 'Z', preset: 'good', stats: { speed: 9 } },
+    ]);
+    fireEvent.change(screen.getByTestId('player-stat-armRange-num'), { target: { value: '99' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates an override when none exists and shows custom ring level', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <PlayerPanel matchup={matchup()} built={built} snapshot={snapshot} onChange={onChange} />,
+    );
+    select();
+    fireEvent.change(screen.getByTestId('player-stat-iq'), { target: { value: '0.9' } });
+    const next = onChange.mock.calls.at(-1)![0] as Matchup;
+    expect(next.overrides).toEqual([{ side: 'offense', label: 'Z', stats: { iq: 0.9 } }]);
+    rerender(<PlayerPanel matchup={next} built={built} snapshot={snapshot} onChange={onChange} />);
+    expect(screen.getByTestId('player-panel-custom')).toBeInTheDocument();
+  });
+
+  it('"Về preset" removes the stats but keeps the preset', () => {
+    const onChange = vi.fn();
+    const m = matchup([
+      { side: 'offense', label: 'Z', preset: 'good', stats: { speed: 9 } },
+      { side: 'offense', label: 'Y', stats: { iq: 0.1 } },
+    ]);
+    render(<PlayerPanel matchup={m} built={built} snapshot={snapshot} onChange={onChange} />);
+    select();
+    fireEvent.click(screen.getByTestId('player-reset'));
+    expect(onChange.mock.calls.at(-1)![0].overrides).toEqual([
+      { side: 'offense', label: 'Z', preset: 'good' },
+      { side: 'offense', label: 'Y', stats: { iq: 0.1 } },
+    ]);
+  });
+});

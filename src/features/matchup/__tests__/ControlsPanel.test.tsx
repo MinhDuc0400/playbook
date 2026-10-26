@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -86,5 +86,40 @@ describe('ControlsPanel anticipation (FR-MU-10)', () => {
     expect(screen.queryByTestId('ctl-oracle-label')).toBeNull();
     rerender(<ControlsPanel matchup={{ ...base, anticipation: 0.55 }} onChange={vi.fn()} />);
     expect(screen.getByTestId('ctl-oracle-label')).toHaveTextContent('Oracle: defense biết trước');
+  });
+});
+
+describe('ControlsPanel lineup selects (FR-ATH-06)', () => {
+  const mk = (id: string, side: 'offense' | 'defense', format: '5v5' | '7v7') => ({
+    id,
+    schemaVersion: 1,
+    name: `L-${id}`,
+    side,
+    format,
+    slots: [],
+    createdAt: 1,
+    updatedAt: 1,
+  });
+
+  it('lists only lineups of the side and format; choosing sets the id, "none" clears it', async () => {
+    const user = userEvent.setup();
+    const { lineupsRepo } = await import('@/db/repos/lineups');
+    for (const l of await lineupsRepo.list()) await lineupsRepo.remove(l.id);
+    await lineupsRepo.put(mk('o5', 'offense', '5v5'));
+    await lineupsRepo.put(mk('o7', 'offense', '7v7'));
+    await lineupsRepo.put(mk('d5', 'defense', '5v5'));
+    const onChange = vi.fn();
+    const { rerender } = render(<ControlsPanel matchup={base} format="5v5" onChange={onChange} />);
+    const off = screen.getByTestId('ctl-lineup-offense') as HTMLSelectElement;
+    await waitFor(() => expect(off.options.length).toBe(2));
+    expect([...off.options].map((o) => o.value)).toEqual(['', 'o5']);
+    const def = screen.getByTestId('ctl-lineup-defense') as HTMLSelectElement;
+    expect([...def.options].map((o) => o.value)).toEqual(['', 'd5']);
+    await user.selectOptions(off, 'o5');
+    expect(onChange).toHaveBeenLastCalledWith({ ...base, offenseLineupId: 'o5' });
+    rerender(<ControlsPanel matchup={{ ...base, offenseLineupId: 'o5' }} format="5v5" onChange={onChange} />);
+    await user.selectOptions(screen.getByTestId('ctl-lineup-offense'), '');
+    expect(onChange.mock.calls.at(-1)![0]).toEqual(base);
+    expect('offenseLineupId' in onChange.mock.calls.at(-1)![0]).toBe(false);
   });
 });

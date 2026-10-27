@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROUTE_TEMPLATES } from '@/domain/routeTree';
 import { SCHEMA_VERSION, type Play, type PlayerSlot, type Point } from '@/domain/types';
 import { getMotion, getRoute, setMotion, setOptionRoute } from '@/features/editor/ops';
+import { setFeatureOverride } from '@/config/features';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { OffensePanel } from '../OffensePanel';
@@ -328,5 +329,38 @@ describe('OffensePanel timing (T5.6)', () => {
       fireEvent.change(input, { target: { value: '' } });
       expect(play().readPlan).toBeUndefined();
     });
+  });
+});
+
+describe('OffensePanel Simple mode (T11.4, D-26)', () => {
+  beforeEach(() => {
+    act(() => store().load(null));
+  });
+  afterEach(() => setFeatureOverride(true));
+
+  it('hides strength, read plan and route end behaviour; keeps route, timing and read order', () => {
+    setFeatureOverride(false);
+    setup(['x']);
+    for (const id of ['strength-select', 'route-end-behavior', 'read-plan', 'read-mode']) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    for (const id of ['route-template-slant', 'route-depth', 'route-delay', 'progression-toggle-Z']) {
+      expect(screen.getByTestId(id)).toBeInTheDocument();
+    }
+  });
+
+  it('QB keeps drop depth but hides drop style', () => {
+    setFeatureOverride(false);
+    setup(['q']);
+    expect(screen.queryByTestId('qb-drop-style')).toBeNull();
+    expect(screen.getByTestId('qb-drop-depth')).toBeInTheDocument();
+  });
+
+  it('Advanced shows everything', () => {
+    setFeatureOverride(true);
+    setup(['q']);
+    expect(screen.getByTestId('qb-drop-style')).toBeInTheDocument();
+    expect(screen.getByTestId('strength-select')).toBeInTheDocument();
+    expect(screen.getByTestId('read-plan')).toBeInTheDocument();
   });
 });

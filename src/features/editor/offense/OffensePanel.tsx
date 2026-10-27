@@ -33,6 +33,7 @@ import {
   setStrength,
   toggleProgression,
 } from '@/features/editor/ops';
+import { useFeatures } from '@/config/features';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -84,6 +85,7 @@ function deriveDepth(play: Play, slot: PlayerSlot, templateId: RouteTemplateId, 
 
 function RouteControls({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.Element {
   const apply = useEditorStore.getState().apply;
+  const { showReadModel } = useFeatures();
   const route = getRoute(play, slot.id);
   const activeId = route?.templateId && isRouteTemplateId(route.templateId) ? route.templateId : null;
   const tpl = activeId ? ROUTE_TEMPLATES[activeId] : null;
@@ -129,21 +131,23 @@ function RouteControls({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.El
         onChange={(e) => onDepth(e.target.value)}
         onBlur={() => setDraft(null)}
       />
-      <Select
-        label={s.route.endBehavior}
-        data-testid="route-end-behavior"
-        disabled={!route}
-        value={route?.endBehavior ?? 'stop'}
-        onChange={(e) =>
-          apply(
-            'route-end-behavior',
-            setRouteEndBehavior(slot.id, e.target.value === 'continue' ? 'continue' : 'stop'),
-          )
-        }
-      >
-        <option value="stop">{s.route.stop}</option>
-        <option value="continue">{s.route.continue}</option>
-      </Select>
+      {showReadModel ? (
+        <Select
+          label={s.route.endBehavior}
+          data-testid="route-end-behavior"
+          disabled={!route}
+          value={route?.endBehavior ?? 'stop'}
+          onChange={(e) =>
+            apply(
+              'route-end-behavior',
+              setRouteEndBehavior(slot.id, e.target.value === 'continue' ? 'continue' : 'stop'),
+            )
+          }
+        >
+          <option value="stop">{s.route.stop}</option>
+          <option value="continue">{s.route.continue}</option>
+        </Select>
+      ) : null}
       <Button
         variant="danger"
         size="sm"
@@ -231,6 +235,7 @@ function TimingControls({ play, slot }: { play: Play; slot: PlayerSlot }): JSX.E
 
 function QbControls({ slot }: { slot: PlayerSlot }): JSX.Element {
   const apply = useEditorStore.getState().apply;
+  const { showReadModel } = useFeatures();
   const drop = slot.actions.find((a): a is QbDropAction => a.type === 'qbDrop') ?? DEFAULT_QB_DROP;
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -254,17 +259,19 @@ function QbControls({ slot }: { slot: PlayerSlot }): JSX.Element {
         onChange={(e) => onDepth(e.target.value)}
         onBlur={() => setDraft(null)}
       />
-      <Select
-        label={s.qb.style}
-        data-testid="qb-drop-style"
-        value={drop.style}
-        onChange={(e) =>
-          apply('qb-drop', setQbDrop(slot.id, drop.depth, e.target.value === 'under' ? 'under' : 'shotgun'))
-        }
-      >
-        <option value="shotgun">{s.qb.shotgun}</option>
-        <option value="under">{s.qb.under}</option>
-      </Select>
+      {showReadModel ? (
+        <Select
+          label={s.qb.style}
+          data-testid="qb-drop-style"
+          value={drop.style}
+          onChange={(e) =>
+            apply('qb-drop', setQbDrop(slot.id, drop.depth, e.target.value === 'under' ? 'under' : 'shotgun'))
+          }
+        >
+          <option value="shotgun">{s.qb.shotgun}</option>
+          <option value="under">{s.qb.under}</option>
+        </Select>
+      ) : null}
     </Section>
   );
 }
@@ -539,6 +546,7 @@ function StrengthSection({ play }: { play: Play }): JSX.Element {
 export function OffensePanel(): JSX.Element | null {
   const play = useEditorStore((st) => st.play);
   const selection = useEditorStore((st) => st.selection);
+  const { showReadModel } = useFeatures();
   if (!play || play.side !== 'offense') return null;
 
   const only = selection.length === 1 ? selection[0] : undefined;
@@ -554,8 +562,8 @@ export function OffensePanel(): JSX.Element | null {
         </Section>
       )}
       <ProgressionSection play={play} />
-      <ReadPlanSection play={play} />
-      <StrengthSection play={play} />
+      {showReadModel ? <ReadPlanSection play={play} /> : null}
+      {showReadModel ? <StrengthSection play={play} /> : null}
     </aside>
   );
 }

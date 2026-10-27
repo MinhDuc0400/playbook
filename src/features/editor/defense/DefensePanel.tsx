@@ -31,6 +31,7 @@ import {
 } from '@/features/editor/defense/ops';
 import { MatchRulesForm } from '@/features/editor/defense/MatchRulesForm';
 import { setLabel } from '@/features/editor/ops';
+import { useFeatures } from '@/config/features';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -80,6 +81,7 @@ function assignmentKind(slot: PlayerSlot): keyof typeof s.assignmentKind {
 function PlaySection({ play }: { play: Play }): JSX.Element {
   const apply = useEditorStore.getState().apply;
   const ghostFormationId = useEditorStore((st) => st.ghostFormationId);
+  const { showMatchupTuning } = useFeatures();
   const current = ghostFormation(play.format, ghostFormationId);
 
   return (
@@ -100,15 +102,17 @@ function PlaySection({ play }: { play: Play }): JSX.Element {
           </option>
         ))}
       </Select>
-      <Select
-        label={s.play.alignTo}
-        data-testid="def-align-to"
-        value={play.alignTo ?? 'ball'}
-        onChange={(e) => apply('align to', setAlignTo(e.target.value === 'strength' ? 'strength' : 'ball'))}
-      >
-        <option value="ball">{s.play.alignBall}</option>
-        <option value="strength">{s.play.alignStrength}</option>
-      </Select>
+      {showMatchupTuning ? (
+        <Select
+          label={s.play.alignTo}
+          data-testid="def-align-to"
+          value={play.alignTo ?? 'ball'}
+          onChange={(e) => apply('align to', setAlignTo(e.target.value === 'strength' ? 'strength' : 'ball'))}
+        >
+          <option value="ball">{s.play.alignBall}</option>
+          <option value="strength">{s.play.alignStrength}</option>
+        </Select>
+      ) : null}
       <Button
         size="sm"
         data-testid="btn-auto-align-all"

@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formationsFor } from '@/domain/formations';
 import { SCHEMA_VERSION, ZONE_PRESET_IDS, type Play, type PlayerSlot, type Point } from '@/domain/types';
 import { zonePreset } from '@/domain/zones';
 import { createDefaultFields } from '@/domain/field';
+import { setFeatureOverride } from '@/config/features';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -281,5 +282,27 @@ describe('DefensePanel (T2.4)', () => {
   it('FR-DEF-07 hides the match-rules form without a single selection', () => {
     setup();
     expect(screen.queryByTestId('rules-list')).toBeNull();
+  });
+});
+
+describe('DefensePanel Simple mode (T11.4, D-26)', () => {
+  beforeEach(() => {
+    act(() => store().load(null));
+  });
+  afterEach(() => setFeatureOverride(true));
+
+  it('hides alignTo; keeps auto align, leverage and match rules', () => {
+    setFeatureOverride(false);
+    setup(['cb1']);
+    expect(screen.queryByTestId('def-align-to')).toBeNull();
+    for (const id of ['btn-auto-align-all', 'def-leverage', 'rule-add']) {
+      expect(screen.getByTestId(id)).toBeInTheDocument();
+    }
+  });
+
+  it('Advanced shows alignTo', () => {
+    setFeatureOverride(true);
+    setup(['cb1']);
+    expect(screen.getByTestId('def-align-to')).toBeInTheDocument();
   });
 });

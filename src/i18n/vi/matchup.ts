@@ -20,7 +20,7 @@ export const matchup = {
   qb: {
     toggle: 'QB tự ném',
     toggleHelp:
-      'Bạn làm QB: play chạy lại từ đầu, QB không tự ném. Bấm Q/W/E/R/T (hoặc click receiver) để ném cho receiver theo thứ tự đọc, đúng tại thời điểm bấm.',
+      'Bạn làm QB: play chạy lại từ đầu, QB không tự ném. Bấm Q/W/E/R/T (hoặc click receiver) khi play đang chạy để ném cho receiver theo thứ tự đọc, đúng tại thời điểm bấm; hoặc chọn người nhận để QB ném lúc người đó open nhất.',
     title: 'QB tự ném',
     hint: 'Bấm Q/W/E/R/T để ném',
     clickHint: 'hoặc bấm vào receiver',
@@ -38,6 +38,12 @@ export const matchup = {
     tally: (attempts: number, completions: number, best: number): string =>
       `Đã ném ${attempts} lần · bắt được ${completions} · ${best}/${attempts} ném đúng người tốt nhất`,
     tallyEmpty: 'Chưa ném lần nào',
+    bestHeading: 'Chọn người nhận, QB ném khi người đó open nhất',
+    bestHelp:
+      'QB chờ và ném đúng lúc người này open nhất (separation lớn nhất khi bóng tới, còn trong tầm ném và phía trước LOS), rồi chạy lại từ đầu.',
+    bestNone: 'Không có thời điểm ném hợp lệ cho người này',
+    bestTime: (t: number, sep: number): string =>
+      `Ném lúc open nhất: ${t.toFixed(2)} s (separation ${sep.toFixed(1)} yd khi bóng tới)`,
   },
   fieldSection: 'Sân',
   newMatchup: {

@@ -9,6 +9,11 @@ export interface QbModePanelProps {
   /** Outcome once the ball has landed (playhead ≥ outcome.t); null while it is in flight. */
   outcome: OutcomeKind | null;
   tally: QbTally;
+  /** "Ném lúc open nhất" result of the last pick (shown with the feedback). */
+  bestTime: { t: number; separation: number } | null;
+  /** True when the last "open nhất" pick had no valid throw time. */
+  bestNone: boolean;
+  onPickBest(id: string): void;
   onRetry(): void;
   onExit(): void;
 }
@@ -20,6 +25,9 @@ export function QbModePanel({
   feedback,
   outcome,
   tally,
+  bestTime,
+  bestNone,
+  onPickBest,
   onRetry,
   onExit,
 }: QbModePanelProps): JSX.Element {
@@ -38,6 +46,28 @@ export function QbModePanel({
               </li>
             ))}
           </ul>
+          <div>
+            <h3 className="font-medium">{s.bestHeading}</h3>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {keyMap.map((k) => (
+                <button
+                  key={k.id}
+                  type="button"
+                  data-testid={`qb-best-${k.label}`}
+                  title={s.bestHelp}
+                  onClick={() => onPickBest(k.id)}
+                  className="rounded border px-2 py-1"
+                >
+                  {k.label} · {k.key}
+                </button>
+              ))}
+            </div>
+            {bestNone && (
+              <p data-testid="qb-best-none" className="mt-1 text-amber-800 dark:text-amber-200">
+                {s.bestNone}
+              </p>
+            )}
+          </div>
         </>
       ) : (
         <dl className="space-y-1">
@@ -59,6 +89,9 @@ export function QbModePanel({
               {feedback.separation === undefined ? t.result.none : feedback.separation.toFixed(1)}
             </span>
           </div>
+          {bestTime && (
+            <div data-testid="qb-feedback-best-time">{s.bestTime(bestTime.t, bestTime.separation)}</div>
+          )}
           <div data-testid="qb-feedback-best">
             {feedback.isBest || feedback.best === undefined
               ? s.bestChosen

@@ -23,7 +23,7 @@ export function useMatchupSim(
   snapshot: DbSnapshot | undefined,
   debug = false,
   qbOverride?: Pick<SimInput, 'qbControl' | 'manualThrow'>,
-  /** Simple mode (D-26): forced sim input, QB override ignored. */
+  /** Simple mode (D-26): forced sim input; the manual QB override from the UI still applies. */
   simple = false,
 ): MatchupSim {
   return useMemo(() => {
@@ -31,7 +31,7 @@ export function useMatchupSim(
     let built: BuiltSim | null = null;
     try {
       built = buildSimInput(matchup, offense, defense, snapshot, simple);
-      if (qbOverride && !simple) built = { ...built, input: { ...built.input, ...qbOverride } };
+      if (qbOverride) built = { ...built, input: { ...built.input, ...qbOverride } };
       return { built, result: simulate(built.input, debug ? { debug: true } : undefined), error: null };
     } catch (e) {
       return { built, result: null, error: e instanceof Error ? e.message : String(e) };

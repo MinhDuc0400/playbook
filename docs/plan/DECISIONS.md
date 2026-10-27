@@ -256,3 +256,5 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   /suggest redirect to `/` in Simple mode. In Simple mode the sim input is forced: avg stats for everyone,
   noise off, seed 1, anticipation 0.5, QB auto, no lineups/overrides. Nothing is deleted; the data model is
   unchanged; existing unit tests render with advanced ON.
+- Amendment (T12.1): "QB tự ném" (Q W E R T) and "Ném lúc open nhất" (`bestThrowTime`, picks the throw time
+  with max separation at arrival) stay available in Simple mode; the manual override applies in both modes.

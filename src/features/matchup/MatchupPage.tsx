@@ -24,6 +24,7 @@ import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
 import { OpenWindows } from './OpenWindows';
 import { ReadTimeline } from './ReadTimeline';
+import { bestThrowTime } from './bestThrow';
 import { QbModePanel } from './QbModePanel';
 import { RandomDefense } from './RandomDefense';
 import { ResultPanel, ResultSummary } from './ResultPanel';
@@ -118,7 +119,7 @@ function MatchupEditor({
     defense,
     snapshot,
     features.showReadModel && overlays.perception,
-    features.showReadModel ? qb.override : undefined,
+    qb.override,
     !features.advanced,
   );
   const labels = useMemo(() => {
@@ -151,6 +152,24 @@ function MatchupEditor({
   const feedback = useMemo(
     () => (result && qb.manualThrow ? qbFeedback(result, keyMap, qb.manualThrow) : null),
     [result, qb.manualThrow, keyMap],
+  );
+  const [bestTime, setBestTime] = useState<{ t: number; separation: number } | null>(null);
+  const [bestNone, setBestNone] = useState(false);
+  const builtInput = built?.input;
+  const pickBest = useCallback(
+    (id: string) => {
+      if (!result || !builtInput) return;
+      const b = bestThrowTime({ result, input: builtInput, targetId: id });
+      if (!b) {
+        setBestNone(true);
+        return;
+      }
+      setBestNone(false);
+      setBestTime(b);
+      throwTo(id, b.t);
+      restart();
+    },
+    [result, builtInput, throwTo, restart],
   );
   const hideReadInfo = qb.enabled && !qbThrown;
   const runManyInput = useMemo(() => {
@@ -217,7 +236,7 @@ function MatchupEditor({
       )}
     </>
   );
-  const qbToggle = features.showReadModel ? (
+  const qbToggle = (
     <label
       title={t.matchup.qb.toggleHelp}
       className="flex min-h-10 shrink-0 items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800 lg:min-h-0"
@@ -231,12 +250,16 @@ function MatchupEditor({
           if (e.target.checked) {
             qb.enable();
             restart();
-          } else qb.disable();
+          } else {
+            setBestTime(null);
+            setBestNone(false);
+            qb.disable();
+          }
         }}
       />
       {t.matchup.qb.toggle}
     </label>
-  ) : null;
+  );
   const fieldBody =
     error !== null ? (
       <p role="alert" data-testid="matchup-sim-error" className="p-4 text-red-700 dark:text-red-300">
@@ -258,20 +281,28 @@ function MatchupEditor({
         />
       </div>
     ) : null;
-  const qbPanel =
-    features.showReadModel && qb.enabled ? (
-      <QbModePanel
-        keyMap={keyMap}
-        feedback={feedback}
-        outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
-        tally={qb.tally}
-        onRetry={() => {
-          qb.retry();
-          restart();
-        }}
-        onExit={qb.disable}
-      />
-    ) : null;
+  const qbPanel = qb.enabled ? (
+    <QbModePanel
+      keyMap={keyMap}
+      feedback={feedback}
+      outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
+      tally={qb.tally}
+      bestTime={bestTime}
+      bestNone={bestNone}
+      onPickBest={pickBest}
+      onRetry={() => {
+        setBestTime(null);
+        setBestNone(false);
+        qb.retry();
+        restart();
+      }}
+      onExit={() => {
+        setBestTime(null);
+        setBestNone(false);
+        qb.disable();
+      }}
+    />
+  ) : null;
   const randomDefense = features.showMatchupTuning ? (
     <RandomDefense
       offense={offense}

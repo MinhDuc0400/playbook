@@ -49,7 +49,10 @@ alignTo, design-strength control.
   menu (routes, zones, man lines, separation).
 - Result line: who got the ball and when (one sentence), no statistics.
 - Hidden: seed dice, noise, ball spot, anticipation slider, lineup selects, Random defense, per-player
-  Kém/TB/Hay, advanced sliders, Chạy 50 lần, QB tự ném, read timeline/score chart.
+  Kém/TB/Hay, advanced sliders, Chạy 50 lần, read timeline/score chart.
+- Kept: **QB tự ném** (press Q W E R T while the play runs to throw at that moment) and **Ném lúc open
+  nhất** (pick a receiver, the QB throws when he is most open). The manual throw overrides the forced
+  QB auto; stats/seed/noise stay forced.
 
 **Install / Present:** list of matchups with coach notes (as now). In Present, under the field, show the
 same **Khoảng open** strip for the item on screen (large, readable on a projector), plus notes (N), loop (L),

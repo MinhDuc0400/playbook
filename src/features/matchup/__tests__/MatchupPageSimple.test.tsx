@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,12 +7,30 @@ import { matchupsRepo } from '@/db/repos/matchups';
 import { playsRepo } from '@/db/repos/plays';
 import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import { createDefaultSettings } from '@/domain/defaults';
-import type { DbSnapshot, Matchup } from '@/domain/types';
+import type { DbSnapshot, Matchup, SimInput } from '@/domain/types';
 import { simulate } from '@/engine/simulate';
 import { t } from '@/i18n/vi';
 import { useMatchupStore } from '@/store/matchupStore';
 import { buildSimInput, createMatchup } from '../buildSimInput';
 import MatchupPage from '../MatchupPage';
+import { bestThrowTime } from '../bestThrow';
+
+const inputs: SimInput[] = [];
+vi.mock('../useMatchupSim', async (orig) => {
+  const m = await orig<typeof import('../useMatchupSim')>();
+  return {
+    ...m,
+    useMatchupSim: (...a: Parameters<typeof m.useMatchupSim>) => {
+      const r = m.useMatchupSim(...a);
+      if (r.built) inputs.push(r.built.input);
+      return r;
+    },
+  };
+});
+vi.mock('../bestThrow', async (orig) => {
+  const m = await orig<typeof import('../bestThrow')>();
+  return { ...m, bestThrowTime: vi.fn(m.bestThrowTime) };
+});
 
 vi.mock('../MatchupField', () => ({
   MatchupField: (p: {
@@ -96,7 +114,7 @@ describe('Simple mode: page', () => {
     }
     for (const id of [
       'run-many',
-      'qb-mode-toggle',
+      'qb-mode-panel',
       'ctl-seed',
       'ctl-noise',
       'ctl-anticipation',
@@ -114,6 +132,7 @@ describe('Simple mode: page', () => {
     ]) {
       expect(screen.queryByTestId(id)).toBeNull();
     }
+    expect(screen.getByTestId('qb-mode-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('mock-field')).toHaveAttribute('data-levels', '0');
     expect(screen.getByTestId('overlay-toggle-zones')).toBeInTheDocument();
   });
@@ -132,5 +151,97 @@ describe('Simple mode: page', () => {
     const before = screen.getByTestId('mock-field').getAttribute('data-sig');
     await user.click(screen.getByTestId('ctl-offense-flipped'));
     expect(screen.getByTestId('mock-field').getAttribute('data-sig')).not.toBe(before);
+  });
+});
+
+describe('Simple mode: QB throw controls (D-26, D-23)', () => {
+  const lastInput = () => inputs[inputs.length - 1]!;
+  const setT = (v: number) =>
+    fireEvent.change(screen.getByTestId('timeline-scrubber'), { target: { value: String(v) } });
+
+  async function enter() {
+    inputs.length = 0;
+    const user = userEvent.setup();
+    await matchupsRepo.put(base({ seed: 9, noise: true, anticipation: 0.9 }));
+    renderAt('/matchup/mu1');
+    await screen.findByTestId('matchup-page');
+    await user.click(screen.getByTestId('qb-mode-toggle'));
+    return user;
+  }
+
+  it('toggle shows the panel, key legend and manual input with forced stats; read timeline stays hidden', async () => {
+    await enter();
+    expect(screen.getByTestId('qb-mode-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('qb-key-legend').querySelectorAll('kbd').length).toBeGreaterThanOrEqual(2);
+    expect(lastInput().qbControl).toBe('manual');
+    expect(lastInput().manualThrow).toBeUndefined();
+    expect(lastInput().seed).toBe(1);
+    expect(lastInput().noise).toBe(false);
+    expect(lastInput().anticipation).toBe(0.5);
+    expect(lastInput().offenseStats['mesh-q'] ?? Object.values(lastInput().offenseStats)[0]).toEqual(
+      snap.settings.presets.avg,
+    );
+    expect(screen.queryByTestId('read-timeline')).toBeNull();
+  });
+
+  it('pressing W at a paused playhead throws to read #2 at that time', async () => {
+    const user = await enter();
+    await user.keyboard(' ');
+    act(() => setT(1.4));
+    await user.keyboard('w');
+    const m = lastInput().manualThrow;
+    expect(m).toBeDefined();
+    expect(m!.t).toBeCloseTo(1.4, 1);
+    const second = screen.getByTestId('qb-feedback-target').textContent;
+    expect(second).toBeTruthy();
+    expect(lastInput().qbControl).toBe('manual');
+    expect(lastInput().seed).toBe(1);
+  });
+
+  it('pressing a key while the animation plays throws at the running playhead', async () => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame', 'performance'] });
+    try {
+      await matchupsRepo.put(base());
+      renderAt('/matchup/mu1');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50);
+      });
+      fireEvent.click(await screen.findByTestId('qb-mode-toggle'));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600);
+      });
+      fireEvent.keyDown(window, { key: 'q' });
+      expect(lastInput().manualThrow).toBeDefined();
+      expect(lastInput().manualThrow!.t).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('"open nhất" button sets manualThrow to bestThrowTime and restarts playback', async () => {
+    const user = await enter();
+    await user.keyboard(' ');
+    act(() => setT(3));
+    const btn = screen.getAllByTestId(/^qb-best-/).find((b) => b.tagName === 'BUTTON')!;
+    await user.click(btn);
+    const call = vi.mocked(bestThrowTime).mock.results.at(-1)!;
+    const expected = call.value as { t: number; separation: number };
+    expect(expected).not.toBeNull();
+    expect(lastInput().manualThrow!.t).toBe(expected.t);
+    expect(lastInput().manualThrow!.targetId).toBe(vi.mocked(bestThrowTime).mock.calls.at(-1)![0].targetId);
+    expect(screen.getByTestId('qb-feedback-best-time')).toHaveTextContent(
+      t.matchup.qb.bestTime(expected.t, expected.separation),
+    );
+    // Playback restarted from the start (the field's mock does not show t; the scrubber does).
+    expect(Number((screen.getByTestId('timeline-scrubber') as HTMLInputElement).value)).toBeLessThan(3);
+  });
+
+  it('shows qb-best-none and does nothing when there is no valid time', async () => {
+    const user = await enter();
+    vi.mocked(bestThrowTime).mockReturnValueOnce(null);
+    await user.click(screen.getAllByTestId(/^qb-best-/).find((b) => b.tagName === 'BUTTON')!);
+    expect(screen.getByTestId('qb-best-none')).toHaveTextContent(t.matchup.qb.bestNone);
+    expect(lastInput().manualThrow).toBeUndefined();
+    expect(screen.queryByTestId('qb-feedback-best-time')).toBeNull();
   });
 });

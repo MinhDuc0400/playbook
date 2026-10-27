@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setFeatureOverride } from '@/config/features';
 import { t } from '@/i18n/vi';
 
 vi.mock('@/db/errors', () => ({ onDbError: vi.fn(() => () => undefined) }));
@@ -91,6 +92,18 @@ describe('Layout (phone)', () => {
       expect(screen.getByText('home')).toBeInTheDocument();
     } finally {
       vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('Layout (Simple mode)', () => {
+  it('hides Roster and Suggest links', () => {
+    setFeatureOverride(false);
+    renderLayout();
+    expect(screen.queryByTestId('nav-roster')).toBeNull();
+    expect(screen.queryByTestId('nav-suggest')).toBeNull();
+    for (const id of ['playbook', 'install', 'settings']) {
+      expect(screen.getByTestId(`nav-${id}`)).toBeInTheDocument();
     }
   });
 });

@@ -1,10 +1,12 @@
 /** Settings screen (SRS §12.1). Sections render in order; Phase 5 appends field/tuning/preset/benchmark. */
 import type { ReactNode } from 'react';
+import { useFeatures } from '@/config/features';
 import { Select } from '@/components/ui';
 import { settingsRepo } from '@/db/repos';
 import { useSettings } from '@/db/hooks';
 import type { ThemePref } from '@/domain/types';
 import { t } from '@/i18n/vi';
+import { AdvancedToggle } from './AdvancedToggle';
 import { BenchmarkSection } from './BenchmarkSection';
 import { DataSection } from './DataSection';
 import { FieldSection } from './FieldSection';
@@ -57,20 +59,26 @@ interface SectionDef {
   render: () => ReactNode;
 }
 
-const SECTIONS: SectionDef[] = [
+const TUNING_SECTIONS: SectionDef[] = [
   { id: 'field', title: t.tuning.sections.field, render: () => <FieldSection /> },
   { id: 'presets', title: t.tuning.sections.presets, render: () => <PresetsSection /> },
   { id: 'tuning', title: t.tuning.sections.tuning, render: () => <TuningSection /> },
   { id: 'benchmark', title: t.tuning.sections.benchmark, render: () => <BenchmarkSection /> },
+];
+
+const BASE_SECTIONS: SectionDef[] = [
   { id: 'data', title: t.settings.sections.data, render: () => <DataSection /> },
   { id: 'appearance', title: t.settings.sections.appearance, render: () => <AppearanceSection /> },
+  { id: 'advanced', title: t.settings.sections.advanced, render: () => <AdvancedToggle /> },
 ];
 
 export default function SettingsPage(): JSX.Element {
+  const { showTuningSettings } = useFeatures();
+  const sections = showTuningSettings ? [...TUNING_SECTIONS, ...BASE_SECTIONS] : BASE_SECTIONS;
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 p-4 sm:p-6" data-testid="page-settings">
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
-      {SECTIONS.map((s) => (
+      {sections.map((s) => (
         <section key={s.id} data-testid={`settings-section-${s.id}`} className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">{s.title}</h2>
           {s.render()}

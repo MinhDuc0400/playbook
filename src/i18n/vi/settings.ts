@@ -4,6 +4,12 @@ export const settings = {
   sections: {
     data: 'Dữ liệu',
     appearance: 'Giao diện',
+    advanced: 'Chế độ nâng cao',
+  },
+  advanced: {
+    toggle: 'Bật chế độ nâng cao',
+    help: 'Bật để hiện chỉ số cầu thủ, Roster, Suggest, chạy 50 lần, benchmark, tuning và các tuỳ chọn mô phỏng.',
+    note: 'Dữ liệu của bạn được giữ nguyên khi bật hoặc tắt.',
   },
   data: {
     intro: 'Dữ liệu chỉ nằm trong trình duyệt này. Hãy xuất file JSON để sao lưu.',

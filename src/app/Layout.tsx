@@ -1,6 +1,7 @@
 /** App frame: top nav (Playbook, Install, Roster, Suggest, Cài đặt), DbErrorBanner, <Outlet/>, "?" shortcut sheet. */
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useFeatures } from '@/config/features';
 import { IconButton } from '@/components/ui';
 import { t } from '@/i18n/vi';
 import { useIsDesktop } from '@/lib/useMediaQuery';
@@ -8,13 +9,21 @@ import { BackupBanner } from './BackupBanner';
 import { DbErrorBanner } from './DbErrorBanner';
 import { ShortcutSheet } from './ShortcutSheet';
 
+interface NavItem {
+  to: string;
+  id: string;
+  label: string;
+  end: boolean;
+  flag?: 'showRoster' | 'showSuggest';
+}
+
 const NAV = [
   { to: '/', id: 'playbook', label: t.common.nav.playbook, end: true },
   { to: '/install', id: 'install', label: t.common.nav.install, end: false },
-  { to: '/roster', id: 'roster', label: t.common.nav.roster, end: false },
-  { to: '/suggest', id: 'suggest', label: t.common.nav.suggest, end: false },
+  { to: '/roster', id: 'roster', label: t.common.nav.roster, end: false, flag: 'showRoster' },
+  { to: '/suggest', id: 'suggest', label: t.common.nav.suggest, end: false, flag: 'showSuggest' },
   { to: '/settings', id: 'settings', label: t.common.nav.settings, end: false },
-] as const;
+] as const satisfies readonly NavItem[];
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -39,6 +48,8 @@ export function Layout(): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const desktop = useIsDesktop();
   const { pathname } = useLocation();
+  const features = useFeatures();
+  const navItems: readonly NavItem[] = NAV.filter((n) => !('flag' in n) || features[n.flag]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -68,7 +79,7 @@ export function Layout(): JSX.Element {
         <header className="flex items-center gap-4 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-800">
           <span className="text-lg font-bold">{t.common.appName}</span>
           <nav aria-label={t.common.nav.label} className="flex flex-1 items-center gap-1">
-            {NAV.map((item) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.id}
                 to={item.to}
@@ -111,7 +122,7 @@ export function Layout(): JSX.Element {
               data-testid="nav-menu"
               className="absolute inset-x-0 top-full flex flex-col gap-1 border-b border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
             >
-              {NAV.map((item) => (
+              {navItems.map((item) => (
                 <NavLink
                   key={item.id}
                   to={item.to}

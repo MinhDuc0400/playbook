@@ -5,6 +5,7 @@ import { makePlay, makeSettings } from '@/db/__tests__/fixtures';
 import { athletesRepo, installsRepo, lineupsRepo, matchupsRepo, playsRepo, settingsRepo } from '@/db/repos';
 import { SCHEMA_VERSION } from '@/domain/types';
 import { exportAll } from '@/lib/io/exportData';
+import { setFeatureOverride } from '@/config/features';
 import SettingsPage from '../SettingsPage';
 
 // jsdom's File lacks text(); polyfill it for the tests.
@@ -105,5 +106,40 @@ describe('DataSection', () => {
     expect(screen.queryByTestId('import-report')).toBeNull();
     expect((await playsRepo.list()).map((p) => p.id)).toEqual(['keep']);
     expect((await exportAll()).data.plays).toHaveLength(1);
+  });
+});
+
+describe('Simple / Advanced mode (D-26)', () => {
+  const tuning = ['field', 'presets', 'tuning', 'benchmark'];
+
+  it('Simple mode shows only data, appearance and the advanced switch', () => {
+    setFeatureOverride(false);
+    render(<SettingsPage />);
+    for (const id of ['data', 'appearance', 'advanced']) {
+      expect(screen.getByTestId(`settings-section-${id}`)).toBeInTheDocument();
+    }
+    for (const id of tuning) expect(screen.queryByTestId(`settings-section-${id}`)).toBeNull();
+  });
+
+  it('Advanced mode shows every section', () => {
+    setFeatureOverride(true);
+    render(<SettingsPage />);
+    for (const id of [...tuning, 'data', 'appearance', 'advanced']) {
+      expect(screen.getByTestId(`settings-section-${id}`)).toBeInTheDocument();
+    }
+  });
+
+  it('the switch persists ui.advanced and reveals the tuning sections', async () => {
+    setFeatureOverride(null);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const toggle = await screen.findByTestId('settings-advanced');
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    await waitFor(async () => expect((await settingsRepo.get())?.ui.advanced).toBe(true));
+    expect(await screen.findByTestId('settings-section-tuning')).toBeInTheDocument();
+    await user.click(screen.getByTestId('settings-advanced'));
+    await waitFor(async () => expect((await settingsRepo.get())?.ui.advanced).toBe(false));
+    await waitFor(() => expect(screen.queryByTestId('settings-section-tuning')).toBeNull());
   });
 });

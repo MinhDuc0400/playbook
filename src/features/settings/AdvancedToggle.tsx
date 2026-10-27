@@ -1,12 +1,20 @@
 /** Simple/Advanced mode switch (D-26). Writes Settings.ui.advanced; the nav and routes react immediately. */
+import { useEffect, useState } from 'react';
 import { settingsRepo } from '@/db/repos';
 import { useSettings } from '@/db/hooks';
 import { t } from '@/i18n/vi';
 
 export function AdvancedToggle(): JSX.Element {
   const settings = useSettings();
-  const checked = settings?.ui.advanced === true;
+  const stored = settings?.ui.advanced === true;
+  // Optimistic: reflect the click at once, then follow the stored value (live query) once it catches up.
+  const [pending, setPending] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (pending !== null && stored === pending) setPending(null);
+  }, [stored, pending]);
+  const checked = pending ?? stored;
   const onChange = async (advanced: boolean): Promise<void> => {
+    setPending(advanced);
     const latest = await settingsRepo.getOrDefault();
     await settingsRepo.update({ ui: { ...latest.ui, advanced } });
   };

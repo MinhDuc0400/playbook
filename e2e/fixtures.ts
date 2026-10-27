@@ -55,7 +55,10 @@ export async function createMatchup(page: Page, offenseId: string, defenseId: st
   await create.click();
   await page.waitForURL(/\/matchup\/(?!new)[^/]+$/);
   await expect(page.getByTestId('matchup-field')).toBeVisible();
-  await expect(page.getByTestId('result-outcome')).toBeVisible({ timeout: 20_000 });
+  // Advanced mode shows the full result panel, Simple mode the one-sentence summary.
+  await expect(page.getByTestId('result-outcome').or(page.getByTestId('result-summary'))).toBeVisible({
+    timeout: 20_000,
+  });
   await waitSaved(page, 'matchup-save-status');
   return idFromUrl(page.url(), 'matchup');
 }
@@ -147,4 +150,14 @@ export function quantile(values: number[], q: number): number {
   if (values.length === 0) return NaN;
   const s = [...values].sort((a, b) => a - b);
   return s[Math.min(s.length - 1, Math.floor(q * s.length))] ?? NaN;
+}
+
+/** Turns on "Chế độ nâng cao" (D-26) for specs that cover the hidden features. Settings persist per context. */
+export async function enableAdvanced(page: Page): Promise<void> {
+  await page.goto('/settings');
+  const toggle = page.getByTestId('settings-advanced');
+  await expect(toggle).toBeVisible();
+  await toggle.check();
+  await expect(page.getByTestId('nav-roster').or(page.getByTestId('nav-menu-button'))).toBeVisible();
+  await expect(toggle).toBeChecked();
 }

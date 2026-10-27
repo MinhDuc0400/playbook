@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { enableAdvanced } from './fixtures';
 
 // FR-TUN-03: benchmark of the 3 seed offenses x 3 seed defenses (10 runs each) gives 9 rows.
 test('12 benchmark with 10 runs fills 9 rows', async ({ page }) => {
+  await enableAdvanced(page);
   test.setTimeout(180_000);
   await page.goto('/settings');
   await page.getByTestId('bench-runs').selectOption('10');

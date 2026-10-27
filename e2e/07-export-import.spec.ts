@@ -43,7 +43,9 @@ test('07 export then import in a fresh profile restores matchup and install', as
 
     await p2.goto(`/matchup/${matchupId}`);
     await expect(p2.getByTestId('matchup-field')).toBeVisible();
-    await expect(p2.getByTestId('result-outcome')).toBeVisible({ timeout: 20_000 });
+    await expect(p2.getByTestId('result-outcome').or(p2.getByTestId('result-summary'))).toBeVisible({
+      timeout: 20_000,
+    });
 
     await p2.goto(`/install/${installId}`);
     await expect(p2.getByTestId('install-name')).toHaveValue('E2E Export Install');

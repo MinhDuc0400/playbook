@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { SEED, createMatchup } from './fixtures';
+import { SEED, createMatchup, enableAdvanced } from './fixtures';
 
 // FR-RD-01..03: random defense hides its name, the user guesses, reveal shows right/wrong.
 test('10 random defense hides the name, guess then reveal shows the result', async ({ page }) => {
+  await enableAdvanced(page);
   await createMatchup(page, SEED.flood, SEED.cover1);
   await page.getByTestId('rd-random').click();
   await expect(page.getByTestId('defense-name-hidden')).toBeVisible();

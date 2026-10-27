@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { SEED, createMatchup } from './fixtures';
+import { SEED, createMatchup, enableAdvanced } from './fixtures';
 
 // FR-ATH-04/05/06: athlete (Hay) -> 5v5 Trips lineup with that athlete on Z -> used by a matchup.
 test('11 a lineup with a good athlete on Z turns the Z ring good in a matchup', async ({ page }) => {
+  await enableAdvanced(page);
   await page.goto('/roster');
   await page.getByTestId('tab-athletes').click();
   await page.getByTestId('athlete-new').click();

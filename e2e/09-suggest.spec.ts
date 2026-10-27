@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { SEED } from './fixtures';
+import { SEED, enableAdvanced } from './fixtures';
 
 // FR-SG-01/02: tag tier first (Smash beats Cover 2), then the sim tier re-ranks with reasons.
 test('09 suggest ranks Smash first against Cover 2, then re-ranks by simulation', async ({ page }) => {
+  await enableAdvanced(page);
   await page.goto('/suggest');
   await page.getByTestId('sg-play').selectOption({ label: 'Cover 2' });
 

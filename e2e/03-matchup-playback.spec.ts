@@ -10,5 +10,5 @@ test('03 matchup plays to the end and shows an outcome', async ({ page }) => {
 
   await createMatchup(page, offenseId, defenseId);
   await playToEnd(page);
-  await expect(page.getByTestId('result-outcome')).not.toHaveText('');
+  await expect(page.getByTestId('result-outcome').or(page.getByTestId('result-summary'))).not.toHaveText('');
 });

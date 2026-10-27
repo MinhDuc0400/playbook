@@ -8,6 +8,7 @@ import {
   startFrameRecorder,
   stopFrameRecorder,
   tokenCenter,
+  enableAdvanced,
 } from './fixtures';
 
 const log = (name: string, browser: string, data: Record<string, number>): void => {
@@ -88,6 +89,7 @@ test('13 filtering 500 plays takes under 100 ms', async ({ page, browserName }, 
 
 // NFR-PERF-03: 50 runs in the Worker < 1.5 s, main thread stays responsive.
 test('13 run 50 finishes under 1.5 s without freezing the UI', async ({ page, browserName }) => {
+  await enableAdvanced(page);
   await createMatchup(page, SEED.flood, SEED.cover1);
   await startFrameRecorder(page);
   await page.waitForTimeout(200);

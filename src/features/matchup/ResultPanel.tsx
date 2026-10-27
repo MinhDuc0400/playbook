@@ -117,3 +117,20 @@ export function ResultPanel({
     </section>
   );
 }
+
+/** Simple mode (D-26): one sentence instead of the statistics table. */
+export function ResultSummary({ result, offense }: { result: SimResult; offense: Play }): JSX.Element {
+  const { outcome } = result;
+  let text: string;
+  if (outcome.kind === 'complete') {
+    const label = offense.players.find((p) => p.id === outcome.targetId)?.label ?? outcome.targetId;
+    text = s.summary.complete(label, outcome.t, outcome.yards);
+  } else {
+    text = s.summary[outcome.kind];
+  }
+  return (
+    <p data-testid="result-summary" className="rounded border p-3 text-sm font-medium">
+      {text}
+    </p>
+  );
+}

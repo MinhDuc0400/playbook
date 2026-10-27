@@ -24,18 +24,31 @@ function statsBySlot(play: Play, side: Side, m: Matchup, ctx: DbSnapshot): SimIn
  * resolveStats(m, side, slot.label, ctx); field = ctx.settings.fields[offense.format]; tuning/routePriors
  * from ctx.settings; anticipation/seed/noise/ballSpot from the matchup.
  */
-export function buildSimInput(m: Matchup, offense: Play, defense: Play, ctx: DbSnapshot): BuiltSim {
+export function buildSimInput(
+  m: Matchup,
+  offense: Play,
+  defense: Play,
+  ctx: DbSnapshot,
+  simple?: boolean,
+): BuiltSim {
   const flipped = applyMatchupFlips(offense, defense, m);
+  /** Simple mode (D-26): everyone TB, no noise, seed 1, anticipation 0.5, QB auto. */
+  const avgStats = (play: Play): SimInput['offenseStats'] => {
+    const out: SimInput['offenseStats'] = {};
+    for (const slot of play.players) out[slot.id] = { ...ctx.settings.presets.avg };
+    return out;
+  };
   const input: SimInput = {
     offense: flipped.offense,
     defense: flipped.defense,
-    offenseStats: statsBySlot(flipped.offense, 'offense', m, ctx),
-    defenseStats: statsBySlot(flipped.defense, 'defense', m, ctx),
+    offenseStats: simple ? avgStats(flipped.offense) : statsBySlot(flipped.offense, 'offense', m, ctx),
+    defenseStats: simple ? avgStats(flipped.defense) : statsBySlot(flipped.defense, 'defense', m, ctx),
     field: ctx.settings.fields[offense.format],
     ballSpot: m.ballSpot,
-    anticipation: m.anticipation,
-    seed: m.seed,
-    noise: m.noise,
+    anticipation: simple ? 0.5 : m.anticipation,
+    seed: simple ? 1 : m.seed,
+    noise: simple ? false : m.noise,
+    ...(simple ? { qbControl: 'auto' as const } : {}),
     tuning: ctx.settings.tuning,
     routePriors: ctx.settings.routePriors,
   };
@@ -92,4 +105,15 @@ export function levelOf(stats: SimInput['offenseStats'][string], ctx: DbSnapshot
 /** Random 31-bit seed for the dice button (FR-MU-02). UI-side randomness is fine (not engine). */
 export function randomSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
+}
+
+/** True when the stored matchup carries settings that Simple mode ignores (D-26). */
+export function hasCustomTuning(m: Matchup): boolean {
+  return (
+    m.overrides.length > 0 ||
+    m.offenseLineupId !== undefined ||
+    m.defenseLineupId !== undefined ||
+    m.seed !== 1 ||
+    m.noise
+  );
 }

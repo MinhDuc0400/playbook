@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui';
+import { useFeatures } from '@/config/features';
 import { PlayThumbnail } from '@/components/field/PlayThumbnail';
 import { playsRepo } from '@/db/repos/plays';
 import type { FieldConfig, Play } from '@/domain/types';
@@ -21,6 +22,7 @@ const badge =
   'rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-200';
 
 export function PlayCard({ play, field, matchupCount }: PlayCardProps): JSX.Element {
+  const { showStats } = useFeatures();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,13 +60,15 @@ export function PlayCard({ play, field, matchupCount }: PlayCardProps): JSX.Elem
         <span className={badge}>{play.side === 'offense' ? 'Offense' : 'Defense'}</span>
         <span className={badge}>{play.format}</span>
         <span className={badge}>{play.formation}</span>
-        <span
-          className={badge}
-          data-testid={`card-mcount-${play.id}`}
-          title={s.matchupCountLabel(matchupCount)}
-        >
-          {s.matchupCount(matchupCount)}
-        </span>
+        {showStats ? (
+          <span
+            className={badge}
+            data-testid={`card-mcount-${play.id}`}
+            title={s.matchupCountLabel(matchupCount)}
+          >
+            {s.matchupCount(matchupCount)}
+          </span>
+        ) : null}
       </div>
       {play.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">

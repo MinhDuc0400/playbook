@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { makePlay } from '@/db/__tests__/fixtures';
 import { installsRepo, matchupsRepo, playsRepo } from '@/db/repos';
+import { setFeatureOverride } from '@/config/features';
 import { createDefaultSettings } from '@/domain/defaults';
 import { PlayCard } from '../PlayCard';
 
@@ -72,5 +73,21 @@ describe('PlayCard (FR-PB-01, FR-PB-03, FR-PB-05)', () => {
     renderCard(play);
     await userEvent.setup().click(screen.getByTestId('card-delete-p1'));
     expect(await screen.findByTestId('delete-confirm')).toBeInTheDocument();
+  });
+});
+
+describe('PlayCard Simple mode (D-26)', () => {
+  it('hides the matchup-count badge but keeps the actions', () => {
+    setFeatureOverride(false);
+    try {
+      renderCard();
+      expect(screen.queryByTestId('card-mcount-p1')).toBeNull();
+      expect(screen.getByTestId('card-open-p1')).toBeInTheDocument();
+      expect(screen.getByTestId('card-matchup-p1')).toBeInTheDocument();
+      expect(screen.getByTestId('card-duplicate-p1')).toBeInTheDocument();
+      expect(screen.getByTestId('card-delete-p1')).toBeInTheDocument();
+    } finally {
+      setFeatureOverride(true);
+    }
   });
 });

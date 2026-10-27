@@ -8,6 +8,7 @@ import { ExportPngButton } from '@/components/ExportPngButton';
 import { PanelTabs, Select } from '@/components/ui';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { usePlayback } from '@/components/field/usePlayback';
+import { useFeatures } from '@/config/features';
 import { useDbSnapshot, useMatchupBundle } from '@/db/hooks';
 import { AddToInstallButton } from '@/features/install/AddToInstallButton';
 import { matchupsRepo } from '@/db/repos/matchups';
@@ -16,15 +17,16 @@ import { t } from '@/i18n/vi';
 import { useAutoSave } from '@/lib/useAutoSave';
 import { useIsDesktop } from '@/lib/useMediaQuery';
 import { useMatchupStore, type OverlayKey } from '@/store/matchupStore';
-import { levelOf } from './buildSimInput';
+import { hasCustomTuning, levelOf } from './buildSimInput';
 import { ControlsPanel } from './ControlsPanel';
 import { MatchupField } from './MatchupField';
 import { NewMatchupDialog } from './NewMatchupDialog';
 import { PlayerPanel } from './PlayerPanel';
+import { OpenWindows } from './OpenWindows';
 import { ReadTimeline } from './ReadTimeline';
 import { QbModePanel } from './QbModePanel';
 import { RandomDefense } from './RandomDefense';
-import { ResultPanel } from './ResultPanel';
+import { ResultPanel, ResultSummary } from './ResultPanel';
 import { RunManyPanel } from './RunManyPanel';
 import { useMatchupShortcuts } from './useMatchupShortcuts';
 import { useMatchupSim } from './useMatchupSim';
@@ -51,6 +53,7 @@ const OVERLAY_KEYS: OverlayKey[] = [
   'qbEyes',
   'perception',
 ];
+const NO_LEVELS: Record<string, ReturnType<typeof levelOf>> = {};
 const frame = 'h-[calc(100vh-3.5rem)] min-h-[480px]';
 
 function NewMatchupEntry(): JSX.Element {
@@ -107,14 +110,16 @@ function MatchupEditor({
   const toggleOverlay = useMatchupStore((s) => s.toggleOverlay);
   const debugDefenderId = useMatchupStore((s) => s.debugDefenderId);
   const setDebugDefender = useMatchupStore((s) => s.setDebugDefender);
+  const features = useFeatures();
   const qb = useQbModeState();
   const { built, result, error } = useMatchupSim(
     working,
     offense,
     defense,
     snapshot,
-    overlays.perception,
-    qb.override,
+    features.showReadModel && overlays.perception,
+    features.showReadModel ? qb.override : undefined,
+    !features.advanced,
   );
   const labels = useMemo(() => {
     const out: Record<string, string> = {};
@@ -164,6 +169,7 @@ function MatchupEditor({
   useMatchupShortcuts(playback, markTimes);
 
   const levels = useMemo(() => {
+    if (!features.showStats) return NO_LEVELS;
     const out: Record<string, ReturnType<typeof levelOf>> = {};
     if (!built) return out;
     for (const p of built.offense.players) {
@@ -175,24 +181,26 @@ function MatchupEditor({
       if (st) out[p.id] = levelOf(st, snapshot);
     }
     return out;
-  }, [built, snapshot]);
+  }, [built, snapshot, features.showStats]);
 
   const field = snapshot.settings.fields[offense.format];
 
   const overlayItems = (
     <>
-      {OVERLAY_KEYS.map((k) => (
-        <label key={k} className="flex min-h-8 items-center gap-2">
-          <input
-            type="checkbox"
-            data-testid={`overlay-toggle-${k}`}
-            checked={overlays[k]}
-            onChange={() => toggleOverlay(k)}
-          />
-          {t.matchupField.overlays[k]}
-        </label>
-      ))}
-      {overlays.perception && built && (
+      {OVERLAY_KEYS.filter((k) => features.showReadModel || (k !== 'qbEyes' && k !== 'perception')).map(
+        (k) => (
+          <label key={k} className="flex min-h-8 items-center gap-2">
+            <input
+              type="checkbox"
+              data-testid={`overlay-toggle-${k}`}
+              checked={overlays[k]}
+              onChange={() => toggleOverlay(k)}
+            />
+            {t.matchupField.overlays[k]}
+          </label>
+        ),
+      )}
+      {features.showReadModel && overlays.perception && built && (
         <Select
           label={t.matchupField.debugDefender}
           data-testid="debug-defender"
@@ -209,7 +217,7 @@ function MatchupEditor({
       )}
     </>
   );
-  const qbToggle = (
+  const qbToggle = features.showReadModel ? (
     <label
       title={t.matchup.qb.toggleHelp}
       className="flex min-h-10 shrink-0 items-center gap-1 rounded border bg-white px-2 py-1 text-sm shadow dark:bg-slate-800 lg:min-h-0"
@@ -228,7 +236,7 @@ function MatchupEditor({
       />
       {t.matchup.qb.toggle}
     </label>
-  );
+  ) : null;
   const fieldBody =
     error !== null ? (
       <p role="alert" data-testid="matchup-sim-error" className="p-4 text-red-700 dark:text-red-300">
@@ -250,20 +258,21 @@ function MatchupEditor({
         />
       </div>
     ) : null;
-  const qbPanel = qb.enabled ? (
-    <QbModePanel
-      keyMap={keyMap}
-      feedback={feedback}
-      outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
-      tally={qb.tally}
-      onRetry={() => {
-        qb.retry();
-        restart();
-      }}
-      onExit={qb.disable}
-    />
-  ) : null;
-  const randomDefense = (
+  const qbPanel =
+    features.showReadModel && qb.enabled ? (
+      <QbModePanel
+        keyMap={keyMap}
+        feedback={feedback}
+        outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
+        tally={qb.tally}
+        onRetry={() => {
+          qb.retry();
+          restart();
+        }}
+        onExit={qb.disable}
+      />
+    ) : null;
+  const randomDefense = features.showMatchupTuning ? (
     <RandomDefense
       offense={offense}
       defense={defense}
@@ -276,7 +285,7 @@ function MatchupEditor({
       }}
       onHiddenChange={setHidden}
     />
-  );
+  ) : null;
   const editLinks = (
     <div className="flex gap-3 text-sm">
       <Link
@@ -299,8 +308,17 @@ function MatchupEditor({
       )}
     </div>
   );
+  const customNote =
+    !features.advanced && hasCustomTuning(working) ? (
+      <p
+        data-testid="simple-custom-note"
+        className="rounded border border-amber-500 bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+      >
+        {t.matchup.simpleCustomNote}
+      </p>
+    ) : null;
   const resultPanel =
-    built && result && !hideReadInfo ? (
+    features.showSimulationStats && built && result && !hideReadInfo ? (
       <ResultPanel result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
     ) : null;
   const notesField = (
@@ -319,6 +337,11 @@ function MatchupEditor({
     <>
       <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
       {built && result && (
+        <OpenWindows result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
+      )}
+      {!features.advanced && built && result && <ResultSummary result={result} offense={built.offense} />}
+      {customNote}
+      {features.showReadModel && built && result && (
         <ReadTimeline
           result={result}
           offense={built.offense}
@@ -387,7 +410,15 @@ function MatchupEditor({
         <PanelTabs
           mode="tabs"
           tabs={[
-            { id: 'result', label: t.matchup.tabs.result, content: <div className="p-2">{resultPanel}</div> },
+            ...(features.showSimulationStats
+              ? [
+                  {
+                    id: 'result',
+                    label: t.matchup.tabs.result,
+                    content: <div className="p-2">{resultPanel}</div>,
+                  },
+                ]
+              : []),
             {
               id: 'params',
               label: t.matchup.tabs.params,
@@ -399,26 +430,39 @@ function MatchupEditor({
                 </div>
               ),
             },
-            {
-              id: 'players',
-              label: t.matchup.tabs.players,
-              content: (
-                <div className="p-2">
-                  {built && (
-                    <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />
-                  )}
-                </div>
-              ),
-            },
-            {
-              id: 'runMany',
-              label: t.matchup.tabs.runMany,
-              content: (
-                <div className="p-2">
-                  {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
-                </div>
-              ),
-            },
+            ...(features.showStats
+              ? [
+                  {
+                    id: 'players',
+                    label: t.matchup.tabs.players,
+                    content: (
+                      <div className="p-2">
+                        {built && (
+                          <PlayerPanel
+                            matchup={working}
+                            built={built}
+                            snapshot={snapshot}
+                            onChange={setWorking}
+                          />
+                        )}
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
+            ...(features.showSimulationStats
+              ? [
+                  {
+                    id: 'runMany',
+                    label: t.matchup.tabs.runMany,
+                    content: (
+                      <div className="p-2">
+                        {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
             {
               id: 'notes',
               label: t.matchup.tabs.notes,
@@ -479,9 +523,13 @@ function MatchupEditor({
         {qbPanel}
         {randomDefense}
         <ControlsPanel matchup={working} format={offense.format} onChange={setWorking} />
-        {built && <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />}
+        {features.showStats && built && (
+          <PlayerPanel matchup={working} built={built} snapshot={snapshot} onChange={setWorking} />
+        )}
         {editLinks}
-        {runManyInput && <RunManyPanel input={runManyInput} labels={labels} />}
+        {features.showSimulationStats && runManyInput && (
+          <RunManyPanel input={runManyInput} labels={labels} />
+        )}
         {resultPanel}
         {notesField}
       </aside>

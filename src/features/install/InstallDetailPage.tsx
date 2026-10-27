@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, IconButton } from '@/components/ui';
+import { useFeatures } from '@/config/features';
 import { useInstall, useMatchups, usePlays } from '@/db/hooks';
 import { installsRepo } from '@/db/repos/installs';
 import type { ID, Install } from '@/domain/types';
@@ -19,6 +20,7 @@ const fieldCls =
   'w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100';
 
 function InstallEditor({ initial }: { initial: Install }): JSX.Element {
+  const { advanced } = useFeatures();
   const [working, setWorking] = useState<Install>(initial);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [dragId, setDragId] = useState<ID | null>(null);
@@ -60,9 +62,11 @@ function InstallEditor({ initial }: { initial: Install }): JSX.Element {
         >
           {t.install.present}
         </Link>
-        <Button data-testid="install-export-json" onClick={() => void exportJson()}>
-          {t.exportx.json.button}
-        </Button>
+        {advanced ? (
+          <Button data-testid="install-export-json" onClick={() => void exportJson()}>
+            {t.exportx.json.button}
+          </Button>
+        ) : null}
         <Button
           data-testid="install-export-pdf"
           onClick={() => void runExport(() => exportInstallPdf(working.id))}

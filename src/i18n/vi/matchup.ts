@@ -12,6 +12,8 @@ export const matchup = {
   name: 'Tên matchup',
   notes: 'Ghi chú',
   tabs: { result: 'Kết quả', params: 'Tham số', players: 'Cầu thủ', runMany: 'Chạy 50', notes: 'Ghi chú' },
+  simpleCustomNote:
+    'Matchup này có tuỳ chỉnh (chỉ số/seed/noise) — đang bỏ qua ở Chế độ đơn giản. Bật Chế độ nâng cao để dùng.',
   overlayMenu: 'Lớp hiển thị',
   overlayMenuHelp:
     'Bật/tắt các lớp vẽ trên sân: route dự kiến, vệt chạy, zone, đường man, đường bóng, separation, perception, mắt QB.',

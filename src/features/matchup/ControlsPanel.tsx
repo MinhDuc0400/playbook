@@ -1,6 +1,7 @@
 /** Matchup parameter controls (FR-MU-02). Every change re-simulates through the working matchup. */
 import { useEffect, useState } from 'react';
 import { IconButton, Select } from '@/components/ui';
+import { useFeatures } from '@/config/features';
 import { useLineups } from '@/db/hooks';
 import type { Format, Matchup, Side } from '@/domain/types';
 import { t } from '@/i18n/vi';
@@ -71,6 +72,7 @@ function NumberField({
 }
 
 export function ControlsPanel({ matchup, format, onChange }: ControlsPanelProps): JSX.Element {
+  const features = useFeatures();
   const lineups = useLineups();
   const lineupSelect = (side: Side): JSX.Element => {
     const key = side === 'offense' ? 'offenseLineupId' : 'defenseLineupId';
@@ -122,92 +124,99 @@ export function ControlsPanel({ matchup, format, onChange }: ControlsPanelProps)
           </option>
         ))}
       </Select>
-      {lineupSelect('offense')}
-      {lineupSelect('defense')}
-      <NumberField
-        label={s.ballX}
-        testId="ctl-ball-x"
-        value={matchup.ballSpot.x}
-        min={-10}
-        max={10}
-        step={0.5}
-        onValid={(x) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, x } })}
-      />
-      <NumberField
-        label={s.ballYardLine}
-        testId="ctl-ball-yardline"
-        value={matchup.ballSpot.yardLine}
-        min={1}
-        max={49}
-        step={1}
-        integer
-        onValid={(yardLine) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, yardLine } })}
-      />
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
+      {features.showStats && lineupSelect('offense')}
+      {features.showStats && lineupSelect('defense')}
+      {features.showMatchupTuning && (
+        <>
           <NumberField
-            label={s.seed}
-            testId="ctl-seed"
-            value={matchup.seed}
-            min={0}
-            max={2 ** 31 - 1}
+            label={s.ballX}
+            testId="ctl-ball-x"
+            value={matchup.ballSpot.x}
+            min={-10}
+            max={10}
+            step={0.5}
+            onValid={(x) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, x } })}
+          />
+          <NumberField
+            label={s.ballYardLine}
+            testId="ctl-ball-yardline"
+            value={matchup.ballSpot.yardLine}
+            min={1}
+            max={49}
             step={1}
             integer
-            onValid={(seed) => onChange({ ...matchup, seed })}
+            onValid={(yardLine) => onChange({ ...matchup, ballSpot: { ...matchup.ballSpot, yardLine } })}
           />
-        </div>
-        <IconButton
-          data-testid="ctl-seed-dice"
-          label={s.seedDice}
-          onClick={() => onChange({ ...matchup, seed: randomSeed() })}
-        >
-          🎲
-        </IconButton>
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="ctl-anticipation" className="font-medium text-slate-700 dark:text-slate-200">
-          {s.anticipation}: {matchup.anticipation.toFixed(2)}
-        </label>
-        <input
-          id="ctl-anticipation"
-          type="range"
-          data-testid="ctl-anticipation"
-          list="ctl-anticipation-ticks"
-          min={0}
-          max={1}
-          step={0.05}
-          value={matchup.anticipation}
-          onChange={(e) => onChange({ ...matchup, anticipation: Number(e.target.value) })}
-        />
-        <datalist id="ctl-anticipation-ticks">
-          <option value="0" label={s.anticipationTicks.low} />
-          <option value="0.5" label={s.anticipationTicks.mid} />
-          <option value="1" label={s.anticipationTicks.high} />
-        </datalist>
-        <div aria-hidden="true" className="flex justify-between text-xs text-slate-600 dark:text-slate-300">
-          <span>{s.anticipationTicks.low}</span>
-          <span>{s.anticipationTicks.mid}</span>
-          <span>{s.anticipationTicks.high}</span>
-        </div>
-        {matchup.anticipation > 0.5 && (
-          <p
-            data-testid="ctl-oracle-label"
-            role="status"
-            className="rounded border border-amber-500 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-100"
-          >
-            {s.oracle}
-          </p>
-        )}
-      </div>
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          data-testid="ctl-noise"
-          checked={matchup.noise}
-          onChange={(e) => onChange({ ...matchup, noise: e.target.checked })}
-        />
-        {s.noise}
-      </label>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <NumberField
+                label={s.seed}
+                testId="ctl-seed"
+                value={matchup.seed}
+                min={0}
+                max={2 ** 31 - 1}
+                step={1}
+                integer
+                onValid={(seed) => onChange({ ...matchup, seed })}
+              />
+            </div>
+            <IconButton
+              data-testid="ctl-seed-dice"
+              label={s.seedDice}
+              onClick={() => onChange({ ...matchup, seed: randomSeed() })}
+            >
+              🎲
+            </IconButton>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="ctl-anticipation" className="font-medium text-slate-700 dark:text-slate-200">
+              {s.anticipation}: {matchup.anticipation.toFixed(2)}
+            </label>
+            <input
+              id="ctl-anticipation"
+              type="range"
+              data-testid="ctl-anticipation"
+              list="ctl-anticipation-ticks"
+              min={0}
+              max={1}
+              step={0.05}
+              value={matchup.anticipation}
+              onChange={(e) => onChange({ ...matchup, anticipation: Number(e.target.value) })}
+            />
+            <datalist id="ctl-anticipation-ticks">
+              <option value="0" label={s.anticipationTicks.low} />
+              <option value="0.5" label={s.anticipationTicks.mid} />
+              <option value="1" label={s.anticipationTicks.high} />
+            </datalist>
+            <div
+              aria-hidden="true"
+              className="flex justify-between text-xs text-slate-600 dark:text-slate-300"
+            >
+              <span>{s.anticipationTicks.low}</span>
+              <span>{s.anticipationTicks.mid}</span>
+              <span>{s.anticipationTicks.high}</span>
+            </div>
+            {matchup.anticipation > 0.5 && (
+              <p
+                data-testid="ctl-oracle-label"
+                role="status"
+                className="rounded border border-amber-500 bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900 dark:bg-amber-900 dark:text-amber-100"
+              >
+                {s.oracle}
+              </p>
+            )}
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              data-testid="ctl-noise"
+              checked={matchup.noise}
+              onChange={(e) => onChange({ ...matchup, noise: e.target.checked })}
+            />
+            {s.noise}
+          </label>
+        </>
+      )}
     </section>
   );
 }

@@ -3,6 +3,7 @@
  * what the engine returned (frames / metrics); nothing here computes a player position.
  */
 import { useMemo } from 'react';
+import { useFeatures } from '@/config/features';
 import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { useFieldContext } from '@/components/field/FieldContext';
@@ -200,7 +201,8 @@ export function SeparationOverlay({ built, result, t, hideReadInfo }: OverlayPro
 
 /** FR-MU-12: dashed line QB → the player the QB is looking at (frame.eyeTarget). */
 export function QbEyesOverlay({ built, result, t }: OverlayProps): JSX.Element | null {
-  const on = useMatchupStore((s) => s.overlays.qbEyes);
+  const { showReadModel } = useFeatures();
+  const on = useMatchupStore((s) => s.overlays.qbEyes) && showReadModel;
   const { viewport } = useFieldContext();
   if (!on) return null;
   const frame = frameAt(result.frames, t);
@@ -233,7 +235,8 @@ export function QbEyesOverlay({ built, result, t }: OverlayProps): JSX.Element |
 
 /** FR-MU-11: what the selected defender "sees" (delayed ghosts) and where it aims. Debug data only. */
 export function PerceptionOverlay({ built, result, t }: OverlayProps): JSX.Element | null {
-  const on = useMatchupStore((s) => s.overlays.perception);
+  const { showReadModel } = useFeatures();
+  const on = useMatchupStore((s) => s.overlays.perception) && showReadModel;
   const defId = useMatchupStore((s) => s.debugDefenderId);
   const { viewport } = useFieldContext();
   if (!on || !defId || !result.debug) return null;

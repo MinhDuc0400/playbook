@@ -10,6 +10,16 @@ export const result = {
     throwaway: 'Ném bỏ',
     timeout: 'Hết giờ (7 s)',
   },
+  summary: {
+    complete: (label: string, sec: number, yards: number): string =>
+      `${label} bắt được bóng ở ${sec.toFixed(2)} s, cách LOS ${yards.toFixed(1)} yd`,
+    incomplete: 'Không hoàn thành',
+    deflected: 'Bóng bị gạt',
+    intercepted: 'Bị cắt bóng (INT)',
+    sack: 'Bị sack',
+    throwaway: 'QB ném bỏ',
+    timeout: 'Hết giờ, QB không ném',
+  },
   target: 'Mục tiêu',
   yards: 'Cự ly',
   yardsUnit: 'yd',

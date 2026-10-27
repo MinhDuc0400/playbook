@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setFeatureOverride } from '@/config/features';
 import { playsRepo } from '@/db/repos/plays';
 import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import PlaybookPage from '../PlaybookPage';
@@ -146,5 +147,37 @@ describe('PlaybookPage mobile (D-25)', () => {
     expect(screen.getByTestId('filter-search')).toBeInTheDocument();
     await user.click(toggle);
     expect(screen.queryByTestId('filter-side')).toBeNull();
+  });
+});
+
+describe('PlaybookPage Simple mode (D-26)', () => {
+  beforeEach(() => setFeatureOverride(false));
+  afterEach(() => setFeatureOverride(true));
+
+  it('hides multi-select export; keeps search and side; collapses the rest behind the toggle on desktop', async () => {
+    const user = userEvent.setup();
+    renderAt();
+    await waitFor(() => expect(cards()).toHaveLength(6));
+    expect(screen.queryByTestId('pb-select-mode')).toBeNull();
+    expect(screen.getByTestId('filter-search')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-side')).toBeInTheDocument();
+    expect(screen.queryByTestId('filter-format')).toBeNull();
+    expect(screen.queryByTestId('filter-sort')).toBeNull();
+    await user.click(screen.getByTestId('filter-toggle'));
+    expect(screen.getByTestId('filter-format')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-formation')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-tag')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-sort')).toBeInTheDocument();
+    expect(screen.getAllByTestId('filter-side')).toHaveLength(1);
+  });
+
+  it('Advanced shows every filter inline without a toggle', async () => {
+    setFeatureOverride(true);
+    renderAt();
+    await waitFor(() => expect(cards()).toHaveLength(6));
+    expect(screen.queryByTestId('filter-toggle')).toBeNull();
+    for (const id of ['side', 'format', 'formation', 'tag', 'sort', 'search'])
+      expect(screen.getByTestId(`filter-${id}`)).toBeInTheDocument();
+    expect(screen.getByTestId('pb-select-mode')).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, Select, TextInput } from '@/components/ui';
+import { useFeatures } from '@/config/features';
 import { useMatchupCountByPlay, usePlays, useSettings } from '@/db/hooks';
 import type { Format, ID, Side } from '@/domain/types';
 import { t } from '@/i18n/vi';
@@ -21,6 +22,7 @@ export default function PlaybookPage(): JSX.Element {
   const settings = useSettings();
   const counts = useMatchupCountByPlay();
   const isDesktop = useIsDesktop();
+  const { advanced } = useFeatures();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<ID>>(new Set());
@@ -81,18 +83,21 @@ export default function PlaybookPage(): JSX.Element {
         : 'bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100'
     }`;
 
-  const filterGrid = (cols: string, withSearch: boolean): JSX.Element => (
-    <div id="playbook-filters" className={`grid gap-3 ${cols}`}>
-      <Select
-        label={t.playbook.filter.side}
-        data-testid="filter-side"
-        value={filter.side ?? ''}
-        onChange={(e) => setParam('side', e.target.value)}
-      >
-        <option value="">{t.playbook.filter.sideAll}</option>
-        <option value="offense">{t.playbook.filter.sideOffense}</option>
-        <option value="defense">{t.playbook.filter.sideDefense}</option>
-      </Select>
+  const sideSelect = (
+    <Select
+      label={t.playbook.filter.side}
+      data-testid="filter-side"
+      value={filter.side ?? ''}
+      onChange={(e) => setParam('side', e.target.value)}
+    >
+      <option value="">{t.playbook.filter.sideAll}</option>
+      <option value="offense">{t.playbook.filter.sideOffense}</option>
+      <option value="defense">{t.playbook.filter.sideDefense}</option>
+    </Select>
+  );
+
+  const extraFilters = (
+    <>
       <Select
         label={t.playbook.filter.format}
         data-testid="filter-format"
@@ -132,7 +137,6 @@ export default function PlaybookPage(): JSX.Element {
           </option>
         ))}
       </Select>
-      {withSearch ? searchEl : null}
       <Select
         label={t.playbook.filter.sort}
         data-testid="filter-sort"
@@ -142,6 +146,20 @@ export default function PlaybookPage(): JSX.Element {
         <option value="updated">{t.playbook.filter.sortUpdated}</option>
         <option value="name">{t.playbook.filter.sortName}</option>
       </Select>
+    </>
+  );
+
+  /** Advanced: every filter inline. Simple: side (+ search) inline, the rest behind the toggle. */
+  const filterGrid = (
+    cols: string,
+    withSearch: boolean,
+    withSide: boolean,
+    withExtra: boolean,
+  ): JSX.Element => (
+    <div id="playbook-filters" className={`grid gap-3 ${cols}`}>
+      {withSide ? sideSelect : null}
+      {withExtra ? extraFilters : null}
+      {withSearch ? searchEl : null}
     </div>
   );
 
@@ -182,7 +200,7 @@ export default function PlaybookPage(): JSX.Element {
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {tab === 'plays' ? (
+          {advanced && tab === 'plays' ? (
             <Button
               data-testid="pb-select-mode"
               aria-pressed={selectMode}
@@ -195,7 +213,7 @@ export default function PlaybookPage(): JSX.Element {
               {selectMode ? t.exportx.select.toggleOff : t.exportx.select.toggle}
             </Button>
           ) : null}
-          {tab === 'plays' && selectMode ? (
+          {advanced && tab === 'plays' && selectMode ? (
             <Button
               data-testid="pb-export-selected"
               disabled={selected.size === 0}
@@ -219,12 +237,13 @@ export default function PlaybookPage(): JSX.Element {
       ) : (
         <>
           <div role="search" aria-label={t.playbook.filter.label} className="flex flex-col gap-3">
-            {isDesktop ? (
-              filterGrid('grid-cols-6', true)
+            {isDesktop && advanced ? (
+              filterGrid('grid-cols-6', true, true, true)
             ) : (
               <>
                 <div className="flex items-end gap-2">
                   <div className="min-w-0 flex-1">{searchEl}</div>
+                  {isDesktop ? <div className="w-48">{sideSelect}</div> : null}
                   <Button
                     data-testid="filter-toggle"
                     aria-expanded={filtersOpen}
@@ -234,7 +253,14 @@ export default function PlaybookPage(): JSX.Element {
                     {t.playbook.filter.label}
                   </Button>
                 </div>
-                {filtersOpen ? filterGrid('grid-cols-1 sm:grid-cols-2 md:grid-cols-3', false) : null}
+                {filtersOpen
+                  ? filterGrid(
+                      isDesktop ? 'grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+                      false,
+                      !isDesktop,
+                      true,
+                    )
+                  : null}
               </>
             )}
           </div>
@@ -250,7 +276,7 @@ export default function PlaybookPage(): JSX.Element {
             >
               {visible.map((play) => (
                 <div key={play.id} className="relative">
-                  {selectMode ? (
+                  {advanced && selectMode ? (
                     <input
                       type="checkbox"
                       data-testid={`pb-select-${play.id}`}

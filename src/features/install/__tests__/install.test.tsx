@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setFeatureOverride } from '@/config/features';
 import { installsRepo } from '@/db/repos/installs';
 import { matchupsRepo } from '@/db/repos/matchups';
 import { playsRepo } from '@/db/repos/plays';
@@ -180,5 +181,20 @@ describe('install export buttons (FR-IN-06, FR-IO-06)', () => {
     expect(ex.pdf).toHaveBeenCalledWith('inst1');
     await user.click(screen.getByTestId('install-export-json'));
     await waitFor(() => expect(ex.bundle).toHaveBeenCalledWith('inst1'));
+  });
+});
+
+describe('install detail Simple mode (D-26)', () => {
+  it('hides JSON export but keeps PDF export and present', async () => {
+    setFeatureOverride(false);
+    try {
+      await installsRepo.put(mkInstall());
+      renderAt('/install/inst1');
+      expect(await screen.findByTestId('install-export-pdf')).toBeInTheDocument();
+      expect(screen.getByTestId('install-present')).toBeInTheDocument();
+      expect(screen.queryByTestId('install-export-json')).toBeNull();
+    } finally {
+      setFeatureOverride(true);
+    }
   });
 });

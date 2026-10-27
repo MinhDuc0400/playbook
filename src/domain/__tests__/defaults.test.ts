@@ -130,7 +130,7 @@ describe('createDefaultSettings', () => {
     expect(s.presets).toEqual(DEFAULT_PRESETS);
     expect(s.tuning).toEqual(DEFAULT_TUNING);
     expect(s.routePriors).toEqual(createDefaultRoutePriors());
-    expect(s.ui).toEqual({ theme: 'system', snap: true, showGrid: false });
+    expect(s.ui).toEqual({ theme: 'system', snap: true, showGrid: false, advanced: false });
     expect(s.lastExportAt).toBeUndefined();
   });
 

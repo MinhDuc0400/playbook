@@ -67,6 +67,7 @@ describe('PresentPage (FR-IN-04)', () => {
     renderPresent();
     expect(await screen.findByTestId('present-index')).toHaveTextContent('1 / 3');
     expect(await screen.findByTestId('matchup-field')).toBeInTheDocument();
+    expect(await screen.findByTestId('open-windows')).toBeInTheDocument();
     expect(await screen.findByTestId('present-title')).toHaveTextContent('M1');
     key('ArrowLeft');
     expect(screen.getByTestId('present-index')).toHaveTextContent('1 / 3');

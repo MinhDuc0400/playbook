@@ -10,6 +10,7 @@ import { useDbSnapshot, useInstall, useMatchupBundle } from '@/db/hooks';
 import type { DbSnapshot, Install, InstallItem, Matchup, Play, SimEventType } from '@/domain/types';
 import { levelOf } from '@/features/matchup/buildSimInput';
 import { MatchupField } from '@/features/matchup/MatchupField';
+import { OpenWindows } from '@/features/matchup/OpenWindows';
 import { useMatchupSim } from '@/features/matchup/useMatchupSim';
 import { t } from '@/i18n/vi';
 import { useIsDesktop } from '@/lib/useMediaQuery';
@@ -93,22 +94,35 @@ function PlayView({
         {title}
       </h1>
       <div className="relative flex min-h-0 flex-1">
-        <div className="min-w-0 flex-1">
-          {error !== null ? (
-            <p role="alert" data-testid="present-sim-error" className="p-4 text-red-300">
-              {t.present.simError}: {error}
-            </p>
-          ) : built && result ? (
-            <MatchupField
-              built={built}
-              result={result}
-              t={playback.t}
-              field={snapshot.settings.fields[offense.format]}
-              ballSpot={matchup.ballSpot}
-              levels={levels}
-              theme={contrast ? 'contrast' : 'normal'}
-            />
-          ) : null}
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+          <div className="min-h-[50vh] flex-1">
+            {error !== null ? (
+              <p role="alert" data-testid="present-sim-error" className="p-4 text-red-300">
+                {t.present.simError}: {error}
+              </p>
+            ) : built && result ? (
+              <MatchupField
+                built={built}
+                result={result}
+                t={playback.t}
+                field={snapshot.settings.fields[offense.format]}
+                ballSpot={matchup.ballSpot}
+                levels={levels}
+                theme={contrast ? 'contrast' : 'normal'}
+              />
+            ) : null}
+          </div>
+          {built && result && (
+            <div className="shrink-0 px-3 py-2">
+              <OpenWindows
+                result={result}
+                offense={offense}
+                t={playback.t}
+                tuning={snapshot.settings.tuning}
+                size="large"
+              />
+            </div>
+          )}
         </div>
         {showNotes && (
           <aside

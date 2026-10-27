@@ -23,6 +23,7 @@ import { tuning } from './vi/tuning';
 import { offense } from './vi/offense';
 import { playback } from './vi/playback';
 import { tools } from './vi/tools';
+import { openWindows } from './vi/openWindows';
 
 export const vi = {
   common,
@@ -32,6 +33,7 @@ export const vi = {
   defense,
   playback,
   tools,
+  openWindows,
   matchup,
   matchupField,
   result,

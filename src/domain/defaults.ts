@@ -151,7 +151,7 @@ export function createDefaultSettings(): Settings {
     presets: copyPresets(DEFAULT_PRESETS),
     tuning: { ...DEFAULT_TUNING },
     routePriors: createDefaultRoutePriors(),
-    ui: { theme: 'system', snap: true, showGrid: false },
+    ui: { theme: 'system', snap: true, showGrid: false, advanced: false },
   };
 }
 

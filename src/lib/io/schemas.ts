@@ -280,7 +280,12 @@ export const SettingsSchema: z.ZodType<Settings> = z.object({
   presets: z.object({ weak: StatsSchema, avg: StatsSchema, good: StatsSchema }),
   tuning: TuningSchema,
   routePriors: z.record(z.record(num)),
-  ui: z.object({ theme: z.enum(['light', 'dark', 'system']), snap: z.boolean(), showGrid: z.boolean() }),
+  ui: z.object({
+    theme: z.enum(['light', 'dark', 'system']),
+    snap: z.boolean(),
+    showGrid: z.boolean(),
+    advanced: z.boolean().optional(),
+  }),
   lastExportAt: num.optional(),
 });
 

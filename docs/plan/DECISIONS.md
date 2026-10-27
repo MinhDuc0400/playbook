@@ -247,3 +247,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
     on-screen buttons where they are the only way (e.g. finish route = "Xong").
 - Verification: Playwright project `mobile` (iPhone 14 Pro Max, WebKit) and `tablet` (iPad Mini,
   WebKit) run `e2e/16-responsive.spec.ts` (no overflow on every screen + core flows by touch).
+
+## D-26 Simple mode (user request 2026-10-27; plan in `docs/plan/SIMPLIFY.md`)
+- Context: the app's purpose is drawing offense/defense plays, making a matchup, and seeing the open
+  windows when installing. Stats editing and "run N times for %" are hidden for now.
+- Decision: `Settings.ui.advanced` (optional boolean, default false) is the only switch; `useFeatures()`
+  in `src/config/features.ts` derives the flags. Hidden features are not mounted; routes /roster and
+  /suggest redirect to `/` in Simple mode. In Simple mode the sim input is forced: avg stats for everyone,
+  noise off, seed 1, anticipation 0.5, QB auto, no lineups/overrides. Nothing is deleted; the data model is
+  unchanged; existing unit tests render with advanced ON.

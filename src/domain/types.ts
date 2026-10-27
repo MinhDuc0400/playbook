@@ -337,7 +337,8 @@ export interface Settings {
   presets: Record<Preset, Stats>;
   tuning: TuningParams;
   routePriors: RoutePriorTable;
-  ui: { theme: ThemePref; snap: boolean; showGrid: boolean };
+  /** advanced: show every feature (D-26). Missing/false = Simple mode. */
+  ui: { theme: ThemePref; snap: boolean; showGrid: boolean; advanced?: boolean };
   lastExportAt?: number; // ms epoch, FR-IO-05
 }
 

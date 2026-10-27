@@ -35,8 +35,15 @@ export function featuresFor(advanced: boolean): Features {
   };
 }
 
+let override: boolean | null = null;
+
+/** Tests only: force Simple (false) / Advanced (true) regardless of stored settings; null = use settings. */
+export function setFeatureOverride(advanced: boolean | null): void {
+  override = advanced;
+}
+
 /** Current flags from the stored settings; Simple mode while settings are loading. */
 export function useFeatures(): Features {
   const settings = useSettings();
-  return featuresFor(settings?.ui.advanced === true);
+  return featuresFor(override ?? settings?.ui.advanced === true);
 }

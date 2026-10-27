@@ -1,7 +1,12 @@
 import '@testing-library/jest-dom/vitest';
 import 'fake-indexeddb/auto';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeEach } from 'vitest';
+import { setFeatureOverride } from '@/config/features';
+
+// Existing tests cover every feature: run them in Advanced mode. Simple-mode tests call
+// setFeatureOverride(false) themselves (D-26).
+beforeEach(() => setFeatureOverride(true));
 
 // Vitest globals are off, so Testing Library cannot auto-register cleanup.
 afterEach(() => {

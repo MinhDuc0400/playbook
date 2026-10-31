@@ -24,6 +24,8 @@ export type EditorDraft =
 
 export interface EditorState {
   play: Play | null;
+  /** Freestyle (D-27): the passive side of the two-sided board; null outside Freestyle. */
+  companion: Play | null;
   selection: ID[];
   selectedPoint: SelectedPoint | null;
   tool: ToolId;
@@ -33,7 +35,11 @@ export interface EditorState {
   previewing: boolean;
 
   /** Replace the play and clear history, selection and draft. */
-  load(play: Play | null): void;
+  load(play: Play | null, companion?: Play | null): void;
+  /** Load a Freestyle pair; `active` picks which side becomes `play`. Clears history. */
+  loadPair(offense: Play | null, defense: Play | null, active: 'offense' | 'defense'): void;
+  /** Swap play<->companion (not undoable). No-op without both, or during a gesture. */
+  switchSide(): void;
   /** Apply a recipe to the play (one undo step, label for debugging). No-op when play is null or unchanged. */
   apply(label: string, recipe: Recipe): void;
   /** Start a drag: later applies are merged into one undo step until endGesture(). */
@@ -54,6 +60,7 @@ export interface EditorState {
 /** The slice of state tracked by undo/redo. */
 interface HistorySlice {
   play: Play | null;
+  companion: Play | null;
 }
 
 /** React hook + vanilla API (`useEditorStore.getState()`, `.setState`, `.subscribe`, `.temporal`). */
@@ -91,6 +98,7 @@ export const useEditorStore: EditorStore = create<EditorState>()(
   temporal(
     (set, get) => ({
       play: null,
+      companion: null,
       selection: [],
       selectedPoint: null,
       tool: 'select',
@@ -98,12 +106,33 @@ export const useEditorStore: EditorStore = create<EditorState>()(
       ghostFormationId: null,
       previewing: false,
 
-      load: (play) => {
+      load: (play, companion = null) => {
         const history = useEditorStore.temporal.getState();
         gestureBase = null;
         history.pause();
-        set({ play, selection: [], selectedPoint: null, draft: null, previewing: false });
+        set({ play, companion, selection: [], selectedPoint: null, draft: null, previewing: false });
         history.clear();
+        history.resume();
+      },
+
+      loadPair: (offense, defense, active) => {
+        if (active === 'offense') get().load(offense, defense);
+        else get().load(defense, offense);
+      },
+
+      switchSide: () => {
+        const { play, companion } = get();
+        if (gestureBase || !play || !companion) return;
+        const history = useEditorStore.temporal.getState();
+        history.pause();
+        set({
+          play: companion,
+          companion: play,
+          selection: [],
+          selectedPoint: null,
+          draft: null,
+          tool: 'select',
+        });
         history.resume();
       },
 
@@ -160,9 +189,9 @@ export const useEditorStore: EditorStore = create<EditorState>()(
       setPreviewing: (v) => set({ previewing: v }),
     }),
     {
-      partialize: (s): HistorySlice => ({ play: s.play }),
+      partialize: (s): HistorySlice => ({ play: s.play, companion: s.companion }),
       limit: HISTORY_LIMIT,
-      equality: (a, b) => a.play === b.play,
+      equality: (a, b) => a.play === b.play && a.companion === b.companion,
     },
   ),
 );

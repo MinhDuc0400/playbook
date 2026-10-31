@@ -258,3 +258,15 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   unchanged; existing unit tests render with advanced ON.
 - Amendment (T12.1): "QB tự ném" (Q W E R T) and "Ném lúc open nhất" (`bestThrowTime`, picks the throw time
   with max separation at arrival) stay available in Simple mode; the manual override applies in both modes.
+
+## D-27 Freestyle mode (user request 2026-10-31; design in `docs/superpowers/specs/2026-10-31-freestyle-mode-design.md`)
+- Context: quick brainstorm / huddle mode. One screen, blank whiteboard, drag players in, draw offense routes and
+  defense zones, run a trial. Planned by a product-owner and a business-analyst sub agent.
+- Decision: route `/freestyle` (nav "Freestyle", both modes). `editorStore.play` stays the *active* side and a new
+  `companion: Play | null` holds the passive side; history slice is `{play, companion}`; switching side is not
+  recorded. Trial = transient `createMatchup({seed:1})` + `buildSimInput(..., simple=true)` + `useMatchupSim`
+  (same result as a Simple-mode Matchup). Draft autosaved in `localStorage` key `flagbook.freestyle.v1`
+  (validated with `PlaySchema`); no Dexie table, no schema bump. "Lưu thành play" writes 2 Plays + 1 Matchup
+  (tag `freestyle`) through the repositories. Starts blank; a player tray places players; no time targets.
+- Tasks: T13.1 store, T13.2 passive layer + Man on live offense, T13.2b tray, T13.3 page shell, T13.4 trial view,
+  T13.5 persistence/save, T13.6 E2E.

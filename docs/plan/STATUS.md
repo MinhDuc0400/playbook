@@ -81,6 +81,7 @@ Live tracker. Status: todo / in progress / review / done.
 | 6c (QB tự ném, D-23) | PASS (1352 unit, 38/38 E2E) | DECISIONS.md D-23 | phase-6c |
 | 6d (aim fix D-24, zoom clamp + mini-map) | PASS (1364 unit, 38/38 E2E) | DECISIONS.md D-24 | phase-6d |
 | 6f (Simple mode + QB throw controls, D-26) | PASS (1418 unit, 48 E2E) | SIMPLIFY.md, DECISIONS.md D-26 | phase-6f |
+| 6g (Freestyle mode, D-27) | PASS (1475 unit, 65 E2E, 7 skipped by guards) | docs/superpowers/specs/2026-10-31-freestyle-mode-design.md, DECISIONS.md D-27 | phase-6g |
 | 6e (responsive, D-25) | PASS (1379 unit, 44 E2E incl. iPhone + iPad overflow checks) | DECISIONS.md D-25 | phase-6e |
 
 ## Open questions / blockers

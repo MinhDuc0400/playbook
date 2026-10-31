@@ -44,6 +44,7 @@ function place(chip: string, at: Point) {
 }
 
 beforeEach(async () => {
+  localStorage.clear();
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
     x: 0,
     y: 0,

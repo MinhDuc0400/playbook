@@ -1,10 +1,15 @@
 /** Freestyle top bar (FR-FS-01, FR-FS-03): title, side switch, undo/redo, clear, run placeholder. */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { t } from '@/i18n/vi';
-import type { Side } from '@/domain/types';
+import { flipPlay } from '@/domain/flip';
+import type { FieldConfig, Side } from '@/domain/types';
+import { validatePlay } from '@/domain/validate';
 import { useEditorStore } from '@/store/editorStore';
+import { clearDraft } from './draft';
+import { SaveButton } from './SaveButton';
 import { emptyPlay } from './trayOps';
+import { pickTrialPlays } from './useFreestyleTrial';
 
 const btn =
   'inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700';
@@ -16,6 +21,8 @@ export interface FreestyleTopBarProps {
   hint?: string | null;
   onRun?: () => void;
   onEdit?: () => void;
+  /** Field used for warnings (FR-FS-12); badge hidden without it. */
+  field?: FieldConfig;
 }
 
 export function FreestyleTopBar({
@@ -23,11 +30,28 @@ export function FreestyleTopBar({
   hint = null,
   onRun,
   onEdit,
+  field,
 }: FreestyleTopBarProps = {}): JSX.Element {
   const side = useEditorStore((s) => s.play?.side ?? 'offense');
   const canUndo = useStore(useEditorStore.temporal, (s) => s.pastStates.length > 0);
   const canRedo = useStore(useEditorStore.temporal, (s) => s.futureStates.length > 0);
   const [confirming, setConfirming] = useState(false);
+  const play = useEditorStore((s) => s.play);
+  const companion = useEditorStore((s) => s.companion);
+  const warnings = useMemo(() => {
+    if (!field) return [];
+    const { offense, defense } = pickTrialPlays(play, companion);
+    return [offense, defense].flatMap((p) => {
+      if (!p || p.players.length === 0) return [];
+      return validatePlay(p, field).map((w) => {
+        const slot = p.players.find((s) => s.id === w.slotId)?.label ?? '?';
+        const values: Record<string, string | number> = { ...w.params, slot, rushLine: field.rushLine };
+        return t.editor.warnings.messages[w.code].replace(/\{(\w+)\}/g, (_, k: string) =>
+          String(values[k] ?? ''),
+        );
+      });
+    });
+  }, [play, companion, field]);
 
   const choose = (target: Side): void => {
     if (useEditorStore.getState().play?.side !== target) useEditorStore.getState().switchSide();
@@ -42,6 +66,7 @@ export function FreestyleTopBar({
     }
     setConfirming(false);
     clearBoard();
+    clearDraft();
   };
 
   const sides: { id: Side; label: string }[] = [
@@ -114,11 +139,32 @@ export function FreestyleTopBar({
         >
           {confirming ? t.freestyle.clearConfirm : t.freestyle.clear}
         </button>
+        <button
+          type="button"
+          data-testid="fs-flip"
+          className={btn}
+          disabled={trial}
+          title={t.freestyle.flipTitle}
+          onClick={() => useEditorStore.getState().apply('flip', flipPlay)}
+        >
+          {t.freestyle.flip}
+        </button>
+        {field && (
+          <span
+            data-testid="fs-warnings"
+            className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900 dark:text-amber-100"
+            title={warnings.length ? warnings.join('\n') : t.freestyle.warningsNone}
+          >
+            {t.freestyle.warnings}: {warnings.length}
+          </span>
+        )}
+        <span className="ml-auto" />
+        {!trial && <SaveButton btnClass={btn} />}
         {trial ? (
           <button
             type="button"
             data-testid="fs-edit"
-            className={`${btn} ml-auto`}
+            className={btn}
             title={t.freestyle.editTitle}
             onClick={onEdit}
           >
@@ -128,7 +174,7 @@ export function FreestyleTopBar({
           <button
             type="button"
             data-testid="fs-run"
-            className={`${btn} ml-auto`}
+            className={btn}
             disabled={hint !== null}
             title={hint ?? t.freestyle.runTitle}
             onClick={onRun}

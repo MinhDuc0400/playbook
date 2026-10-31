@@ -20,7 +20,9 @@ import { useEditorStore } from '@/store/editorStore';
 import { FreestyleTopBar } from './FreestyleTopBar';
 import { PlayerTray } from './PlayerTray';
 import { TrialView } from './TrialView';
+import { loadDraft } from './draft';
 import { emptyPlay, placeRole } from './trayOps';
+import { useFreestyleDraft } from './useFreestyleDraft';
 import { trialHint, useTrialKeys, useTrialPlays } from './useFreestyleTrial';
 
 function isBoardTarget(target: EventTarget | null): boolean {
@@ -59,7 +61,7 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
   const onRun = useCallback(() => setTrial(true), []);
   const onEdit = useCallback(() => setTrial(false), []);
   useTrialKeys(trial, hint === null, onRun, onEdit);
-  const topBar = <FreestyleTopBar trial={trial} hint={hint} onRun={onRun} onEdit={onEdit} />;
+  const topBar = <FreestyleTopBar trial={trial} hint={hint} onRun={onRun} onEdit={onEdit} field={field} />;
   const isOffense = useEditorStore((s) => s.play?.side !== 'defense');
   const [pendingRole, setPendingRole] = useState<Role | null>(null);
 
@@ -154,12 +156,14 @@ export default function FreestylePage(): JSX.Element {
 
   useEditorShortcuts(ppl);
   useSideToggleKey();
+  useFreestyleDraft(ready);
 
   const haveSettings = settings !== undefined;
   useEffect(() => {
     if (!haveSettings || ready) return;
-    // T13.5 extension point: restore a saved draft here instead of a blank board.
-    useEditorStore.getState().loadPair(emptyPlay('offense'), emptyPlay('defense'), 'offense');
+    const draft = loadDraft();
+    if (draft) useEditorStore.getState().loadPair(draft.offense, draft.defense, draft.activeSide);
+    else useEditorStore.getState().loadPair(emptyPlay('offense'), emptyPlay('defense'), 'offense');
     setReady(true);
   }, [haveSettings, ready]);
 

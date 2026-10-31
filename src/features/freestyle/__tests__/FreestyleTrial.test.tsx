@@ -55,6 +55,7 @@ function loadSeeds(offense: Play, defense: Play) {
 }
 
 beforeEach(async () => {
+  localStorage.clear();
   sim.fail = false;
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
     x: 0,

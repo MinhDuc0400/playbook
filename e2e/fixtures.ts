@@ -160,4 +160,43 @@ export async function enableAdvanced(page: Page): Promise<void> {
   await toggle.check();
   await expect(page.getByTestId('nav-roster').or(page.getByTestId('nav-menu-button'))).toBeVisible();
   await expect(toggle).toBeChecked();
+  // Reload so the Dexie write has landed before the spec navigates on (flaked in webkit under load).
+  await page.reload();
+  await expect(page.getByTestId('settings-advanced')).toBeChecked();
+}
+
+/** Tap a tray chip, then click the field at a fraction (0..1) of the field box. Works with mouse and touch emulation. */
+export async function placeChip(page: Page, role: string, fx: number, fy: number): Promise<void> {
+  const chip = page.getByTestId(`tray-chip-${role}`);
+  // The chip stays armed after a placement (tap again to disarm), so only arm it when it is not.
+  if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
+  const box = await page.getByTestId('field-svg').boundingBox();
+  if (!box) throw new Error('no field box');
+  await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+}
+
+/** Number of tokens the active side has on the Freestyle canvas (passive layer excluded). */
+export async function activeTokens(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      [...document.querySelectorAll('[data-testid="editor-canvas"] [data-kind="player"]')].filter(
+        (el) => el.closest('[data-testid="passive-layer"]') === null,
+      ).length,
+  );
+}
+
+/** Blank Freestyle board with QB, C, 2 WR (offense) and 3 defenders. Ends on the defense side. */
+export async function buildFreestyleBoard(page: Page): Promise<void> {
+  await page.goto('/freestyle');
+  await expect(page.getByTestId('field-svg')).toBeVisible();
+  await placeChip(page, 'QB', 0.5, 0.78);
+  await placeChip(page, 'C', 0.5, 0.7);
+  await placeChip(page, 'WR', 0.18, 0.7);
+  await placeChip(page, 'WR', 0.82, 0.7);
+  await expect.poll(() => activeTokens(page)).toBe(4);
+  await page.getByTestId('fs-side-defense').click();
+  await placeChip(page, 'CB', 0.18, 0.55);
+  await placeChip(page, 'S', 0.5, 0.45);
+  await placeChip(page, 'CB', 0.82, 0.55);
+  await expect.poll(() => activeTokens(page)).toBe(3);
 }

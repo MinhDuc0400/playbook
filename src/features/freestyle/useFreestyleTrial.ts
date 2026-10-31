@@ -56,6 +56,8 @@ export function useTrialKeys(trial: boolean, canRun: boolean, onRun: () => void,
         }
         return;
       }
+      // Enter that a drawing tool already used (finishing a route or zone) must not also start a run.
+      if (e.key === 'Enter' && e.defaultPrevented) return;
       if ((e.key === ' ' || e.key === 'Enter') && canRun) {
         // A focused button handles Space/Enter natively (click).
         if (e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement) return;

@@ -9,6 +9,7 @@ export type HitTarget =
   | { kind: 'field' }
   | { kind: 'player'; slotId: ID; ghost?: false }
   | { kind: 'ghost'; ghostId: ID }
+  | { kind: 'offenseToken'; slotId: ID } // Freestyle: the live offense (companion) under the Man tool
   | { kind: 'routePoint'; slotId: ID; index: number }
   | { kind: 'routeSegment'; slotId: ID; index: number } // insert position for the segment ending at path[index]
   | { kind: 'dropPoint'; slotId: ID };

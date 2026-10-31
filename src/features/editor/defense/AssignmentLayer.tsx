@@ -8,11 +8,13 @@ import { useFieldContext } from '@/components/field/FieldContext';
 import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { toScreen } from '@/components/field/viewport';
-import { resolveReceiverRef } from '@/domain/numbering';
-import type { ManAction, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
+import { numberReceivers, resolveReceiverRef, type AlignedPlayer } from '@/domain/numbering';
+import type { ManAction, Play, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
 import { zoneKind, zonePolygon } from '@/domain/zones';
 import { useEditorStore } from '@/store/editorStore';
 import { ghostNumbering, ghostPlayers } from './ghost';
+
+const EMPTY: string[] = [];
 
 function findAction<T extends 'man' | 'zone' | 'rush'>(
   slot: PlayerSlot,
@@ -48,25 +50,33 @@ function ZoneDraftView(): JSX.Element | null {
   );
 }
 
-export function AssignmentLayer(): JSX.Element | null {
+export interface AssignmentLayerProps {
+  /** Freestyle passive layer: draw this (defense) play instead of the store's, read-only. */
+  play?: Play;
+  /** Live offense the man lines point at (replaces the ghost formation). */
+  targets?: readonly AlignedPlayer[];
+}
+
+export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProps = {}): JSX.Element | null {
   const { field } = useFieldContext();
-  const play = useEditorStore((s) => s.play);
-  const selection = useEditorStore((s) => s.selection);
-  const tool = useEditorStore((s) => s.tool);
+  const storePlay = useEditorStore((s) => s.play);
+  const play = playProp ?? storePlay;
+  const passive = playProp !== undefined;
+  const selection = useEditorStore((s) => (passive ? EMPTY : s.selection));
+  const storeTool = useEditorStore((s) => s.tool);
+  const tool = passive ? 'select' : storeTool;
   const ghostFormationId = useEditorStore((s) => s.ghostFormationId);
   const format = play?.format;
   const isDefense = play?.side === 'defense';
 
-  const ghost = useMemo(
-    () =>
-      format && isDefense
-        ? {
-            numbering: ghostNumbering(format, ghostFormationId),
-            positions: new Map(ghostPlayers(format, ghostFormationId).map((g) => [g.id, g.pos])),
-          }
-        : null,
-    [format, isDefense, ghostFormationId],
-  );
+  const ghost = useMemo(() => {
+    if (!format || !isDefense) return null;
+    const list = targets ?? ghostPlayers(format, ghostFormationId);
+    return {
+      numbering: targets ? numberReceivers(targets) : ghostNumbering(format, ghostFormationId),
+      positions: new Map(list.map((g) => [g.id, g.pos])),
+    };
+  }, [format, isDefense, ghostFormationId, targets]);
 
   if (!play || !isDefense || !ghost) return null;
   const selected = new Set(selection);
@@ -125,7 +135,7 @@ export function AssignmentLayer(): JSX.Element | null {
     <g data-testid="assignment-layer">
       {zones}
       {lines}
-      <ZoneDraftView />
+      {!passive && <ZoneDraftView />}
     </g>
   );
 }

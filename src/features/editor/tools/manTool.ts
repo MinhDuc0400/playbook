@@ -2,7 +2,7 @@
  * Man tool (FR-DEF-02): press a defender, then press a ghost receiver. The assignment is stored as a
  * ReceiverRef (strong #1, role QB...), never an id. Esc / field click cancels. The draft lives in `store.draft`.
  */
-import { refForPlayer } from '@/domain/numbering';
+import { alignedPlayers, numberReceivers, refForPlayer } from '@/domain/numbering';
 import type { ManAction } from '@/domain/types';
 import { setMan } from '../defense/ops';
 import { ghostNumbering, ghostPlayers } from '../defense/ghost';
@@ -38,14 +38,23 @@ export const manTool: EditorTool = {
       return;
     }
 
-    if (target.kind === 'ghost') {
+    if (target.kind === 'ghost' || target.kind === 'offenseToken') {
       const slotId = manDraftSlot(ctx);
       if (!slotId) return;
-      const ref = refForPlayer(
-        target.ghostId,
-        ghostNumbering(play.format, state.ghostFormationId),
-        ghostPlayers(play.format, state.ghostFormationId),
-      );
+      let ref;
+      if (target.kind === 'ghost') {
+        ref = refForPlayer(
+          target.ghostId,
+          ghostNumbering(play.format, state.ghostFormationId),
+          ghostPlayers(play.format, state.ghostFormationId),
+        );
+      } else {
+        // Freestyle: number the live offense (companion), never store a slot id.
+        const live = state.companion;
+        if (!live || live.side !== 'offense') return;
+        const players = alignedPlayers(live);
+        ref = refForPlayer(target.slotId, numberReceivers(players), players);
+      }
       if (!ref) return;
       const existing = play.players
         .find((s) => s.id === slotId)

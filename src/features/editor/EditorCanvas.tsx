@@ -9,18 +9,21 @@ import { useFieldContext } from '@/components/field/FieldContext';
 import { FieldStage } from '@/components/field/FieldStage';
 import { PlayerToken } from '@/components/field/PlayerToken';
 import { RoutePath } from '@/components/field/RoutePath';
-import { toField, toScreen, type Viewport } from '@/components/field/viewport';
+import { toField, toScreen, yardsToPx, type Viewport } from '@/components/field/viewport';
 import type {
   BallSpot,
   FieldConfig,
   ID,
   MotionAction,
   OptionRouteAction,
+  Play,
   PlayerSlot,
   Point,
   RouteAction,
   Side,
+  Role,
 } from '@/domain/types';
+import { alignedPlayers, numberReceivers, refForPlayer } from '@/domain/numbering';
 import { useEditorStore } from '@/store/editorStore';
 import { AssignmentLayer } from './defense/AssignmentLayer';
 import { GhostLayer } from './defense/GhostLayer';
@@ -36,7 +39,13 @@ export interface EditorCanvasProps {
   /** Settings.ui.snap (FR-ED-03); Alt still disables snapping when true. */
   snap: boolean;
   showGrid?: boolean;
+  /** Freestyle tray hooks (FR-FS-04): a role dropped on / clicked onto the field. */
+  onPlace?: (role: Role, point: Point) => void;
+  pendingRole?: Role | null;
 }
+
+/** dataTransfer type carrying a Role string from the Freestyle tray. */
+export const ROLE_DRAG_TYPE = 'application/x-flagbook-role';
 
 const DOUBLE_CLICK_MS = 400;
 const DOUBLE_CLICK_PX = 6;
@@ -56,7 +65,10 @@ function hitTest(target: EventTarget | null): HitTarget {
   const index = Number(el.getAttribute('data-index'));
   switch (el.getAttribute('data-kind')) {
     case 'player':
-      return slotId ? { kind: 'player', slotId } : { kind: 'field' };
+      if (!slotId) return { kind: 'field' };
+      return el.getAttribute('data-live') === 'true'
+        ? { kind: 'offenseToken', slotId }
+        : { kind: 'player', slotId };
     case 'ghost': {
       const ghostId = el.getAttribute('data-ghost-id');
       return ghostId ? { kind: 'ghost', ghostId } : { kind: 'field' };
@@ -276,11 +288,14 @@ function MotionOptionDraftLayer(): JSX.Element | null {
   );
 }
 
-function SlotLayers(): JSX.Element | null {
-  const play = useEditorStore((s) => s.play);
-  const selection = useEditorStore((s) => s.selection);
+const NO_SELECTION: ID[] = [];
+
+function SlotLayers({ play: playProp }: { play?: Play } = {}): JSX.Element | null {
+  const storePlay = useEditorStore((s) => s.play);
+  const storeSelection = useEditorStore((s) => s.selection);
+  const play = playProp ?? storePlay;
   if (!play) return null;
-  const selected = new Set(selection);
+  const selected = new Set(playProp ? NO_SELECTION : storeSelection);
   const primaryId = play.progression?.[0];
   return (
     <>
@@ -308,6 +323,55 @@ function SlotLayers(): JSX.Element | null {
   );
 }
 
+/** Read-only companion play (Freestyle): faded, never hit-tested (FR-FS-02). */
+function PassiveLayer({ companion, active }: { companion: Play; active: Play | null }): JSX.Element {
+  const targets = useMemo(
+    () => (active && active.side === 'offense' ? alignedPlayers(active) : undefined),
+    [active],
+  );
+  return (
+    <g opacity={0.45} pointerEvents="none" data-testid="passive-layer">
+      {companion.side === 'defense' && <AssignmentLayer play={companion} targets={targets} />}
+      <SlotLayers play={companion} />
+    </g>
+  );
+}
+
+/** Man tool over the live offense: transparent hit circles on the companion's receivers (FR-FS-04). */
+function LiveOffenseHitLayer({ offense }: { offense: Play }): JSX.Element {
+  const { viewport } = useFieldContext();
+  const picking = useEditorStore((s) => s.draft?.kind === 'man');
+  const players = useMemo(() => alignedPlayers(offense), [offense]);
+  const numbering = useMemo(() => numberReceivers(players), [players]);
+  return (
+    <g data-testid="live-offense-hit-layer">
+      {offense.players.map((slot) => {
+        if (!refForPlayer(slot.id, numbering, players)) return null;
+        const c = toScreen(slot.start, viewport);
+        return (
+          <circle
+            key={slot.id}
+            data-kind="player"
+            data-side="offense"
+            data-live="true"
+            data-slot-id={slot.id}
+            data-testid={`live-hit-${slot.label}`}
+            cx={c.x}
+            cy={c.y}
+            r={yardsToPx(1, viewport)}
+            fill="transparent"
+            stroke={picking ? 'currentColor' : 'none'}
+            strokeWidth={1.5}
+            strokeDasharray="4 3"
+            className="cursor-pointer text-amber-500"
+            pointerEvents="all"
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 function MinimapDots(): JSX.Element | null {
   const { viewport } = useFieldContext();
   const play = useEditorStore((s) => s.play);
@@ -332,8 +396,19 @@ function MinimapDots(): JSX.Element | null {
   );
 }
 
-export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasProps): JSX.Element {
+export function EditorCanvas({
+  field,
+  ballSpot,
+  snap,
+  showGrid,
+  onPlace,
+  pendingRole,
+}: EditorCanvasProps): JSX.Element {
   const side = useEditorStore((s) => s.play?.side);
+  const play = useEditorStore((s) => s.play);
+  const companion = useEditorStore((s) => s.companion);
+  const liveOffense = side === 'defense' && companion?.side === 'offense' ? companion : null;
+  const liveAligned = useMemo(() => (liveOffense ? alignedPlayers(liveOffense) : undefined), [liveOffense]);
   const tool = useEditorStore((s) => s.tool);
   const viewportRef = useRef<Viewport | null>(null);
   const spaceRef = useRef(false);
@@ -434,6 +509,10 @@ export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasPr
     clickRef.current = { t: now, x: e.clientX, y: e.clientY, n };
     const fe = toolEvent(e, n, e.target);
     if (!fe) return;
+    if (pendingRole && onPlace && fe.target.kind === 'field' && e.button === 0) {
+      onPlace(pendingRole, fe.point);
+      return;
+    }
     downHitRef.current = fe.target;
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -472,8 +551,31 @@ export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasPr
     );
   };
 
+  const hasRoleDrag = (e: React.DragEvent): boolean => e.dataTransfer.types.includes(ROLE_DRAG_TYPE);
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!onPlace || !hasRoleDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const role = e.dataTransfer.getData(ROLE_DRAG_TYPE);
+    const vp = viewportRef.current;
+    if (!onPlace || !role || !vp) return;
+    e.preventDefault();
+    const svg = e.currentTarget.querySelector('svg') ?? e.currentTarget;
+    const r = svg.getBoundingClientRect();
+    const raw = toField({ x: e.clientX - r.left, y: e.clientY - r.top }, vp);
+    onPlace(role as Role, snapPoint(raw, { snap, alt: e.altKey }));
+  };
+
   return (
-    <div data-testid="editor-canvas" className="h-full w-full" style={{ cursor: TOOLS[tool]?.cursor }}>
+    <div
+      data-testid="editor-canvas"
+      className="h-full w-full"
+      style={{ cursor: pendingRole ? 'copy' : TOOLS[tool]?.cursor }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <FieldStage
         field={field}
         ballSpot={ballSpot}
@@ -485,13 +587,15 @@ export function EditorCanvas({ field, ballSpot, snap, showGrid }: EditorCanvasPr
         onDoubleClick={onDoubleClick}
       >
         <ViewportProbe target={viewportRef} />
+        {companion && <PassiveLayer companion={companion} active={play} />}
         {side === 'defense' && (
           <>
-            <GhostLayer />
-            <AssignmentLayer />
+            {!liveOffense && <GhostLayer />}
+            <AssignmentLayer targets={liveOffense ? liveAligned : undefined} />
           </>
         )}
         <SlotLayers />
+        {liveOffense && tool === 'man' && <LiveOffenseHitLayer offense={liveOffense} />}
         <RouteDraftLayer />
         <MotionOptionDraftLayer />
       </FieldStage>

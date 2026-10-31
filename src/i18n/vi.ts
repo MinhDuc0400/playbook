@@ -24,6 +24,7 @@ import { offense } from './vi/offense';
 import { playback } from './vi/playback';
 import { tools } from './vi/tools';
 import { openWindows } from './vi/openWindows';
+import { freestyle } from './vi/freestyle';
 
 export const vi = {
   common,
@@ -48,6 +49,7 @@ export const vi = {
   roster,
   randomDef,
   exportx,
+  freestyle,
 } as const;
 export const t = vi;
 export type Strings = typeof vi;

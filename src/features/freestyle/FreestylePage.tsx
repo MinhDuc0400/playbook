@@ -4,6 +4,7 @@
  */
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useState } from 'react';
+import type { Settings } from '@/domain/types';
 import { PanelTabs } from '@/components/ui/PanelTabs';
 import { useSettings } from '@/db/hooks';
 import { DEFAULT_BALL_SPOT } from '@/domain/field';
@@ -18,7 +19,9 @@ import { useIsDesktop } from '@/lib/useMediaQuery';
 import { useEditorStore } from '@/store/editorStore';
 import { FreestyleTopBar } from './FreestyleTopBar';
 import { PlayerTray } from './PlayerTray';
+import { TrialView } from './TrialView';
 import { emptyPlay, placeRole } from './trayOps';
+import { trialHint, useTrialKeys, useTrialPlays } from './useFreestyleTrial';
 
 function isBoardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return true;
@@ -45,10 +48,18 @@ interface BoardProps {
   snap: boolean;
   showGrid: boolean;
   field: Parameters<typeof EditorCanvas>[0]['field'];
+  settings: Settings;
 }
 
-function Board({ maxPlayers, snap, showGrid, field }: BoardProps): JSX.Element {
+function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX.Element {
   const isDesktop = useIsDesktop();
+  const [trial, setTrial] = useState(false);
+  const plays = useTrialPlays();
+  const hint = trialHint(plays);
+  const onRun = useCallback(() => setTrial(true), []);
+  const onEdit = useCallback(() => setTrial(false), []);
+  useTrialKeys(trial, hint === null, onRun, onEdit);
+  const topBar = <FreestyleTopBar trial={trial} hint={hint} onRun={onRun} onEdit={onEdit} />;
   const isOffense = useEditorStore((s) => s.play?.side !== 'defense');
   const [pendingRole, setPendingRole] = useState<Role | null>(null);
 
@@ -81,10 +92,25 @@ function Board({ maxPlayers, snap, showGrid, field }: BoardProps): JSX.Element {
   );
   const panel = isOffense ? <OffensePanel /> : <DefensePanel />;
 
+  if (trial && plays.offense && plays.defense) {
+    const view = <TrialView offense={plays.offense} defense={plays.defense} settings={settings} />;
+    return isDesktop ? (
+      <div data-testid="freestyle-page" className="flex h-[calc(100vh-3.5rem)] min-h-[480px] flex-col">
+        {topBar}
+        {view}
+      </div>
+    ) : (
+      <div data-testid="freestyle-page" className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col">
+        {topBar}
+        {view}
+      </div>
+    );
+  }
+
   if (!isDesktop) {
     return (
       <div data-testid="freestyle-page" className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col">
-        <FreestyleTopBar />
+        {topBar}
         <Toolbar />
         <div
           data-testid="freestyle-field"
@@ -106,9 +132,7 @@ function Board({ maxPlayers, snap, showGrid, field }: BoardProps): JSX.Element {
       data-testid="freestyle-page"
       className="grid h-[calc(100vh-3.5rem)] min-h-[480px] grid-cols-[auto_minmax(0,1fr)_20rem] grid-rows-[auto_minmax(0,1fr)]"
     >
-      <div className="col-span-3">
-        <FreestyleTopBar />
-      </div>
+      <div className="col-span-3">{topBar}</div>
       <aside className="border-r border-slate-200 dark:border-slate-700">
         <Toolbar />
       </aside>
@@ -146,6 +170,7 @@ export default function FreestylePage(): JSX.Element {
       maxPlayers={settings.fields['5v5'].playersPerSide}
       snap={settings.ui.snap}
       showGrid={settings.ui.showGrid}
+      settings={settings}
     />
   );
 }

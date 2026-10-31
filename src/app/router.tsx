@@ -1,8 +1,7 @@
 /** Routes (SRS §12.1). Lead-owned wiring. Every screen sits in its own ErrorBoundary (NFR-REL-04). */
 import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, useLocation } from 'react-router-dom';
-import { useSettings } from '@/db/hooks';
-import { useFeatures, type Features } from '@/config/features';
+import { useFeatureState, type Features } from '@/config/features';
 import { t } from '@/i18n/vi';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Layout } from './Layout';
@@ -28,10 +27,9 @@ function Screen({ children }: { children: ReactNode }): JSX.Element {
 }
 
 /** Simple mode hides some routes: redirect home once settings are known (D-26). */
-function FeatureGuard({ flag, children }: { flag: keyof Features; children: ReactNode }): JSX.Element {
-  const settings = useSettings();
-  const features = useFeatures();
-  if (settings === undefined) return <div className="p-6">{t.common.loading}</div>;
+export function FeatureGuard({ flag, children }: { flag: keyof Features; children: ReactNode }): JSX.Element {
+  const { loading, features } = useFeatureState();
+  if (loading) return <div className="p-6">{t.common.loading}</div>;
   if (!features[flag]) return <Navigate to="/" replace />;
   return <>{children}</>;
 }

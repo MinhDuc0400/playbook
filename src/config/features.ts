@@ -42,8 +42,14 @@ export function setFeatureOverride(advanced: boolean | null): void {
   override = advanced;
 }
 
-/** Current flags from the stored settings; Simple mode while settings are loading. */
-export function useFeatures(): Features {
+/** Flags plus a loading marker, from a single settings read (no separate queries that can resolve apart). */
+export function useFeatureState(): { loading: boolean; features: Features } {
   const settings = useSettings();
-  return featuresFor(override ?? settings?.ui.advanced === true);
+  const loading = override === null && settings === undefined;
+  return { loading, features: featuresFor(override ?? settings?.ui.advanced === true) };
+}
+
+/** Current flags from the stored settings; Simple mode while settings are loading (use useFeatureState to gate redirects). */
+export function useFeatures(): Features {
+  return useFeatureState().features;
 }

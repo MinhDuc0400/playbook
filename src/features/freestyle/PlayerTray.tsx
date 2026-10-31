@@ -46,8 +46,10 @@ export function PlayerTray({ maxPlayers, pendingRole, onPendingRole }: PlayerTra
             title={t.freestyle.chipHint}
             onDragStart={(e) => onDragStart(e, role)}
             onClick={() => onPendingRole(armed ? null : role)}
-            className={`flex min-h-[40px] min-w-[40px] shrink-0 items-center gap-1 rounded-full border px-3 text-sm disabled:opacity-40 ${
-              armed ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+            className={`flex min-h-[40px] min-w-[40px] shrink-0 items-center gap-1 rounded-full border px-3 text-sm disabled:opacity-50 ${
+              armed
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-slate-300 bg-white text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
             }`}
           >
             <span>{t.freestyle.roles[role]}</span>
@@ -62,7 +64,7 @@ export function PlayerTray({ maxPlayers, pendingRole, onPendingRole }: PlayerTra
         data-testid="tray-remove"
         disabled={selection.length === 0}
         onClick={() => apply(t.freestyle.removeSelected, removePlayers(selection))}
-        className="min-h-[40px] shrink-0 rounded border border-slate-300 px-3 text-sm disabled:opacity-40"
+        className="min-h-[40px] shrink-0 rounded border border-slate-300 px-3 text-sm text-slate-900 disabled:opacity-40 dark:border-slate-600 dark:text-slate-100"
       >
         {t.freestyle.removeSelected}
       </button>

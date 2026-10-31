@@ -56,12 +56,24 @@ interface BoardProps {
 function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX.Element {
   const isDesktop = useIsDesktop();
   const [trial, setTrial] = useState(false);
+  const [liveOn, setLiveOn] = useState(false);
+  const live = isDesktop && liveOn;
   const plays = useTrialPlays();
   const hint = trialHint(plays);
   const onRun = useCallback(() => setTrial(true), []);
   const onEdit = useCallback(() => setTrial(false), []);
-  useTrialKeys(trial, hint === null, onRun, onEdit);
-  const topBar = <FreestyleTopBar trial={trial} hint={hint} onRun={onRun} onEdit={onEdit} field={field} />;
+  useTrialKeys(trial, hint === null && !live, onRun, onEdit); // live: Space toggles playback
+  const topBar = (
+    <FreestyleTopBar
+      trial={trial}
+      hint={hint}
+      onRun={onRun}
+      onEdit={onEdit}
+      live={live}
+      onLiveChange={isDesktop ? setLiveOn : undefined}
+      field={field}
+    />
+  );
   const isOffense = useEditorStore((s) => s.play?.side !== 'defense');
   const [pendingRole, setPendingRole] = useState<Role | null>(null);
 
@@ -129,18 +141,42 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
     );
   }
 
+  const livePane = live ? (
+    <section
+      aria-label={t.freestyle.trialLabel}
+      className="min-h-0 min-w-0 border-l border-slate-200 dark:border-slate-700"
+    >
+      {hint === null && plays.offense && plays.defense ? (
+        <TrialView embedded offense={plays.offense} defense={plays.defense} settings={settings} />
+      ) : (
+        <p
+          data-testid="fs-live-hint"
+          role="status"
+          className="m-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+        >
+          {hint}
+        </p>
+      )}
+    </section>
+  ) : null;
+
   return (
     <div
       data-testid="freestyle-page"
-      className="grid h-[calc(100vh-3.5rem)] min-h-[480px] grid-cols-[auto_minmax(0,1fr)_20rem] grid-rows-[auto_minmax(0,1fr)]"
+      className={`grid h-[calc(100vh-3.5rem)] min-h-[480px] grid-rows-[auto_minmax(0,1fr)] ${
+        live
+          ? 'grid-cols-[auto_minmax(0,3fr)_minmax(24rem,2fr)_17rem]'
+          : 'grid-cols-[auto_minmax(0,1fr)_20rem]'
+      }`}
     >
-      <div className="col-span-3">{topBar}</div>
+      <div className={live ? 'col-span-4' : 'col-span-3'}>{topBar}</div>
       <aside className="border-r border-slate-200 dark:border-slate-700">
         <Toolbar />
       </aside>
       <div data-testid="freestyle-field" className="min-w-0 overflow-hidden">
         {canvas}
       </div>
+      {livePane}
       <aside className="flex min-w-0 flex-col gap-3 overflow-y-auto border-l border-slate-200 p-2 dark:border-slate-700">
         <div className="shrink-0">{tray}</div>
         {panel}

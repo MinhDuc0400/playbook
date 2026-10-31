@@ -1,6 +1,8 @@
 /**
  * Freestyle trial (FR-FS-05..07, D-27): the Simple Matchup pipeline on a transient, never persisted
- * Matchup. Mounted fresh on every "Chạy thử", so each run re-simulates the current plays from t = 0.
+ * Matchup. Full-screen mode is mounted fresh on every "Chạy thử" (t = 0). `embedded` (live split, FR-FS-06)
+ * stays mounted while the plays change: the sim re-runs, usePlayback keeps the playhead (clamped) and
+ * its playing/speed state.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
@@ -54,10 +56,13 @@ export function TrialView({
   offense,
   defense,
   settings,
+  embedded = false,
 }: {
   offense: Play;
   defense: Play;
   settings: Settings;
+  /** Live split pane next to the editor: compact field, no own scroll owner. */
+  embedded?: boolean;
 }): JSX.Element {
   const isDesktop = useIsDesktop();
   const matchup = useMemo(() => trialMatchup(offense, defense), [offense, defense]);
@@ -196,14 +201,20 @@ export function TrialView({
 
   return (
     <div
-      data-testid="freestyle-trial"
+      data-testid={embedded ? 'freestyle-live' : 'freestyle-trial'}
       aria-label={t.freestyle.trialLabel}
-      className={`flex min-w-0 flex-col ${isDesktop ? 'min-h-0 flex-1 overflow-y-auto' : ''}`}
+      className={`flex min-w-0 flex-col ${
+        embedded ? 'h-full min-h-0 overflow-y-auto' : isDesktop ? 'min-h-0 flex-1 overflow-y-auto' : ''
+      }`}
     >
       <div
-        data-testid="freestyle-field"
+        data-testid={embedded ? 'freestyle-live-field' : 'freestyle-field'}
         className={`relative min-w-0 overflow-hidden border-b border-slate-200 dark:border-slate-700 ${
-          isDesktop ? 'h-[min(60vh,40rem)] min-h-[20rem] shrink-0' : 'h-[max(50dvh,300px)] shrink-0'
+          embedded
+            ? 'h-[min(50vh,28rem)] min-h-[16rem] shrink-0'
+            : isDesktop
+              ? 'h-[min(60vh,40rem)] min-h-[20rem] shrink-0'
+              : 'h-[max(50dvh,300px)] shrink-0'
         }`}
       >
         {fieldBody}

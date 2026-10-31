@@ -15,6 +15,8 @@ export const freestyle = {
   clearTitle: 'Bắt đầu lại với sân trống',
   run: 'Chạy thử',
   runTitle: 'Chạy thử (Space)',
+  live: 'Chạy trực tiếp',
+  liveTitle: 'Vẽ bên trái, kết quả cập nhật bên phải',
   edit: 'Quay lại vẽ',
   editTitle: 'Quay lại vẽ (Esc)',
   hintNoQb: 'Thêm QB để chạy thử',

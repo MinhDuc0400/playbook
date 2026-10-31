@@ -241,3 +241,72 @@ test('18 the tray scrolls inside itself on a narrow screen (D-25)', async ({ pag
   await tray.evaluate((el) => (el.scrollLeft = 80));
   expect(await tray.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 });
+
+test('18 live re-run split: edits update the open windows without pressing run (FR-FS-06)', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'split view check runs once, in chromium');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await buildFreestyleBoard(page);
+  // A route for X so the defense matters, then back to the defense side.
+  await page.getByTestId('fs-side-offense').click();
+  await page.getByTestId('tool-route').click();
+  const wr = await tokenCenter(page, 'X');
+  await page.mouse.click(wr.x, wr.y);
+  await page.mouse.click(wr.x, wr.y - 120);
+  await page.mouse.click(wr.x + 60, wr.y - 200);
+  await page.keyboard.press('Enter');
+  await page.getByTestId('tool-select').click();
+  await page.getByTestId('fs-side-defense').click();
+
+  await page.getByTestId('fs-live').check();
+  const pane = page.getByTestId('freestyle-live');
+  await expect(pane.getByTestId('open-windows')).toBeVisible();
+  const windows = pane.getByTestId('open-windows');
+  const field = page.getByTestId('editor-canvas').getByTestId('field-svg');
+  const before = (await windows.textContent()) ?? '';
+  const wrRows = await pane.locator('[data-testid^="ow-row-"]').count();
+
+  // The editor stays on the left; the result pane sits to its right and is wide enough to read.
+  const fieldBox = await field.boundingBox();
+  const paneBox = await pane.boundingBox();
+  expect(paneBox!.x).toBeGreaterThan(fieldBox!.x);
+  expect(paneBox!.width).toBeGreaterThanOrEqual(1280 * 0.28);
+
+  // Change the defense: drop defenders on X's route (no click on fs-run).
+  for (const [dx, dy] of [
+    [0, -110],
+    [60, -190],
+  ] as const) {
+    const chip = page.getByTestId('tray-chip-LB');
+    if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
+    await page.mouse.click(wr.x + dx, wr.y + dy);
+  }
+  await expect.poll(async () => (await windows.textContent()) ?? '', { timeout: 10_000 }).not.toBe(before);
+
+  // Offense edit: removing a WR drops a row. The playhead keeps its place meanwhile.
+  await pane.getByTestId('timeline-scrubber').focus();
+  await page.keyboard.press('ArrowRight');
+  const time = await pane.getByTestId('timeline-time').textContent();
+  await page.getByTestId('fs-side-offense').click();
+  await page.getByTestId('editor-canvas').getByTestId('token-C').locator('[data-part="body"]').click();
+  await page.getByTestId('tray-remove').click();
+  await expect(pane.locator('[data-testid^="ow-row-"]')).toHaveCount(wrRows - 1);
+  expect(await pane.getByTestId('timeline-time').textContent()).toBe(time);
+
+  // fs-run still opens the full-screen trial; the page never overflows horizontally.
+  const m = await page.evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }));
+  expect(m.s).toBeLessThanOrEqual(m.w + 1);
+  await page.getByTestId('fs-run').click();
+  await expect(page.getByTestId('freestyle-trial')).toBeVisible();
+  await expect(page.getByTestId('freestyle-live')).toHaveCount(0);
+});
+
+test('18 the live toggle is not offered below 1024 (FR-FS-06)', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'viewport sweep runs once, in chromium');
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/freestyle');
+  await expect(page.getByTestId('fs-run')).toBeVisible();
+  await expect(page.getByTestId('fs-live')).toHaveCount(0);
+});

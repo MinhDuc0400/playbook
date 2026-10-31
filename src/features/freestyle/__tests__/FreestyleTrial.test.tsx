@@ -18,12 +18,13 @@ import { emptyPlay } from '../trayOps';
 vi.mock('@/db/errors', () => ({ onDbError: vi.fn(() => () => undefined) }));
 vi.mock('@/app/BackupBanner', () => ({ BackupBanner: () => null }));
 
-const sim = vi.hoisted(() => ({ fail: false }));
+const sim = vi.hoisted(() => ({ fail: false, calls: 0 }));
 vi.mock('@/engine/simulate', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@/engine/simulate')>();
   return {
     ...mod,
     simulate: (...args: Parameters<typeof mod.simulate>) => {
+      sim.calls += 1;
       if (sim.fail) throw new Error('boom');
       return mod.simulate(...args);
     },
@@ -57,6 +58,7 @@ function loadSeeds(offense: Play, defense: Play) {
 beforeEach(async () => {
   localStorage.clear();
   sim.fail = false;
+  sim.calls = 0;
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
     x: 0,
     y: 0,
@@ -209,5 +211,124 @@ describe('T-FS-05 trial view', () => {
     const err = await screen.findByTestId('matchup-sim-error');
     expect(err).toHaveTextContent(`${t.matchup.simError}: boom`);
     expect(screen.getByTestId('fs-edit')).toBeInTheDocument();
+  });
+});
+
+function setDesktop(on: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: on && query.includes('1024'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }),
+  });
+}
+
+describe('T-FS-07 live re-run split view (FR-FS-06)', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
+  it('shows fs-live at >= 1024 and not below', async () => {
+    setDesktop(false);
+    await mount();
+    expect(screen.queryByTestId('fs-live')).toBeNull();
+    cleanup();
+    setDesktop(true);
+    await mount();
+    expect(screen.getByTestId('fs-live')).toBeInTheDocument();
+  });
+
+  it('with live ON an edit updates the open-windows rows without any button', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    fireEvent.click(screen.getByTestId('fs-live'));
+    await screen.findByTestId('open-windows');
+    expect(screen.getByTestId('fs-run')).toBeEnabled(); // fs-run stays available
+    const rowsBefore = screen.getAllByTestId(/^ow-row-/).length;
+    const victim = flood.players.find((p) => p.role !== 'QB' && p.role !== 'C')!;
+    act(() =>
+      store().apply('remove', (p) => ({ ...p, players: p.players.filter((s) => s.id !== victim.id) })),
+    );
+    await waitFor(() => expect(screen.getAllByTestId(/^ow-row-/).length).toBe(rowsBefore - 1));
+    expect(screen.getByTestId('freestyle-live-field')).toBeInTheDocument();
+    expect(screen.getAllByTestId('field-svg')).toHaveLength(2); // editor + trial
+  });
+
+  it('keeps the playhead across a re-run', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    fireEvent.click(screen.getByTestId('fs-live'));
+    await screen.findByTestId('open-windows');
+    const initial = screen.getByTestId('timeline-time').textContent;
+    fireEvent.change(screen.getByTestId('timeline-scrubber'), { target: { value: '1.2' } });
+    const before = screen.getByTestId('timeline-time').textContent;
+    const scrub = screen.getByTestId('timeline-scrubber');
+    const victim = flood.players.find((p) => p.role !== 'QB' && p.role !== 'C')!;
+    const calls = sim.calls;
+    act(() =>
+      store().apply('remove', (p) => ({ ...p, players: p.players.filter((s) => s.id !== victim.id) })),
+    );
+    await waitFor(() => expect(sim.calls).toBeGreaterThan(calls));
+    expect(screen.getByTestId('timeline-scrubber')).toBe(scrub); // same node: not remounted
+    expect(screen.getByTestId('timeline-time').textContent).toBe(before);
+    expect(before).not.toBe(initial);
+  });
+
+  it('does not re-simulate on every move of a drag, only once it commits', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    fireEvent.click(screen.getByTestId('fs-live'));
+    await screen.findByTestId('open-windows');
+    const wr = flood.players.find((p) => p.role === 'WR')!;
+    const base = sim.calls;
+    act(() => store().beginGesture());
+    for (let i = 1; i <= 10; i++) {
+      act(() =>
+        store().apply('move', (p) => ({
+          ...p,
+          players: p.players.map((s) =>
+            s.id === wr.id ? { ...s, start: { x: s.start.x + i * 0.1, y: s.start.y } } : s,
+          ),
+        })),
+      );
+    }
+    expect(sim.calls - base).toBe(0);
+    act(() => store().endGesture());
+    await waitFor(() => expect(sim.calls - base).toBe(1));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(sim.calls - base).toBeLessThanOrEqual(1);
+  });
+
+  it('shows the hint instead of a result when the QB is removed, and recovers', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    fireEvent.click(screen.getByTestId('fs-live'));
+    await screen.findByTestId('open-windows');
+    const noQb = { ...flood, players: flood.players.filter((p) => p.role !== 'QB') };
+    loadSeeds(noQb, cover1);
+    expect(await screen.findByTestId('fs-live-hint')).toHaveTextContent(t.freestyle.hintNoQb);
+    expect(screen.queryByTestId('open-windows')).toBeNull();
+    loadSeeds(flood, cover1);
+    expect(await screen.findByTestId('open-windows')).toBeInTheDocument();
+    expect(screen.queryByTestId('fs-live-hint')).toBeNull();
+  });
+
+  it('a sim error is still shown inline in the live pane', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    sim.fail = true;
+    fireEvent.click(screen.getByTestId('fs-live'));
+    expect(await screen.findByTestId('matchup-sim-error')).toHaveTextContent(`${t.matchup.simError}: boom`);
   });
 });

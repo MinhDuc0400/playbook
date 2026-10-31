@@ -21,6 +21,9 @@ export interface FreestyleTopBarProps {
   hint?: string | null;
   onRun?: () => void;
   onEdit?: () => void;
+  /** Live split toggle (FR-FS-06); rendered only when `onLiveChange` is given (desktop). */
+  live?: boolean;
+  onLiveChange?: (v: boolean) => void;
   /** Field used for warnings (FR-FS-12); badge hidden without it. */
   field?: FieldConfig;
 }
@@ -30,6 +33,8 @@ export function FreestyleTopBar({
   hint = null,
   onRun,
   onEdit,
+  live = false,
+  onLiveChange,
   field,
 }: FreestyleTopBarProps = {}): JSX.Element {
   const side = useEditorStore((s) => s.play?.side ?? 'offense');
@@ -159,6 +164,23 @@ export function FreestyleTopBar({
           </span>
         )}
         <span className="ml-auto" />
+        {onLiveChange && !trial && (
+          <label
+            title={t.freestyle.liveTitle}
+            className="flex min-h-[40px] items-center gap-1 text-sm font-medium"
+          >
+            <input
+              type="checkbox"
+              data-testid="fs-live"
+              checked={live}
+              onChange={(e) => {
+                e.currentTarget.blur(); // keep Space for playback
+                onLiveChange(e.target.checked);
+              }}
+            />
+            {t.freestyle.live}
+          </label>
+        )}
         {!trial && <SaveButton btnClass={btn} />}
         {trial ? (
           <button

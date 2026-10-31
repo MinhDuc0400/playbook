@@ -1,5 +1,5 @@
 /** Trial inputs and keys for Freestyle (FR-FS-05, D-27). */
-import { useDeferredValue, useEffect, useMemo } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { Play } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
@@ -26,10 +26,40 @@ export function trialHint({ offense, defense }: TrialPlays): string | null {
   return null;
 }
 
-/** Committed store plays, deferred so a pointer-move commit never blocks on a simulation. */
+/**
+ * Store plays as last committed. While a drag gesture runs the history is paused (`isTracking` false), so
+ * the per-pointermove updates are skipped; endGesture commits the final play and this follows (FR-FS-06).
+ */
+function useCommittedPair(): { play: Play | null; companion: Play | null } {
+  const [pair, setPair] = useState(() => {
+    const s = useEditorStore.getState();
+    return { play: s.play, companion: s.companion };
+  });
+  useEffect(() => {
+    const sync = (): void => {
+      if (!useEditorStore.temporal.getState().isTracking) return;
+      const s = useEditorStore.getState();
+      setPair((prev) =>
+        prev.play === s.play && prev.companion === s.companion
+          ? prev
+          : { play: s.play, companion: s.companion },
+      );
+    };
+    sync();
+    // load()/switchSide() set state while paused; resume() flips isTracking back, so follow that too.
+    const offStore = useEditorStore.subscribe(sync);
+    const offHistory = useEditorStore.temporal.subscribe(sync);
+    return () => {
+      offStore();
+      offHistory();
+    };
+  }, []);
+  return pair;
+}
+
+/** Committed store plays, deferred so a commit never blocks on a simulation. */
 export function useTrialPlays(): TrialPlays {
-  const play = useEditorStore((s) => s.play);
-  const companion = useEditorStore((s) => s.companion);
+  const { play, companion } = useCommittedPair();
   const dPlay = useDeferredValue(play);
   const dCompanion = useDeferredValue(companion);
   return useMemo(() => pickTrialPlays(dPlay, dCompanion), [dPlay, dCompanion]);

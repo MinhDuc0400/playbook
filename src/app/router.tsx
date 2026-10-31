@@ -9,6 +9,7 @@ import { Layout } from './Layout';
 
 const PlaybookPage = lazy(() => import('@/features/playbook/PlaybookPage'));
 const EditorPage = lazy(() => import('@/features/editor/EditorPage'));
+const FreestylePage = lazy(() => import('@/features/freestyle/FreestylePage'));
 const MatchupPage = lazy(() => import('@/features/matchup/MatchupPage'));
 const InstallListPage = lazy(() => import('@/features/install/InstallListPage'));
 const InstallDetailPage = lazy(() => import('@/features/install/InstallDetailPage'));
@@ -61,6 +62,14 @@ export const routes = [
         element: (
           <Screen>
             <EditorPage />
+          </Screen>
+        ),
+      },
+      {
+        path: 'freestyle',
+        element: (
+          <Screen>
+            <FreestylePage />
           </Screen>
         ),
       },

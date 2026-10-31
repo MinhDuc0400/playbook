@@ -6,6 +6,7 @@ export const common = {
     install: 'Install',
     roster: 'Roster',
     suggest: 'Suggest',
+    freestyle: 'Freestyle',
     settings: 'Cài đặt',
     label: 'Điều hướng chính',
     menu: 'Menu',

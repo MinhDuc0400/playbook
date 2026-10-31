@@ -29,7 +29,7 @@ describe('Layout', () => {
   it('renders nav links, the app name and the outlet', () => {
     renderLayout();
     expect(screen.getByText(t.common.appName)).toBeInTheDocument();
-    for (const id of ['playbook', 'install', 'roster', 'suggest', 'settings']) {
+    for (const id of ['playbook', 'freestyle', 'install', 'roster', 'suggest', 'settings']) {
       expect(screen.getByTestId(`nav-${id}`)).toBeInTheDocument();
     }
     expect(screen.getByTestId('nav-roster')).toHaveAttribute('aria-current', 'page');
@@ -84,7 +84,7 @@ describe('Layout (phone)', () => {
       expect(screen.queryByTestId('nav-settings')).toBeNull();
       await userEvent.click(btn);
       expect(btn).toHaveAttribute('aria-expanded', 'true');
-      for (const id of ['playbook', 'install', 'roster', 'suggest', 'settings']) {
+      for (const id of ['playbook', 'freestyle', 'install', 'roster', 'suggest', 'settings']) {
         expect(screen.getByTestId(`nav-${id}`)).toBeInTheDocument();
       }
       await userEvent.click(screen.getByTestId('nav-playbook'));
@@ -102,7 +102,7 @@ describe('Layout (Simple mode)', () => {
     renderLayout();
     expect(screen.queryByTestId('nav-roster')).toBeNull();
     expect(screen.queryByTestId('nav-suggest')).toBeNull();
-    for (const id of ['playbook', 'install', 'settings']) {
+    for (const id of ['playbook', 'freestyle', 'install', 'settings']) {
       expect(screen.getByTestId(`nav-${id}`)).toBeInTheDocument();
     }
   });

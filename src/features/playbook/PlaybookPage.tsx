@@ -223,6 +223,13 @@ export default function PlaybookPage(): JSX.Element {
             </Button>
           ) : null}
           <Link
+            to="/freestyle"
+            data-testid="playbook-freestyle"
+            className="inline-flex min-h-10 items-center rounded-md border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-800 lg:min-h-0"
+          >
+            {t.freestyle.title}
+          </Link>
+          <Link
             to="/play/new"
             data-testid="btn-new-play"
             className="inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 lg:min-h-0"

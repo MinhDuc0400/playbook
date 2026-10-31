@@ -19,6 +19,7 @@ interface NavItem {
 
 const NAV = [
   { to: '/', id: 'playbook', label: t.common.nav.playbook, end: true },
+  { to: '/freestyle', id: 'freestyle', label: t.common.nav.freestyle, end: false },
   { to: '/install', id: 'install', label: t.common.nav.install, end: false },
   { to: '/roster', id: 'roster', label: t.common.nav.roster, end: false, flag: 'showRoster' },
   { to: '/suggest', id: 'suggest', label: t.common.nav.suggest, end: false, flag: 'showSuggest' },

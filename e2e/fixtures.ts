@@ -55,10 +55,8 @@ export async function createMatchup(page: Page, offenseId: string, defenseId: st
   await create.click();
   await page.waitForURL(/\/matchup\/(?!new)[^/]+$/);
   await expect(page.getByTestId('matchup-field')).toBeVisible();
-  // Advanced mode shows the full result panel, Simple mode the one-sentence summary.
-  await expect(page.getByTestId('result-outcome').or(page.getByTestId('open-windows'))).toBeVisible({
-    timeout: 20_000,
-  });
+  // Both Simple and Advanced mode show the open windows once the sim has run.
+  await expect(page.getByTestId('open-windows')).toBeVisible({ timeout: 20_000 });
   await waitSaved(page, 'matchup-save-status');
   return idFromUrl(page.url(), 'matchup');
 }

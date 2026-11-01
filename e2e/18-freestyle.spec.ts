@@ -62,7 +62,7 @@ test('18 build by tray, draw route and man, run, QB mode, edit, re-run (FR-FS-02
   await expect(rows.first()).toBeVisible();
   const before = await rows.count();
   expect(before).toBeGreaterThan(1);
-  await expect(page.getByTestId('result-summary')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('open-windows')).toBeVisible({ timeout: 20_000 });
 
   // QB mode: press a receiver key.
   await page.getByTestId('qb-mode-toggle').check();
@@ -310,3 +310,39 @@ test('18 the live toggle is not offered below 1024 (FR-FS-06)', async ({ page, b
   await expect(page.getByTestId('fs-run')).toBeVisible();
   await expect(page.getByTestId('fs-live')).toHaveCount(0);
 });
+
+for (const width of [1280, 1024]) {
+  test(`18 live split ${width}: the whole field is clickable near both edges and nothing overlaps (FR-FS-06)`, async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== 'chromium', 'viewport sweep runs once, in chromium');
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/freestyle');
+    await page.getByTestId('fs-live').check();
+    const editor = page.getByTestId('editor-canvas');
+    const field = editor.getByTestId('field-svg');
+    await expect(field).toBeVisible();
+    for (const [role, fx, fy] of [
+      ['QB', 0.5, 0.6],
+      ['WR', 0.88, 0.5],
+      ['WR', 0.12, 0.5],
+    ] as const) {
+      const chip = page.getByTestId(`tray-chip-${role}`);
+      if ((await chip.getAttribute('aria-pressed')) !== 'true') await chip.click();
+      const box = (await field.boundingBox())!;
+      await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
+    }
+    await expect.poll(() => activeTokens(page)).toBe(3);
+
+    const fb = (await page.getByTestId('field-stage').first().boundingBox())!;
+    const pb = (await page.getByTestId('freestyle-live').or(page.getByTestId('fs-live-hint')).boundingBox())!;
+    expect(fb.x + fb.width).toBeLessThanOrEqual(pb.x + 1);
+    expect(fb.width).toBeGreaterThanOrEqual(280);
+    const m = await page.evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }));
+    expect(m.s).toBeLessThanOrEqual(m.w + 1);
+    // Both sidelines are inside the editor box (no crop): the zoom-out button is not needed.
+    await expect(page.getByTestId('btn-minimap')).toBeVisible();
+    await page.screenshot({ path: `test-results/live-${width}.png` });
+  });
+}

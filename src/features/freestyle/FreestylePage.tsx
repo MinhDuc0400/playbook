@@ -93,6 +93,7 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
 
   const canvas = (
     <EditorCanvas
+      key={live ? 'live' : 'edit'} // remount: the stage keeps its zoom on resize, so refit to the new column
       field={field}
       ballSpot={DEFAULT_BALL_SPOT}
       snap={snap}
@@ -165,7 +166,7 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
       data-testid="freestyle-page"
       className={`grid h-[calc(100vh-3.5rem)] min-h-[480px] grid-rows-[auto_minmax(0,1fr)] ${
         live
-          ? 'grid-cols-[auto_minmax(0,3fr)_minmax(24rem,2fr)_17rem]'
+          ? 'grid-cols-[auto_minmax(0,3fr)_minmax(20rem,2fr)_16rem]'
           : 'grid-cols-[auto_minmax(0,1fr)_20rem]'
       }`}
     >

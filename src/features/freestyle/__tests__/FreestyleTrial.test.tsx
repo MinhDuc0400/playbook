@@ -7,7 +7,6 @@ import { createSamplePlays, SEED_IDS } from '@/db/seed/samplePlays';
 import type { Play } from '@/domain/types';
 import { simulate } from '@/engine/simulate';
 import { buildSimInput, createMatchup } from '@/features/matchup/buildSimInput';
-import { ResultSummary } from '@/features/matchup/ResultPanel';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import FreestylePage from '../FreestylePage';
@@ -100,19 +99,13 @@ describe('T-FS-05 trial parity with Simple Matchup', () => {
     expect(got.input.noise).toBe(false);
   });
 
-  it('the page shows the summary of that same result and the open windows', async () => {
+  it('the page shows the open windows and no won/lost verdict (Simple mode)', async () => {
     const { flood, cover1 } = seeds();
     await mount();
     loadSeeds(flood, cover1);
     fireEvent.click(screen.getByTestId('fs-run'));
-    const summary = await screen.findByTestId('result-summary');
-    const snap = trialSnapshot(makeSettings());
-    const m = trialMatchup(flood, cover1);
-    const built = buildSimInput(m, flood, cover1, snap, true);
-    cleanup();
-    const { container } = render(<ResultSummary result={simulate(built.input)} offense={built.offense} />);
-    expect(summary.textContent).toBe(container.textContent);
-    expect(summary.textContent).not.toBe('');
+    expect(await screen.findByTestId('open-windows')).toBeInTheDocument();
+    expect(screen.queryByTestId('result-summary')).toBeNull();
   });
 });
 
@@ -330,5 +323,26 @@ describe('T-FS-07 live re-run split view (FR-FS-06)', () => {
     sim.fail = true;
     fireEvent.click(screen.getByTestId('fs-live'));
     expect(await screen.findByTestId('matchup-sim-error')).toHaveTextContent(`${t.matchup.simError}: boom`);
+  });
+
+  it('QB keys only throw while QB mode is on; tool shortcuts work otherwise', async () => {
+    const { flood, cover1 } = seeds();
+    await mount();
+    loadSeeds(flood, cover1);
+    fireEvent.click(screen.getByTestId('fs-live'));
+    await screen.findByTestId('open-windows');
+    // QB mode off: R selects the route tool.
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(store().tool).toBe('route');
+    act(() => store().setTool('select'));
+    fireEvent.click(await screen.findByTestId('qb-mode-toggle'));
+    await screen.findByTestId('qb-mode-panel');
+    expect(screen.getByTestId('qb-key-legend').textContent).toContain('R ='); // R is also the route tool key
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(store().tool).toBe('select');
+    expect(await screen.findByTestId('qb-feedback-target')).toBeInTheDocument();
+    // After the throw the keys go back to the tools.
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(store().tool).toBe('route');
   });
 });

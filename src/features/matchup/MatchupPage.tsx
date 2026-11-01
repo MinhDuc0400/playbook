@@ -27,7 +27,7 @@ import { ReadTimeline } from './ReadTimeline';
 import { bestThrowTime } from './bestThrow';
 import { QbModePanel } from './QbModePanel';
 import { RandomDefense } from './RandomDefense';
-import { ResultPanel, ResultSummary } from './ResultPanel';
+import { ResultPanel } from './ResultPanel';
 import { RunManyPanel } from './RunManyPanel';
 import { useMatchupShortcuts } from './useMatchupShortcuts';
 import { useMatchupSim } from './useMatchupSim';
@@ -370,7 +370,6 @@ function MatchupEditor({
       {built && result && (
         <OpenWindows result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
       )}
-      {!features.advanced && built && result && <ResultSummary result={result} offense={built.offense} />}
       {customNote}
       {features.showReadModel && built && result && (
         <ReadTimeline

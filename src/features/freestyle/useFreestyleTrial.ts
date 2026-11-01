@@ -1,6 +1,8 @@
 /** Trial inputs and keys for Freestyle (FR-FS-05, D-27). */
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { Play } from '@/domain/types';
+import type { ID } from '@/domain/types';
+import type { QbKey } from '@/features/matchup/useQbMode';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -98,4 +100,32 @@ export function useTrialKeys(trial: boolean, canRun: boolean, onRun: () => void,
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [trial, canRun, onRun, onEdit]);
+}
+
+/**
+ * QB-mode keys for the live pane. Listens in the capture phase and stops the event, so the editor's
+ * single-letter tool shortcuts (same window) never see keys that throw (FR-FS-06). Inactive: no listener.
+ */
+export function useQbKeysExclusive(
+  active: boolean,
+  keyMap: readonly QbKey[],
+  onPick: (id: ID) => void,
+): void {
+  const ref = useRef({ keyMap, onPick });
+  useEffect(() => {
+    ref.current = { keyMap, onPick };
+  });
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || isTyping(e.target)) return;
+      const hit = ref.current.keyMap.find((k) => k.key === e.key.toUpperCase());
+      if (!hit) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      ref.current.onPick(hit.id);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [active]);
 }

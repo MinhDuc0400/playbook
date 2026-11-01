@@ -103,13 +103,7 @@ describe('Simple mode: page', () => {
     await matchupsRepo.put(base());
     renderAt('/matchup/mu1');
     expect(await screen.findByTestId('matchup-page')).toBeInTheDocument();
-    for (const id of [
-      'ctl-offense-flipped',
-      'ctl-defense-flip',
-      'open-windows',
-      'result-summary',
-      'timeline-scrubber',
-    ]) {
+    for (const id of ['ctl-offense-flipped', 'ctl-defense-flip', 'open-windows', 'timeline-scrubber']) {
       expect(screen.getByTestId(id)).toBeInTheDocument();
     }
     for (const id of [

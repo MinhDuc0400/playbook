@@ -13,11 +13,11 @@ import { createMatchup, type levelOf } from '@/features/matchup/buildSimInput';
 import { MatchupField } from '@/features/matchup/MatchupField';
 import { OpenWindows } from '@/features/matchup/OpenWindows';
 import { QbModePanel } from '@/features/matchup/QbModePanel';
-import { ResultSummary } from '@/features/matchup/ResultPanel';
 import { useMatchupShortcuts } from '@/features/matchup/useMatchupShortcuts';
 import { useMatchupSim } from '@/features/matchup/useMatchupSim';
 import { buildQbKeyMap, qbFeedback, useQbKeys, useQbModeState } from '@/features/matchup/useQbMode';
 import { t } from '@/i18n/vi';
+import { useQbKeysExclusive } from './useFreestyleTrial';
 import { useIsDesktop } from '@/lib/useMediaQuery';
 
 const MARKER_TYPES: ReadonlySet<SimEventType> = new Set([
@@ -86,7 +86,8 @@ export function TrialView({
   const { throwTo, record } = qb;
   const playbackT = playback.t;
   const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
-  useQbKeys(qb.enabled && !qbThrown, keyMap, pickReceiver);
+  useQbKeys(qb.enabled && !qbThrown && !embedded, keyMap, pickReceiver);
+  useQbKeysExclusive(qb.enabled && !qbThrown && embedded, keyMap, pickReceiver);
   useEffect(() => record(result, keyMap), [record, result, keyMap]);
   const { seek, play } = playback;
   const minTRef = useRef(minT);
@@ -227,7 +228,6 @@ export function TrialView({
         {built && result && (
           <OpenWindows result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
         )}
-        {built && result && <ResultSummary result={result} offense={built.offense} />}
       </div>
       {qbPanel && <div className="px-2 pb-2">{qbPanel}</div>}
     </div>

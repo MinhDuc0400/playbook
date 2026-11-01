@@ -270,3 +270,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   (tag `freestyle`) through the repositories. Starts blank; a player tray places players; no time targets.
 - Tasks: T13.1 store, T13.2 passive layer + Man on live offense, T13.2b tray, T13.3 page shell, T13.4 trial view,
   T13.5 persistence/save, T13.6 E2E.
+
+## D-28 No completed/incomplete verdict in Simple mode (user request 2026-11-01)
+- Context: Simple mode forces seed 1 and avg hands (0.6), so the catch roll made the verdict meaningless
+  ("Không hoàn thành" on nearly every play).
+- Decision: Simple Matchup and Freestyle no longer show `ResultSummary`; they show the open windows only. Advanced
+  keeps `ResultPanel`. The engine is unchanged.

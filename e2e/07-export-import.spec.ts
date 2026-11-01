@@ -43,7 +43,7 @@ test('07 export then import in a fresh profile restores matchup and install', as
 
     await p2.goto(`/matchup/${matchupId}`);
     await expect(p2.getByTestId('matchup-field')).toBeVisible();
-    await expect(p2.getByTestId('result-outcome').or(p2.getByTestId('result-summary'))).toBeVisible({
+    await expect(p2.getByTestId('result-outcome').or(p2.getByTestId('open-windows'))).toBeVisible({
       timeout: 20_000,
     });
 

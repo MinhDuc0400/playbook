@@ -34,7 +34,7 @@ function clone<T>(v: T): T {
 const translate = (pts: readonly Point[], dx: number, dy: number): Point[] =>
   pts.map((p) => ({ x: p.x + dx, y: p.y + dy }));
 
-/** Shift the geometry of an offense player's actions (route, option, motion); other actions are kept. */
+/** Shift the geometry of a player's actions (route, option, motion, zone); other actions are kept. */
 function translateActions(actions: readonly Action[], dx: number, dy: number): Action[] {
   return actions.map((a): Action => {
     switch (a.type) {
@@ -48,6 +48,13 @@ function translateActions(actions: readonly Action[], dx: number, dy: number): A
           vsMan: translate(a.vsMan, dx, dy),
           vsZone: translate(a.vsZone, dx, dy),
         };
+      case 'zone': {
+        const dropPoint = { x: a.dropPoint.x + dx, y: a.dropPoint.y + dy };
+        if (typeof a.zone !== 'string') {
+          return { ...a, zone: { polygon: translate(a.zone.polygon, dx, dy) }, dropPoint };
+        }
+        return { ...a, dropPoint, offset: { x: (a.offset?.x ?? 0) + dx, y: (a.offset?.y ?? 0) + dy } };
+      }
       default:
         return a;
     }
@@ -146,8 +153,8 @@ export function addPlayer(role: Role, pos: Point, maxPlayers: number, idGen: () 
 }
 
 /**
- * Move a player's start. Offense: its route/option/motion points translate by the same delta (shape kept).
- * Defense: actions unchanged. Recomputes strength (unless strengthOverridden).
+ * Move a player's start. Its route/option/motion points and zone (with drop point) translate by the same
+ * delta (shape kept). Other defense actions are unchanged. Recomputes strength (unless strengthOverridden).
  */
 export function movePlayer(slotId: ID, pos: Point): Recipe {
   return (play) => {
@@ -158,7 +165,7 @@ export function movePlayer(slotId: ID, pos: Point): Recipe {
       return {
         ...slot,
         start: { x: pos.x, y: pos.y },
-        actions: play.side === 'offense' ? translateActions(slot.actions, dx, dy) : slot.actions,
+        actions: translateActions(slot.actions, dx, dy),
       };
     });
     return moved === play ? play : withStrength(moved);

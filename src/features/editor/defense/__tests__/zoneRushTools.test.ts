@@ -162,6 +162,7 @@ describe('zoneTool (FR-DEF-03)', () => {
     const fs = slotByLabel('FS').id;
     store().apply('zone', setZone(fs, 'deep-third-M', field));
     const base = history();
+    const start = zoneOf('FS')?.dropPoint;
     const handle: HitTarget = { kind: 'dropPoint', slotId: fs };
     zoneTool.onPointerDown?.(ev({ x: 0, y: 16 }, handle), ctx);
     zoneTool.onPointerMove?.(ev({ x: 1, y: 17 }), ctx);
@@ -172,7 +173,7 @@ describe('zoneTool (FR-DEF-03)', () => {
     expect(history()).toBe(base + 1);
     expect(store().draft).toBeNull();
     store().undo();
-    expect(zoneOf('FS')?.dropPoint).toEqual({ x: 0, y: 16 });
+    expect(zoneOf('FS')?.dropPoint).toEqual(start);
   });
 });
 

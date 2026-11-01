@@ -158,17 +158,27 @@ describe('setManTechnique', () => {
 });
 
 describe('setZone (FR-DEF-03)', () => {
-  it('preset: default drop point from zonePreset', () => {
-    const next = setZone('cb', 'flat-R', FIELD)(defense());
+  it('D-29 preset: placed on the defender, keeps its id', () => {
+    const before = defense();
+    const start = get(before, 'cb').start;
+    const std = zonePreset('flat-R', FIELD).dropPoint;
+    const next = setZone('cb', 'flat-R', FIELD)(before);
     expect(get(next, 'cb').actions).toEqual([
-      { type: 'zone', zone: 'flat-R', dropPoint: zonePreset('flat-R', FIELD).dropPoint },
+      {
+        type: 'zone',
+        zone: 'flat-R',
+        dropPoint: start,
+        offset: { x: start.x - std.x, y: start.y - std.y },
+      },
     ]);
   });
 
-  it('preset on a 7v7 field scales the drop point', () => {
+  it('D-29 preset on a 7v7 field measures the offset from the scaled spot', () => {
     const f7 = createDefaultFields()['7v7'];
-    const a = get(setZone('cb', 'flat-R', f7)(defense()), 'cb').actions[0];
-    expect(a?.type === 'zone' && a.dropPoint).toEqual(zonePreset('flat-R', f7).dropPoint);
+    const before = defense();
+    const start = get(before, 'cb').start;
+    const a = get(setZone('cb', 'flat-R', f7)(before), 'cb').actions[0];
+    expect(a?.type === 'zone' && a.offset?.x).toBeCloseTo(start.x - zonePreset('flat-R', f7).dropPoint.x);
   });
 
   it('polygon: drop point defaults to the centroid, polygon is copied', () => {
@@ -194,8 +204,6 @@ describe('setZone (FR-DEF-03)', () => {
     expect(get(next, 'r1').role).toBe('LB');
     expect(get(next, 'r1').actions.map((a) => a.type)).toEqual(['zone']);
     expect(setZone('r1', 'hook-M', FIELD)(next)).toBe(next);
-    const p = defense();
-    expect(setZone('fs', 'deep-middle', FIELD)(p)).toBe(p);
   });
 });
 

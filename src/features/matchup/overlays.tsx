@@ -92,7 +92,7 @@ export function ZonesOverlay({ built, hideDefenseOverlays }: OverlayProps): JSX.
         return (
           <ZoneShape
             key={slot.id}
-            polygon={zonePolygon(zone.zone, field)}
+            polygon={zonePolygon(zone.zone, field, zone.offset)}
             kind={zoneKind(zone.zone)}
             dropPoint={zone.dropPoint}
             testId={`overlay-zone-${slot.label}`}

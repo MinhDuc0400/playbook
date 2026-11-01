@@ -56,6 +56,7 @@ export function flipAction(a: Action): Action {
             ? flipZonePreset(a.zone)
             : { ...a.zone, polygon: mirrorPoints(a.zone.polygon) },
         dropPoint: mirrorX(a.dropPoint),
+        ...(a.offset ? { offset: mirrorX(a.offset) } : {}),
       };
     case 'qbDrop':
     case 'man':

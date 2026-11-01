@@ -86,6 +86,7 @@ export const ActionSchema: z.ZodType<Action> = z.discriminatedUnion('type', [
     type: z.literal('zone'),
     zone: z.union([ZonePresetSchema, z.object({ polygon: z.array(PointSchema) })]),
     dropPoint: PointSchema,
+    offset: PointSchema.optional(),
   }),
   z.object({ type: z.literal('rush'), path: z.array(PointSchema), delay: num.optional() }),
   z.object({ type: z.literal('spy'), target: z.object({ kind: z.literal('role'), role: z.literal('QB') }) }),

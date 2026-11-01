@@ -468,7 +468,7 @@ Editor vẽ 1 play trên sân SVG, lưu tự động vào IndexedDB. Flip trong 
 | --- | --- | --- |
 | FR-DEF-01 | **Ghost offense:** khi vẽ defense, hiện 1 formation offense tham chiếu mờ để gán kèm người. Chọn được formation (mặc định theo format). Lưu `Play.strength` = strength của ghost lúc thiết kế | P0 |
 | FR-DEF-02 | Man: tool Man, click defender rồi click receiver ghost. Lưu dạng `ReceiverRef` (ví dụ strong #1), không lưu id. Chọn technique trail/cushion | P0 |
-| FR-DEF-03 | Zone: chọn zone mẫu hoặc vẽ polygon. Kéo drop point. Zone hiển thị màu trong suốt | P0 |
+| FR-DEF-03 | Zone: chọn zone mẫu hoặc vẽ polygon. Kéo drop point. Zone hiển thị màu trong suốt. Zone mẫu đặt theo vị trí defender (drop point trùng defender); kéo defender thì zone và drop point đi theo (D-29) | P0 |
 | FR-DEF-04 | Rush: đánh dấu designated rusher (tối đa 2, giơ tay trên token), tự tạo path từ rusher tới QB, sửa được. Cảnh báo nếu vượt `maxRushers` | P0 |
 | FR-DEF-05 | Leverage inside/outside/head-up cho mỗi defender. Nút "Tự căn" đặt defender theo receiver mục tiêu + leverage + cushion | P0 |
 | FR-DEF-06 | `alignTo`: vẽ theo bóng hoặc theo strength (ảnh hưởng defenseFlip auto) | P0 |

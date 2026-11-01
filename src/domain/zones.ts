@@ -69,10 +69,31 @@ export function zonePreset(id: ZonePresetId, field: FieldConfig): ZoneShape {
   };
 }
 
-/** Polygon of a ZoneAction zone (preset → zonePreset polygon; custom → its polygon copy). */
-export function zonePolygon(zone: ZoneAction['zone'], field: FieldConfig): Point[] {
-  if (typeof zone === 'string') return zonePreset(zone, field).polygon;
-  return zone.polygon.map((p) => ({ x: p.x, y: p.y }));
+/**
+ * Polygon of a ZoneAction zone (preset → zonePreset polygon; custom → its polygon copy). A preset `offset`
+ * shifts it (D-29), cut at the sidelines and the LOS. Custom polygons store their real position and ignore it.
+ */
+export function zonePolygon(zone: ZoneAction['zone'], field: FieldConfig, offset?: Point): Point[] {
+  if (typeof zone !== 'string') return zone.polygon.map((p) => ({ x: p.x, y: p.y }));
+  const { polygon } = zonePreset(zone, field);
+  if (!offset) return polygon;
+  const half = field.width / 2;
+  return polygon.map((p) => ({
+    x: Math.min(half, Math.max(-half, p.x + offset.x)),
+    y: Math.max(0, p.y + offset.y),
+  }));
+}
+
+/** Preset placed on a defender at `at` (D-29): its drop point lands on the defender. Zero shift → no offset. */
+export function zoneAt(
+  id: ZonePresetId,
+  at: Point,
+  field: FieldConfig,
+): Pick<ZoneAction, 'dropPoint' | 'offset'> {
+  const { dropPoint } = zonePreset(id, field);
+  const x = at.x - dropPoint.x;
+  const y = at.y - dropPoint.y;
+  return x === 0 && y === 0 ? { dropPoint } : { dropPoint: { x: at.x, y: at.y }, offset: { x, y } };
 }
 
 /** deep-*, flat-*, hook-*, curl-flat-* → kind; custom polygon → 'deep' when its min y ≥ 8, else 'custom'. */

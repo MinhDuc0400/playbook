@@ -190,10 +190,41 @@ describe('movePlayer (D-18)', () => {
     expect(slotOf(q, 'q').actions).toEqual([{ type: 'qbDrop', depth: 2, style: 'under' }]);
   });
 
-  it('leaves defense zone and rush untouched', () => {
+  it('D-29 moves a defense zone with the player and accumulates its offset', () => {
     const p = run(defense(), movePlayer('cb', { x: -6, y: 6 }));
     expect(slotOf(p, 'cb').start).toEqual({ x: -6, y: 6 });
-    expect(slotOf(p, 'cb').actions).toEqual(slotOf(defense(), 'cb').actions);
+    expect(slotOf(p, 'cb').actions).toEqual([
+      { type: 'zone', zone: 'flat-L', dropPoint: { x: -6, y: 8 }, offset: { x: 2, y: 1 } },
+    ]);
+    const twice = run(p, movePlayer('cb', { x: -5, y: 6 }));
+    expect(slotOf(twice, 'cb').actions[0]).toMatchObject({ offset: { x: 3, y: 1 } });
+  });
+
+  it('D-29 moves a custom zone polygon with the player, without an offset', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 2, y: 0 },
+      { x: 2, y: 2 },
+    ];
+    const base = mkPlay(
+      [slot('s', 'S', { x: 0, y: 5 }, [{ type: 'zone', zone: { polygon }, dropPoint: { x: 1, y: 1 } }])],
+      { side: 'defense', alignTo: 'ball' },
+    );
+    const moved = run(base, movePlayer('s', { x: 1, y: 7 }));
+    expect(slotOf(moved, 's').actions[0]).toEqual({
+      type: 'zone',
+      zone: {
+        polygon: [
+          { x: 1, y: 2 },
+          { x: 3, y: 2 },
+          { x: 3, y: 4 },
+        ],
+      },
+      dropPoint: { x: 2, y: 3 },
+    });
+  });
+
+  it('leaves a rush untouched', () => {
     const q = run(defense(), movePlayer('r', { x: 3, y: 8 }));
     expect(slotOf(q, 'r').actions).toEqual(slotOf(defense(), 'r').actions);
   });

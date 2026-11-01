@@ -149,6 +149,25 @@ describe('prepareSim bindings', () => {
     expect(bindings.cb2).toEqual({ kind: 'man', targetId: 'H', technique: 'cushion', cushion: 3 });
   });
 
+  it('D-29 binds a shifted preset to its shifted polygon and keeps it deep', () => {
+    const offset = { x: -2, y: -6 };
+    const fs = slot('fs', 'S', 'FS', -2, 8, [
+      { type: 'zone', zone: 'deep-middle', dropPoint: { x: -2, y: 8 }, offset },
+    ]);
+    const { bindings } = prepareSim(inputOf({ defense: play('defense', [fs]) }));
+    expect(bindings.fs).toMatchObject({
+      kind: 'zone',
+      deep: true,
+      dropPoint: { x: -2, y: 8 },
+      polygon: [
+        { x: -9, y: 4 },
+        { x: 5, y: 4 },
+        { x: 5, y: 24 },
+        { x: -9, y: 24 },
+      ],
+    });
+  });
+
   it('binds zone defenders with polygon, drop point and deep flag', () => {
     const { bindings } = prepareSim(inputOf());
     const deep = zonePreset('deep-middle', field);

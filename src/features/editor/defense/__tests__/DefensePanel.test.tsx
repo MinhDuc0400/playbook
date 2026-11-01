@@ -181,17 +181,14 @@ describe('DefensePanel (T2.4)', () => {
     expect(slotOf('cb2').start).toEqual({ x: -11, y: 5 });
   });
 
-  it('FR-DEF-03 zone preset select changes the zone and its default drop point', () => {
+  it('FR-DEF-03 zone preset select changes the zone and places it on the defender', () => {
     setup(['lb']);
     const sel = screen.getByTestId('def-zone-preset') as HTMLSelectElement;
     expect(sel.value).toBe('hook-R');
     expect(Array.from(sel.options).filter((o) => o.value !== 'custom')).toHaveLength(ZONE_PRESET_IDS.length);
     fireEvent.change(sel, { target: { value: 'flat-R' } });
-    expect(slotOf('lb').actions[0]).toEqual({
-      type: 'zone',
-      zone: 'flat-R',
-      dropPoint: zonePreset('flat-R', FIELD).dropPoint,
-    });
+    const { start } = slotOf('lb');
+    expect(slotOf('lb').actions[0]).toMatchObject({ type: 'zone', zone: 'flat-R', dropPoint: start });
     expect(screen.queryByTestId('def-make-zone')).toBeNull();
   });
 

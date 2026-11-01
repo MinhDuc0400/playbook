@@ -173,7 +173,7 @@ function bindDefender(
     case 'zone':
       return {
         kind: 'zone',
-        polygon: zonePolygon(action.zone, input.field),
+        polygon: zonePolygon(action.zone, input.field, action.offset),
         dropPoint: { x: action.dropPoint.x, y: action.dropPoint.y },
         deep: isDeepZone(action.zone),
         fallback: false,

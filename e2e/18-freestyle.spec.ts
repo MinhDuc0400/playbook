@@ -346,3 +346,32 @@ for (const width of [1280, 1024]) {
     await page.screenshot({ path: `test-results/live-${width}.png` });
   });
 }
+
+test('18 a zone sits on its defender and moves with it (FR-DEF-03, D-29)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await buildFreestyleBoard(page);
+  await page.getByTestId('tool-select').click();
+  const start = await tokenCenter(page, 'FS');
+  await page.mouse.click(start.x, start.y);
+  await page.getByTestId('def-make-zone').click();
+  await page.getByTestId('def-zone-preset').selectOption('deep-middle');
+
+  const area = page.getByTestId('zone-FS').locator('[data-part="area"]');
+  const contains = async (p: { x: number; y: number }): Promise<boolean> => {
+    const b = await area.boundingBox();
+    if (!b) throw new Error('no zone box');
+    return p.x > b.x && p.x < b.x + b.width && p.y > b.y && p.y < b.y + b.height;
+  };
+  expect(await contains(start)).toBe(true);
+  const before = await area.boundingBox();
+
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x - 50, start.y + 40, { steps: 5 });
+  await page.mouse.up();
+
+  const after = await area.boundingBox();
+  expect(after!.x).toBeLessThan(before!.x);
+  expect(after!.y).toBeGreaterThan(before!.y);
+  expect(await contains(await tokenCenter(page, 'FS'))).toBe(true);
+});

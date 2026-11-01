@@ -157,6 +157,8 @@ export interface ZoneAction {
   type: 'zone';
   zone: ZonePresetId | { polygon: Point[] }; // ball-relative
   dropPoint: Point;
+  /** Shift of a preset from its standard spot, so it follows the defender (D-29). Absent = standard spot. */
+  offset?: Point;
 }
 
 export type ZonePresetId =

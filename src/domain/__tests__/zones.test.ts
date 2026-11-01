@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultFields } from '../field';
 import { pointInPolygon } from '../geometry';
 import { ZONE_PRESET_IDS, type Point, type ZonePresetId } from '../types';
-import { hookZoneForX, isDeepZone, zoneKind, zonePolygon, zonePreset, zoneSide } from '../zones';
+import { hookZoneForX, isDeepZone, zoneAt, zoneKind, zonePolygon, zonePreset, zoneSide } from '../zones';
 
 const fields = createDefaultFields();
 const F5 = fields['5v5'];
@@ -119,6 +119,45 @@ describe('zonePolygon', () => {
     expect(out).toEqual(polygon);
     expect(out).not.toBe(polygon);
     expect(out[0]).not.toBe(polygon[0]);
+  });
+});
+
+describe('D-29 zones follow the defender', () => {
+  it('an offset shifts a preset without changing its size', () => {
+    expect(zonePolygon('deep-middle', F5, { x: -2, y: -6 })).toEqual([
+      { x: -9, y: 4 },
+      { x: 5, y: 4 },
+      { x: 5, y: 24 },
+      { x: -9, y: 24 },
+    ]);
+  });
+
+  it('cuts the shifted preset at the sidelines and the LOS', () => {
+    const half = F5.width / 2;
+    const out = zonePolygon('flat-L', F5, { x: -10, y: -3 });
+    expect(Math.min(...out.map((p) => p.x))).toBe(-half);
+    expect(Math.min(...out.map((p) => p.y))).toBe(0);
+  });
+
+  it('ignores the offset for a custom polygon', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 3, y: 0 },
+      { x: 3, y: 4 },
+    ];
+    expect(zonePolygon({ polygon }, F5, { x: 5, y: 5 })).toEqual(polygon);
+  });
+
+  it('zoneAt puts the drop point on the defender and the zone around it', () => {
+    const at = { x: -5, y: 8 };
+    const { dropPoint, offset } = zoneAt('deep-middle', at, F5);
+    expect(dropPoint).toEqual(at);
+    expect(pointInPolygon(at, zonePolygon('deep-middle', F5, offset))).toBe(true);
+  });
+
+  it('zoneAt at the standard spot needs no offset', () => {
+    const std = zonePreset('deep-middle', F5).dropPoint;
+    expect(zoneAt('deep-middle', std, F5)).toEqual({ dropPoint: std });
   });
 });
 

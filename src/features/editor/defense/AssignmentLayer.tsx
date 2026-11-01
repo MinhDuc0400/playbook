@@ -90,7 +90,7 @@ export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProp
       zones.push(
         <ZoneShape
           key={`zone-${slot.id}`}
-          polygon={zonePolygon(zone.zone, field)}
+          polygon={zonePolygon(zone.zone, field, zone.offset)}
           kind={zoneKind(zone.zone)}
           dropPoint={zone.dropPoint}
           slotId={slot.id}

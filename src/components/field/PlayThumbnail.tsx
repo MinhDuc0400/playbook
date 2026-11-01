@@ -89,7 +89,7 @@ function PlayThumbnailImpl({
       zones.push(
         <ZoneShape
           key={`z-${slot.id}`}
-          polygon={zonePolygon(zone.zone, field)}
+          polygon={zonePolygon(zone.zone, field, zone.offset)}
           kind={zoneKind(zone.zone)}
           dropPoint={zone.dropPoint}
         />,

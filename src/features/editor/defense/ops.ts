@@ -18,7 +18,7 @@ import type {
   Strength,
   ZoneAction,
 } from '@/domain/types';
-import { zonePreset } from '@/domain/zones';
+import { zoneAt } from '@/domain/zones';
 import type { Recipe } from '../ops';
 
 /** Default QB spot a rush path aims at. */
@@ -112,18 +112,21 @@ export function setManTechnique(slotId: ID, technique: ManAction['technique'], c
 }
 
 /**
- * FR-DEF-03: replace coverage/rush with a zone. dropPoint defaults to the preset's (zonePreset) or the
- * polygon centroid. Role 'R' becomes 'LB'.
+ * FR-DEF-03: replace coverage/rush with a zone. A preset is placed on the defender (D-29) unless an explicit
+ * dropPoint is given; a polygon's dropPoint defaults to its centroid. Role 'R' becomes 'LB'.
  */
 export function setZone(slotId: ID, zone: ZoneAction['zone'], field: FieldConfig, dropPoint?: Point): Recipe {
   return (play) =>
     replaceSlot(play, slotId, (slot) => {
       const stored: ZoneAction['zone'] =
         typeof zone === 'string' ? zone : { polygon: zone.polygon.map(copyPoint) };
-      const drop =
-        dropPoint ??
-        (typeof zone === 'string' ? zonePreset(zone, field).dropPoint : polygonCentroid(zone.polygon));
-      const action: ZoneAction = { type: 'zone', zone: stored, dropPoint: copyPoint(drop) };
+      const placed =
+        typeof zone !== 'string'
+          ? { dropPoint: copyPoint(dropPoint ?? polygonCentroid(zone.polygon)) }
+          : dropPoint
+            ? { dropPoint: copyPoint(dropPoint) }
+            : zoneAt(zone, slot.start, field);
+      const action: ZoneAction = { type: 'zone', zone: stored, ...placed };
       return withAssignment(slot, action, coverageRole(slot));
     });
 }

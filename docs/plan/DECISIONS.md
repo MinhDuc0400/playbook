@@ -276,3 +276,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   ("Không hoàn thành" on nearly every play).
 - Decision: Simple Matchup and Freestyle no longer show `ResultSummary`; they show the open windows only. Advanced
   keeps `ResultPanel`. The engine is unchanged.
+
+## D-29 Zones follow the defender (user request 2026-11-01)
+- Context: presets had fixed field positions, so a free safety placed at y = 8 still covered y = 10..30.
+- Decision: optional `ZoneAction.offset` shifts a preset and keeps its id, so its kind, colour and engine behaviour
+  stay. Choosing a preset puts its drop point on the defender; dragging the defender moves the zone and drop point
+  by the same delta (Editor and Freestyle). The drawn polygon is cut at the sidelines and LOS. Custom polygons
+  translate directly. Dragging the drop point alone still moves only the drop point. No offset gives the old result,
+  so saved plays and their simulations are unchanged until edited; no schema bump. Match-rule `zone` switches still
+  use the standard preset spot.

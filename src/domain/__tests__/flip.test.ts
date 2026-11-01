@@ -574,6 +574,20 @@ describe('FR-FLP-01 flipPlay table (SRS §6.4)', () => {
   });
 });
 
+describe('D-29 flip of a shifted zone', () => {
+  it('mirrors the offset and returns to the original on a second flip', () => {
+    const a: Action = { type: 'zone', zone: 'hook-L', dropPoint: { x: -2, y: 6 }, offset: { x: 2, y: -1 } };
+    const once = flipAction(a);
+    expect(once).toEqual({
+      type: 'zone',
+      zone: 'hook-R',
+      dropPoint: { x: 2, y: 6 },
+      offset: { x: -2, y: -1 },
+    });
+    expect(flipAction(once)).toEqual(a);
+  });
+});
+
 describe('T-DOM-06 slant stays inside after flip', () => {
   it('left receiver slant goes inside (x increases); after flip the receiver is at x=10 and x decreases', () => {
     const start = { x: -10, y: -1 };

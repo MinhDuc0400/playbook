@@ -12,7 +12,8 @@ import { usePlayback } from '@/components/field/usePlayback';
 import { Button } from '@/components/ui';
 import type { BallSpot, FieldConfig, TuningParams } from '@/domain/types';
 import { previewOffense } from '@/engine/preview';
-import { frameAt } from '@/engine/frames';
+import { displayBallPos, frameAt } from '@/engine/frames';
+import { Ball } from '@/components/field/Ball';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 
@@ -109,6 +110,15 @@ export function PreviewOverlay({
               pos={frame?.players[slot.id]?.pos ?? slot.start}
             />
           ))}
+          {frame && (
+            <Ball
+              pos={displayBallPos(
+                frame,
+                playback.t,
+                frame.players[offensePlay.players.find((p) => p.role === 'QB')?.id ?? '']?.pos,
+              )}
+            />
+          )}
         </FieldStage>
       </div>
       <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />

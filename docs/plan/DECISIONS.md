@@ -332,8 +332,10 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   button, checkbox); its default action is prevented on keydown and keyup. Only text fields and selects keep Space.
   Matchup and the Freestyle trial.
 
-## D-37 No static ball while the play animates (user request 2026-11-08)
-- Context: the ball marker on the LOS (D-30) stayed there during playback, next to the animated ball.
-- Decision: `FieldSvg` gets `ballMarker` (default on). `MatchupField` (Matchup, Freestyle trial, Present) and the
-  route preview turn it off; the animated ball is the only ball there. The Editor and the Freestyle board keep the
-  marker, and line labels and yard numbers stay everywhere.
+## D-37 The ball starts on the LOS and is the animated one (user request 2026-11-08)
+- Context: the static ball marker on the LOS (D-30) stayed there during playback next to the animated ball, and the
+  animated ball only appeared at the QB.
+- Decision: `FieldSvg` gets `ballMarker` (default on). Matchup, the Freestyle trial, Present and the route preview turn
+  it off and draw the animated ball instead (`components/field/Ball.tsx`). `displayBallPos` (engine/frames) puts a held
+  ball on the LOS until the snap and flies it to the QB over 0.25 s; thrown or loose it is the engine position. Drawing
+  only: sim frames are unchanged. The Editor and the Freestyle board keep the static marker.

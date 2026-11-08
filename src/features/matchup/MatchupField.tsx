@@ -2,12 +2,13 @@
  * Field for a matchup (FR-MU-05/06, FR-ATH-02): FieldStage + per-frame PlayerTokens (positions only from
  * frameAt(result.frames, t)), overlays (overlays.tsx), separation labels, click to select a player.
  */
+import { Ball } from '@/components/field/Ball';
 import { FieldStage } from '@/components/field/FieldStage';
 import { useFieldContext } from '@/components/field/FieldContext';
 import { PlayerToken } from '@/components/field/PlayerToken';
-import { toScreen, yardsToPx } from '@/components/field/viewport';
-import type { BallSpot, FieldConfig, PlayerSlot, Point, Preset, Side, SimResult } from '@/domain/types';
-import { frameAt } from '@/engine/frames';
+import { toScreen } from '@/components/field/viewport';
+import type { BallSpot, FieldConfig, PlayerSlot, Preset, Side, SimResult } from '@/domain/types';
+import { displayBallPos, frameAt } from '@/engine/frames';
 import { useMatchupStore } from '@/store/matchupStore';
 import type { BuiltSim } from './buildSimInput';
 import { MatchupOverlays } from './overlays';
@@ -33,22 +34,6 @@ export interface MatchupFieldProps {
 }
 
 type FieldContentProps = Omit<MatchupFieldProps, 'field' | 'ballSpot' | 'theme'>;
-
-function Ball({ pos }: { pos: Point }): JSX.Element {
-  const { viewport } = useFieldContext();
-  const c = toScreen(pos, viewport);
-  return (
-    <circle
-      data-testid="ball"
-      cx={c.x}
-      cy={c.y}
-      r={Math.max(3, yardsToPx(0.35, viewport))}
-      className="fill-amber-700 stroke-white"
-      strokeWidth={1}
-      pointerEvents="none"
-    />
-  );
-}
 
 function MinimapDots({
   built,
@@ -131,8 +116,7 @@ function FieldContent({
   };
 
   const qb = built.offense.players.find((p) => p.role === 'QB');
-  const ballPos =
-    frame.ball.state === 'held' ? ((qb && frame.players[qb.id]?.pos) ?? frame.ball.pos) : frame.ball.pos;
+  const ballPos = displayBallPos(frame, t, qb && frame.players[qb.id]?.pos);
 
   return (
     <>

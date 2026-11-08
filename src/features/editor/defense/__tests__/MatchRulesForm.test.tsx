@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type MatchRule, type Play } from '@/domain/types';
+import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { MatchRulesForm } from '../MatchRulesForm';
 
@@ -125,5 +126,47 @@ describe('MatchRulesForm (FR-DEF-07)', () => {
     ]);
     expect(past()).toBe(n + 1);
     expect(screen.queryByTestId('rule-a')).toBeNull();
+  });
+});
+
+describe('D-40 Bunch Killer (Bangkok) as a pattern-match option', () => {
+  beforeEach(() => act(() => store().load(null)));
+  const slot0 = () => store().play?.players[0];
+
+  it('mode defaults to custom rules; corner hides the rules and shows the squeeze time', () => {
+    setup([rule('a', 0)]);
+    const mode = screen.getByTestId('rule-mode') as HTMLSelectElement;
+    expect(mode.value).toBe('rules');
+    expect(screen.getByTestId('rules-list')).toBeInTheDocument();
+    change('rule-mode', 'corner');
+    expect(slot0()?.areaMatch).toEqual({ role: 'corner' });
+    expect(screen.queryByTestId('rules-list')).toBeNull();
+    expect(screen.queryByTestId('rule-add')).toBeNull();
+    expect(screen.getByTestId('rule-area-hint')).toHaveTextContent(t.rules.areaMatch.cornerHint);
+    change('rule-squeeze-after', '0.8');
+    expect(slot0()?.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
+  });
+
+  it('inside has no squeeze time; back to custom rules keeps the old rules; undo restores', () => {
+    setup([rule('a', 0)]);
+    change('rule-mode', 'inside');
+    expect(slot0()?.areaMatch).toEqual({ role: 'inside' });
+    expect(screen.queryByTestId('rule-squeeze-after')).toBeNull();
+    change('rule-mode', 'rules');
+    expect(slot0()?.areaMatch).toBeUndefined();
+    expect(rules().map((x) => x.id)).toEqual(['a']);
+    act(() => store().undo());
+    expect(slot0()?.areaMatch).toEqual({ role: 'inside' });
+  });
+
+  it('a rusher gets no Bangkok options', () => {
+    act(() =>
+      store().load({
+        ...mk(),
+        players: [{ ...mk().players[0]!, role: 'R', actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }] }],
+      }),
+    );
+    render(<MatchRulesForm slotId="cb" />);
+    expect(screen.queryByTestId('rule-mode')).toBeNull();
   });
 });

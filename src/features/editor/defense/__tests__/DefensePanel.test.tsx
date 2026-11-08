@@ -304,30 +304,14 @@ describe('DefensePanel Simple mode (T11.4, D-26)', () => {
   });
 });
 
-describe('D-40 area match in the defender panel', () => {
+describe('D-40 area match lives in the pattern-match section', () => {
   beforeEach(() => {
     act(() => store().load(null));
   });
 
-  it('sets corner, the squeeze time, then none; undo restores', () => {
+  it('there is no separate area-match control; the pattern-match section offers it', () => {
     setup(['cb1']);
-    const select = screen.getByTestId('def-area-match') as HTMLSelectElement;
-    expect(select.value).toBe('none');
-    expect(screen.queryByTestId('def-squeeze-after')).toBeNull();
-    fireEvent.change(select, { target: { value: 'corner' } });
-    expect(slotOf('cb1').areaMatch).toEqual({ role: 'corner' });
-    fireEvent.change(screen.getByTestId('def-squeeze-after'), { target: { value: '0.8' } });
-    expect(slotOf('cb1').areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
-    fireEvent.change(screen.getByTestId('def-area-match'), { target: { value: 'none' } });
-    expect(slotOf('cb1').areaMatch).toBeUndefined();
-    act(() => store().undo());
-    expect(slotOf('cb1').areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
-  });
-
-  it('inside has no squeeze input', () => {
-    setup(['lb']);
-    fireEvent.change(screen.getByTestId('def-area-match'), { target: { value: 'inside' } });
-    expect(slotOf('lb').areaMatch).toEqual({ role: 'inside' });
-    expect(screen.queryByTestId('def-squeeze-after')).toBeNull();
+    expect(screen.queryByTestId('def-area-match')).toBeNull();
+    expect(screen.getByTestId('rule-mode')).toBeInTheDocument();
   });
 });

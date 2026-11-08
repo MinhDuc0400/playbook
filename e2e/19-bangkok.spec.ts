@@ -26,5 +26,5 @@ test('19 Bunch Killer install is seeded, its matchup runs, the editor shows area
   await expect(page.getByTestId('area-lane-boundary')).toHaveCount(3);
   const cb1 = await tokenCenter(page, 'CB1');
   await page.mouse.click(cb1.x, cb1.y);
-  await expect(page.getByTestId('def-area-match')).toHaveValue('corner');
+  await expect(page.getByTestId('rule-mode')).toHaveValue('corner');
 });

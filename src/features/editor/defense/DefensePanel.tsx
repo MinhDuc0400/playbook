@@ -6,9 +6,7 @@ import { createDefaultFields } from '@/domain/field';
 import { formationsFor } from '@/domain/formations';
 import { computeStrength } from '@/domain/numbering';
 import {
-  DEFAULT_SQUEEZE_AFTER,
   ZONE_PRESET_IDS,
-  type AreaMatch,
   type FieldConfig,
   type Format,
   type Leverage,
@@ -27,7 +25,6 @@ import {
   setAlignTo,
   setDesignStrength,
   setLeverage,
-  setAreaMatch,
   setManTechnique,
   setRush,
   setZone,
@@ -211,54 +208,6 @@ function ZoneControls({
   );
 }
 
-const SQUEEZE_MIN = 0;
-const SQUEEZE_MAX = 3;
-
-/** D-40: area-match role (none / corner / inside) and, for a corner, its squeeze time. */
-function AreaMatchControls({ slot }: { slot: PlayerSlot }): JSX.Element {
-  const apply = useEditorStore.getState().apply;
-  const [draft, setDraft] = useState<string | null>(null);
-  const am = slot.areaMatch;
-  const onRole = (v: string): void => {
-    setDraft(null);
-    const next: AreaMatch | undefined = v === 'corner' || v === 'inside' ? { role: v } : undefined;
-    apply('area match', setAreaMatch(slot.id, next));
-  };
-  const onSqueeze = (raw: string): void => {
-    setDraft(raw);
-    const n = parseNumber(raw);
-    if (n === null || n < SQUEEZE_MIN || n > SQUEEZE_MAX || !am) return;
-    apply('squeeze after', setAreaMatch(slot.id, { ...am, squeezeAfter: n }));
-  };
-  return (
-    <>
-      <Select
-        label={s.areaMatch.label}
-        data-testid="def-area-match"
-        value={am?.role ?? 'none'}
-        onChange={(e) => onRole(e.target.value)}
-      >
-        <option value="none">{s.areaMatch.none}</option>
-        <option value="corner">{s.areaMatch.corner}</option>
-        <option value="inside">{s.areaMatch.inside}</option>
-      </Select>
-      {am?.role === 'corner' ? (
-        <TextInput
-          label={s.areaMatch.squeezeAfter}
-          type="number"
-          data-testid="def-squeeze-after"
-          min={SQUEEZE_MIN}
-          max={SQUEEZE_MAX}
-          step={0.1}
-          value={draft ?? String(am.squeezeAfter ?? DEFAULT_SQUEEZE_AFTER)}
-          onChange={(e) => onSqueeze(e.target.value)}
-          onBlur={() => setDraft(null)}
-        />
-      ) : null}
-    </>
-  );
-}
-
 function SelectedDefender({
   slot,
   field,
@@ -344,7 +293,6 @@ function SelectedDefender({
       >
         {s.defender.clear}
       </Button>
-      {!rusher ? <AreaMatchControls slot={slot} /> : null}
       <MatchRulesForm slotId={slot.id} />
     </Section>
   );

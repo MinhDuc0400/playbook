@@ -46,13 +46,6 @@ export const defense = {
     custom: 'Polygon tự vẽ',
     makeZone: 'Chuyển sang zone',
   },
-  areaMatch: {
-    label: 'Area match (Bangkok)',
-    none: 'Không',
-    corner: 'Corner (nhận người đầu tiên vào làn)',
-    inside: 'Inside (nhận người thứ hai ra ngoài)',
-    squeezeAfter: 'Squeeze sau (s)',
-  },
   rush: {
     toggle: 'Rusher',
     count: 'Rusher',

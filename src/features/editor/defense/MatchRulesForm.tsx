@@ -1,13 +1,17 @@
 /**
  * FR-DEF-07: per-defender rule list "Khi [receiver] [sự kiện] [sâu ≥ n yd] thì [phản ứng]", drag to reorder
- * (priority = list order), add / edit / delete.
+ * (priority = list order), add / edit / delete. D-40: the "Kiểu" select also offers the Bunch Killer
+ * (Bangkok) area match (corner / inside); then the custom rules are hidden (the engine ignores them) and kept.
  */
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
-import { Button, IconButton, Select } from '@/components/ui';
+import { Button, IconButton, Select, TextInput } from '@/components/ui';
 import {
+  DEFAULT_SQUEEZE_AFTER,
   ZONE_PRESET_IDS,
+  type AreaMatch,
   type ID,
+  type PlayerSlot,
   type MatchEvent,
   type MatchRule,
   type ReceiverRef,
@@ -15,6 +19,7 @@ import {
 } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
+import { setAreaMatch } from './ops';
 import { addRule, moveRule, removeRule, updateRule } from './ruleOps';
 
 export interface MatchRulesFormProps {
@@ -239,44 +244,106 @@ function RuleRow({
   );
 }
 
+const SQUEEZE_MIN = 0;
+const SQUEEZE_MAX = 3;
+
+/** D-40: pattern-match mode select (custom rules / Bangkok corner / Bangkok inside) + corner squeeze time. */
+function ModeControls({ slot }: { slot: PlayerSlot }): JSX.Element {
+  const apply = useEditorStore.getState().apply;
+  const [draft, setDraft] = useState<string | null>(null);
+  const am = slot.areaMatch;
+  const onMode = (v: string): void => {
+    setDraft(null);
+    const next: AreaMatch | undefined = v === 'corner' || v === 'inside' ? { role: v } : undefined;
+    apply('area match', setAreaMatch(slot.id, next));
+  };
+  const onSqueeze = (raw: string): void => {
+    setDraft(raw);
+    const n = parseOptional(raw);
+    if (n === undefined || n < SQUEEZE_MIN || n > SQUEEZE_MAX || !am) return;
+    apply('squeeze after', setAreaMatch(slot.id, { ...am, squeezeAfter: n }));
+  };
+  return (
+    <>
+      <Select
+        label={r.mode}
+        data-testid="rule-mode"
+        value={am?.role ?? 'rules'}
+        onChange={(e) => onMode(e.target.value)}
+      >
+        <option value="rules">{r.areaMatch.rules}</option>
+        <option value="corner">{r.areaMatch.corner}</option>
+        <option value="inside">{r.areaMatch.inside}</option>
+      </Select>
+      {am ? (
+        <p data-testid="rule-area-hint" className="text-xs text-slate-500 dark:text-slate-400">
+          {am.role === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
+        </p>
+      ) : null}
+      {am?.role === 'corner' ? (
+        <TextInput
+          label={r.areaMatch.squeezeAfter}
+          type="number"
+          data-testid="rule-squeeze-after"
+          min={SQUEEZE_MIN}
+          max={SQUEEZE_MAX}
+          step={0.1}
+          value={draft ?? String(am.squeezeAfter ?? DEFAULT_SQUEEZE_AFTER)}
+          onChange={(e) => onSqueeze(e.target.value)}
+          onBlur={() => setDraft(null)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export function MatchRulesForm({ slotId }: MatchRulesFormProps): JSX.Element | null {
   const slot = useEditorStore((st) => st.play?.players.find((p) => p.id === slotId));
   const [dragId, setDragId] = useState<ID | null>(null);
   if (!slot) return null;
   const rules = (slot.matchRules ?? []).slice().sort((a, b) => a.priority - b.priority);
+  const rusher = slot.actions.some((a) => a.type === 'rush');
+  const area = !rusher && slot.areaMatch !== undefined;
 
   return (
     <section aria-label={r.title} className="flex flex-col gap-2">
       <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{r.title}</h4>
-      {rules.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">{r.empty}</p> : null}
-      <ol data-testid="rules-list" className="flex flex-col gap-2">
-        {rules.map((rule, i) => (
-          <RuleRow
-            key={rule.id}
-            slotId={slotId}
-            rule={rule}
-            index={i}
-            count={rules.length}
-            dragId={dragId}
-            setDragId={setDragId}
-          />
-        ))}
-      </ol>
-      <div>
-        <Button
-          size="sm"
-          data-testid="rule-add"
-          onClick={() => {
-            const id = nanoid();
-            useEditorStore.getState().apply(
-              'add rule',
-              addRule(slotId, () => id),
-            );
-          }}
-        >
-          {r.add}
-        </Button>
-      </div>
+      {!rusher ? <ModeControls slot={slot} /> : null}
+      {area ? null : (
+        <>
+          {rules.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{r.empty}</p>
+          ) : null}
+          <ol data-testid="rules-list" className="flex flex-col gap-2">
+            {rules.map((rule, i) => (
+              <RuleRow
+                key={rule.id}
+                slotId={slotId}
+                rule={rule}
+                index={i}
+                count={rules.length}
+                dragId={dragId}
+                setDragId={setDragId}
+              />
+            ))}
+          </ol>
+          <div>
+            <Button
+              size="sm"
+              data-testid="rule-add"
+              onClick={() => {
+                const id = nanoid();
+                useEditorStore.getState().apply(
+                  'add rule',
+                  addRule(slotId, () => id),
+                );
+              }}
+            >
+              {r.add}
+            </Button>
+          </div>
+        </>
+      )}
     </section>
   );
 }

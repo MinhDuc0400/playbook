@@ -285,3 +285,10 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   translate directly. Dragging the drop point alone still moves only the drop point. No offset gives the old result,
   so saved plays and their simulations are unchanged until edited; no schema bump. Match-rule `zone` switches still
   use the standard preset spot.
+
+## D-30 Field labels and ball marker (user request 2026-11-08)
+- Context: the blank Freestyle field had no text, so the LOS, first-down line and rush line were unlabelled.
+- Decision: `FieldSvg` gets an opt-in `labels` prop (on in `FieldStage` only; the mini-map and thumbnails stay
+  clean). It draws pills on the left sideline (LOS, 1st down, Rush), yard numbers on the right sideline at each
+  10 yd line (counted from the nearest goal line), and a football on the LOS under the tokens. Strings in
+  `i18n/vi/field.ts`. Data and engine unchanged.

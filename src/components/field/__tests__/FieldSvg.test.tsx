@@ -123,3 +123,30 @@ describe('FieldSvg (FR-FLD-01)', () => {
     expect(Number(screen.getByTestId('los').getAttribute('stroke-width'))).toBeGreaterThan(normal);
   });
 });
+
+describe('FieldSvg labels (D-30)', () => {
+  it('draws no labels or ball by default', () => {
+    renderField();
+    for (const id of ['label-los', 'label-first-down', 'label-rush', 'ball-marker']) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+  });
+
+  it('labels LOS, 1st down and rush, and puts the ball on the LOS', () => {
+    const { viewport } = renderField(15, { labels: true });
+    expect(screen.getByTestId('label-los')).toHaveTextContent(t.field.los);
+    expect(screen.getByTestId('label-first-down')).toHaveTextContent(t.field.firstDown);
+    expect(screen.getByTestId('label-rush')).toHaveTextContent(t.field.rushLine);
+    const ball = screen.getByTestId('ball-marker').querySelector('ellipse')!;
+    const c = toScreen({ x: 0, y: 0 }, viewport);
+    expect(Number(ball.getAttribute('cx'))).toBeCloseTo(c.x);
+    expect(Number(ball.getAttribute('cy'))).toBeCloseTo(c.y);
+  });
+
+  it('numbers the 10-yard lines from the nearest goal line', () => {
+    renderField(15, { labels: true });
+    expect(screen.getByTestId('yard-number-10')).toHaveTextContent('10');
+    expect(screen.getByTestId('yard-number-40')).toHaveTextContent('10');
+    expect(screen.queryByTestId('yard-number-5')).toBeNull();
+  });
+});

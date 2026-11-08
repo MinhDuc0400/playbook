@@ -17,6 +17,8 @@ export interface FieldSvgProps {
   /** 'contrast' = high-contrast projector theme (FR-IN-05). */
   theme?: 'normal' | 'contrast';
   showGrid?: boolean;
+  /** Line labels (LOS, 1st down, Rush), yard numbers on the right sideline and the ball (D-30). */
+  labels?: boolean;
   /** Prefix for every data-testid (the mini-map uses one so ids stay unique). */
   testIdPrefix?: string;
   className?: string;
@@ -40,6 +42,8 @@ interface Palette {
   los: string;
   badgeBg: string;
   badgeText: string;
+  yardText: string;
+  ball: string;
   /** stroke widths in px */
   w: { yard: number; goal: number; side: number; grid: number; ltg: number; rush: number; los: number };
 }
@@ -57,6 +61,8 @@ const NORMAL: Palette = {
   los: 'stroke-blue-600 dark:stroke-blue-400',
   badgeBg: 'fill-amber-400',
   badgeText: 'fill-black',
+  yardText: 'fill-emerald-900/70 dark:fill-emerald-100/60',
+  ball: 'fill-amber-700 stroke-amber-950',
   w: { yard: 1, goal: 2.5, side: 2.5, grid: 0.5, ltg: 3, rush: 2, los: 3 },
 };
 
@@ -73,11 +79,55 @@ const CONTRAST: Palette = {
   los: 'stroke-sky-300',
   badgeBg: 'fill-yellow-300',
   badgeText: 'fill-black',
+  yardText: 'fill-white/80',
+  ball: 'fill-amber-500 stroke-white',
   w: { yard: 2, goal: 4, side: 4, grid: 1, ltg: 5, rush: 3.5, los: 5 },
 };
 
 const YARD_STEP = 5;
 const BADGE_FONT_PX = 13;
+const LABEL_FONT_PX = 11;
+const BALL_RX_YD = 0.3;
+const BALL_RY_YD = 0.5;
+
+/** Small pill with text, anchored at its left edge `x`, sitting above (`below` false) or under the line at `y`. */
+function LinePill({
+  x,
+  y,
+  below,
+  text,
+  testId,
+  bg,
+  fg,
+}: {
+  x: number;
+  y: number;
+  below: boolean;
+  text: string;
+  testId: string;
+  bg: string;
+  fg: string;
+}): JSX.Element {
+  const w = text.length * (LABEL_FONT_PX * 0.6) + 10;
+  const h = LABEL_FONT_PX + 6;
+  const top = below ? y + 3 : y - h - 3;
+  return (
+    <g data-testid={testId}>
+      <rect className={bg} x={x} y={top} width={w} height={h} rx={h / 2} />
+      <text
+        className={fg}
+        x={x + w / 2}
+        y={top + h / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={LABEL_FONT_PX}
+        fontWeight={700}
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
 
 export function FieldSvg({
   field,
@@ -85,6 +135,7 @@ export function FieldSvg({
   viewport,
   theme = 'normal',
   showGrid = false,
+  labels = false,
   testIdPrefix = '',
   className,
   children,
@@ -134,6 +185,11 @@ export function FieldSvg({
   const badgeAnchor = toScreen({ x: b.minX, y: 0 }, viewport);
   const badgeX = badgeAnchor.x + 8;
   const badgeY = badgeAnchor.y - badgeH - 6;
+
+  const contrast = theme === 'contrast';
+  const leftX = toScreen({ x: b.minX, y: 0 }, viewport).x + 6;
+  const rightX = toScreen({ x: b.maxX, y: 0 }, viewport).x - 6;
+  const ballC = toScreen({ x: 0, y: 0 }, viewport);
 
   return (
     <svg
@@ -253,6 +309,68 @@ export function FieldSvg({
             {...hLine(field.rushLine)}
           />
           <line data-testid={`${tp}los`} className={pal.los} strokeWidth={pal.w.los} {...hLine(0)} />
+
+          {labels && (
+            <>
+              {yardLines
+                .filter((n) => n > 0 && n < field.length && n % 10 === 0)
+                .map((n) => (
+                  <text
+                    key={`yn${n}`}
+                    data-testid={`${tp}yard-number-${n}`}
+                    className={pal.yardText}
+                    x={rightX}
+                    y={toScreen({ x: 0, y: yardLineToY(ballSpot, n) }, viewport).y - 4}
+                    textAnchor="end"
+                    fontSize={LABEL_FONT_PX}
+                    fontWeight={600}
+                  >
+                    {Math.min(n, field.length - n)}
+                  </text>
+                ))}
+              {field.lineToGain.map((n) => (
+                <LinePill
+                  key={`ltgl${n}`}
+                  testId={`${tp}label-first-down`}
+                  x={leftX}
+                  y={toScreen({ x: 0, y: yardLineToY(ballSpot, n) }, viewport).y}
+                  below={false}
+                  text={t.field.firstDown}
+                  bg="fill-yellow-400"
+                  fg="fill-black"
+                />
+              ))}
+              <LinePill
+                testId={`${tp}label-rush`}
+                x={leftX}
+                y={toScreen({ x: 0, y: field.rushLine }, viewport).y}
+                below={false}
+                text={t.field.rushLine}
+                bg={contrast ? 'fill-red-400' : 'fill-red-600'}
+                fg={contrast ? 'fill-black' : 'fill-white'}
+              />
+              <LinePill
+                testId={`${tp}label-los`}
+                x={leftX}
+                y={ballC.y}
+                below
+                text={t.field.los}
+                bg={contrast ? 'fill-sky-300' : 'fill-blue-600'}
+                fg={contrast ? 'fill-black' : 'fill-white'}
+              />
+              <g data-testid={`${tp}ball-marker`}>
+                <title>{t.field.ball}</title>
+                <ellipse
+                  className={pal.ball}
+                  strokeWidth={1.5}
+                  cx={ballC.x}
+                  cy={ballC.y}
+                  rx={yardsToPx(BALL_RX_YD, viewport)}
+                  ry={yardsToPx(BALL_RY_YD, viewport)}
+                />
+              </g>
+            </>
+          )}
 
           {showBadge && (
             <g data-testid={`${tp}no-run-badge`}>

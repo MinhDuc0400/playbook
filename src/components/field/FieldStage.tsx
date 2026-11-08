@@ -66,7 +66,7 @@ export function FieldStage({
       } ${className ?? ''}`}
     >
       {viewport && (
-        <FieldSvg {...svgProps} field={field} ballSpot={ballSpot} viewport={viewport}>
+        <FieldSvg labels {...svgProps} field={field} ballSpot={ballSpot} viewport={viewport}>
           {children}
         </FieldSvg>
       )}

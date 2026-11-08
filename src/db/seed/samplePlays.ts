@@ -26,7 +26,7 @@ export const SEED_IDS = {
   cover3: 'seed-def-cover-3',
 } as const;
 
-function slot(
+export function slot(
   playId: ID,
   role: Role,
   label: string,
@@ -43,17 +43,23 @@ function offenseBase(playId: ID): PlayerSlot[] {
   return [slot(playId, 'QB', 'Q', { x: 0, y: -5 }, [{ type: 'qbDrop', depth: 2, style: 'shotgun' }])];
 }
 
-function wr(playId: ID, label: string, x: number, template: RouteTemplateId, depth: number): PlayerSlot {
+export function wr(
+  playId: ID,
+  label: string,
+  x: number,
+  template: RouteTemplateId,
+  depth: number,
+): PlayerSlot {
   const start = { x, y: -1 };
   return slot(playId, 'WR', label, start, [buildRoute(template, start, { depth })]);
 }
 
-function center(playId: ID, template: RouteTemplateId, depth: number, outward: 1 | -1): PlayerSlot {
+export function center(playId: ID, template: RouteTemplateId, depth: number, outward: 1 | -1): PlayerSlot {
   const start = { x: 0, y: -0.5 };
   return slot(playId, 'C', 'C', start, [buildRoute(template, start, { depth, outward })]);
 }
 
-interface OffenseSpec {
+export interface OffenseSpec {
   id: ID;
   name: string;
   formation: string;
@@ -64,7 +70,7 @@ interface OffenseSpec {
   progression: string[]; // labels
 }
 
-function offensePlay(spec: OffenseSpec, now: number): Play {
+export function offensePlay(spec: OffenseSpec, now: number): Play {
   return {
     id: spec.id,
     schemaVersion: SCHEMA_VERSION,

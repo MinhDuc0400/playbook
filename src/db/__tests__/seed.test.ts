@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createDefaultSettings } from '@/domain/defaults';
 import { buildRoute, isRouteTemplateId } from '@/domain/routeTree';
 import { SCHEMA_VERSION, type Play, type RouteAction } from '@/domain/types';
-import { playsRepo, settingsRepo } from '../repos';
+import { installsRepo, matchupsRepo, playsRepo, settingsRepo } from '../repos';
 import { resetDb } from '../schema';
 import { SEED_IDS, createSamplePlays } from '../seed/samplePlays';
+import { BANGKOK_IDS, createBangkokContent } from '../seed/bangkok';
 import { ensureSeeded } from '../seed/seed';
+import { createDefaultFields } from '@/domain/field';
+import { validatePlay } from '@/domain/validate';
 
 const NOW = 1_800_000_000_000;
 
@@ -197,10 +200,10 @@ describe('ensureSeeded (FR-DAT-05, FR-DAT-04)', () => {
 
   it('seeds default settings and 6 plays into an empty DB', async () => {
     expect(await ensureSeeded(NOW)).toEqual({ seeded: true });
-    expect(await settingsRepo.get()).toEqual(createDefaultSettings());
+    expect(await settingsRepo.get()).toEqual({ ...createDefaultSettings(), seedVersion: 2 });
     const plays = await playsRepo.list();
-    expect(plays).toHaveLength(6);
-    expect(plays.map((p) => p.id).sort()).toEqual(Object.values(SEED_IDS).sort());
+    expect(plays).toHaveLength(9);
+    expect(plays.map((p) => p.id)).toEqual(expect.arrayContaining(Object.values(SEED_IDS)));
     expect(plays.every((p) => p.updatedAt === NOW)).toBe(true);
   });
 
@@ -208,12 +211,12 @@ describe('ensureSeeded (FR-DAT-05, FR-DAT-04)', () => {
     await ensureSeeded(NOW);
     expect(await ensureSeeded(NOW + 5000)).toEqual({ seeded: false });
     const plays = await playsRepo.list();
-    expect(plays).toHaveLength(6);
+    expect(plays).toHaveLength(9);
     expect(plays.every((p) => p.updatedAt === NOW)).toBe(true);
   });
 
   it('does not re-add samples when settings exist but plays were deleted', async () => {
-    await settingsRepo.put(createDefaultSettings());
+    await settingsRepo.put({ ...createDefaultSettings(), seedVersion: 2 });
     expect(await ensureSeeded(NOW)).toEqual({ seeded: false });
     expect(await playsRepo.count()).toBe(0);
   });
@@ -223,5 +226,112 @@ describe('ensureSeeded (FR-DAT-05, FR-DAT-04)', () => {
     await settingsRepo.put(custom);
     await ensureSeeded(NOW);
     expect((await settingsRepo.get())?.defaultFormat).toBe('7v7');
+  });
+});
+
+const FIELD5 = createDefaultFields()['5v5'];
+const RUSH = 'Zone: Bunch Killer (Bangkok) Rush';
+const SPY = 'Zone: Bunch Killer (Bangkok) No Rush Spy';
+
+describe('Bunch Killer (Bangkok) content (D-42)', () => {
+  const c = createBangkokContent(NOW, FIELD5);
+
+  it('has the Bunch Tight offense and both defenses with the exact names', () => {
+    expect(c.plays.map((p) => p.id)).toEqual([BANGKOK_IDS.bunchTight, BANGKOK_IDS.rush, BANGKOK_IDS.spy]);
+    expect(c.plays.map((p) => p.name)).toEqual(['Bunch Tight', RUSH, SPY]);
+    const bunch = c.plays[0]!;
+    expect(bunch.players.map((s) => [s.label, s.start])).toEqual([
+      ['Q', { x: 0, y: -5 }],
+      ['X', { x: -3, y: -1 }],
+      ['C', { x: 0, y: -0.5 }],
+      ['Y', { x: 3, y: -1 }],
+      ['Z', { x: 6, y: -1 }],
+    ]);
+  });
+
+  it('area-match roles and starts follow the diagram', () => {
+    for (const d of [c.plays[1]!, c.plays[2]!]) {
+      const roles = Object.fromEntries(d.players.map((s) => [s.label, s.areaMatch?.role ?? null]));
+      expect(roles).toEqual({ CB2: 'corner', LB: 'inside', S: 'inside', CB1: 'corner', R: null });
+      expect(d.players.find((s) => s.label === 'CB1')?.start).toEqual({ x: 9, y: 3.5 });
+    }
+    const rush = c.plays[1]!.players.find((s) => s.label === 'R')!;
+    expect(rush.start).toEqual({ x: -7, y: 7 });
+    expect(rush.actions).toEqual([{ type: 'rush', path: [{ x: 0, y: -5 }], delay: 0 }]);
+    const spy = c.plays[2]!.players.find((s) => s.label === 'R')!;
+    expect(spy.start).toEqual({ x: 0.5, y: 7 });
+    expect(spy.actions[0]?.type).toBe('zone');
+  });
+
+  it('seeded defense and offense plays have no validate warnings', () => {
+    for (const p of c.plays) expect(validatePlay(p, FIELD5)).toEqual([]);
+  });
+
+  it('the install lists the 4 red-zone matchups in order, ball on the 5', () => {
+    expect(c.install.id).toBe(BANGKOK_IDS.install);
+    expect(c.install.name).toBe('Red Zone – Bunch Killer (Bangkok)');
+    expect(c.install.items.map((i) => [i.matchupId, i.order])).toEqual(
+      BANGKOK_IDS.matchups.map((id, i) => [id, i]),
+    );
+    expect(c.matchups.map((m) => [m.defensePlayId, m.offensePlayId])).toEqual([
+      [BANGKOK_IDS.rush, BANGKOK_IDS.bunchTight],
+      [BANGKOK_IDS.spy, BANGKOK_IDS.bunchTight],
+      [BANGKOK_IDS.rush, SEED_IDS.flood],
+      [BANGKOK_IDS.spy, SEED_IDS.flood],
+    ]);
+    for (const m of c.matchups) expect(m.ballSpot).toEqual({ x: 0, yardLine: 45 });
+  });
+});
+
+describe('seed v2 (D-42)', () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it('a fresh seed writes the Bangkok content and seedVersion 2', async () => {
+    await ensureSeeded(NOW);
+    expect((await settingsRepo.get())?.seedVersion).toBe(2);
+    expect(await playsRepo.get(BANGKOK_IDS.rush)).toBeDefined();
+    expect((await installsRepo.get(BANGKOK_IDS.install))?.items).toHaveLength(4);
+    for (const id of BANGKOK_IDS.matchups) expect(await matchupsRepo.get(id)).toBeDefined();
+  });
+
+  it('a v1 database (no seedVersion) gets the v2 content once', async () => {
+    const v1 = createDefaultSettings();
+    await settingsRepo.put(v1);
+    for (const p of createSamplePlays(NOW)) await playsRepo.put(p);
+    expect(await ensureSeeded(NOW)).toEqual({ seeded: false });
+    expect(await playsRepo.count()).toBe(9);
+    expect(await installsRepo.get(BANGKOK_IDS.install)).toBeDefined();
+    expect((await settingsRepo.get())?.seedVersion).toBe(2);
+  });
+
+  it('does not overwrite or re-add after v2', async () => {
+    const v1 = createDefaultSettings();
+    await settingsRepo.put(v1);
+    await ensureSeeded(NOW);
+    const rush = (await playsRepo.get(BANGKOK_IDS.rush))!;
+    await playsRepo.put({ ...rush, name: 'My Bangkok' });
+    await playsRepo.remove(BANGKOK_IDS.spy);
+    await ensureSeeded(NOW + 1);
+    expect((await playsRepo.get(BANGKOK_IDS.rush))?.name).toBe('My Bangkok');
+    expect(await playsRepo.get(BANGKOK_IDS.spy)).toBeUndefined();
+  });
+
+  it('a v1 database keeps a user record that already uses a v2 id', async () => {
+    const v1 = createDefaultSettings();
+    await settingsRepo.put(v1);
+    const mine = { ...createBangkokContent(NOW, FIELD5).plays[1]!, name: 'Mine' };
+    await playsRepo.put(mine);
+    await ensureSeeded(NOW);
+    expect((await playsRepo.get(BANGKOK_IDS.rush))?.name).toBe('Mine');
+  });
+
+  it('a v1 database without Trips Flood skips the matchups that need it', async () => {
+    await settingsRepo.put(createDefaultSettings());
+    await ensureSeeded(NOW);
+    const install = (await installsRepo.get(BANGKOK_IDS.install))!;
+    expect(install.items.map((i) => i.matchupId)).toEqual(BANGKOK_IDS.matchups.slice(0, 2));
+    expect(await matchupsRepo.get(BANGKOK_IDS.matchups[2])).toBeUndefined();
   });
 });

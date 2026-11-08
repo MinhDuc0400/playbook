@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION, type AreaMatch, type Play, type PlayerSlot } from '@/domain/types';
-import { PlaySchema } from '../schemas';
+import { createDefaultSettings } from '@/domain/defaults';
+import { PlaySchema, SettingsSchema } from '../schemas';
 
 function def(label: string, x: number, areaMatch?: AreaMatch): PlayerSlot {
   const s: PlayerSlot = { id: label, role: 'CB', label, start: { x, y: 3.5 }, actions: [] };
@@ -25,5 +26,10 @@ describe('D-40 schema', () => {
     };
     expect(PlaySchema.parse(play).players[0]!.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
     expect(PlaySchema.parse(play).players[1]!.areaMatch).toBeUndefined();
+  });
+
+  it('D-42 settings keep seedVersion through the schema', () => {
+    expect(SettingsSchema.parse({ ...createDefaultSettings(), seedVersion: 2 }).seedVersion).toBe(2);
+    expect(SettingsSchema.parse(createDefaultSettings()).seedVersion).toBeUndefined();
   });
 });

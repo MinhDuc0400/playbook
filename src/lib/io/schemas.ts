@@ -291,6 +291,7 @@ export const SettingsSchema: z.ZodType<Settings> = z.object({
     advanced: z.boolean().optional(),
   }),
   lastExportAt: num.optional(),
+  seedVersion: num.optional(),
 });
 
 export const ExportFileSchema: z.ZodType<ExportFile> = z.object({

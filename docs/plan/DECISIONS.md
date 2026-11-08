@@ -367,3 +367,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Decision: `Outcome` `complete` gets `touchdown?: true` when the catch point is at or past the goal line
   (`landing.y ≥ goalLineY(field, ballSpot)`). The result panel shows "Touchdown" instead of "Hoàn thành", and the
   Simple-mode summary says the catch was in the end zone. Aggregates still count it as complete.
+
+## D-42 Versioned sample content: Bunch Killer (Bangkok) (user request 2026-11-08)
+- Decision: `Settings.seedVersion?: number` (missing = 1). `ensureSeeded` on a fresh DB writes settings with
+  `seedVersion: 2`, the 6 sample plays and the v2 content. On a DB at version 1 it adds, once, each v2 record whose
+  fixed id is missing — plays "Bunch Tight", "Zone: Bunch Killer (Bangkok) Rush", "Zone: Bunch Killer (Bangkok) No
+  Rush Spy"; four matchups (both defenses vs Bunch Tight and vs Trips Flood, ball 5 yd from the goal line, a matchup
+  only when both plays exist); Install "Red Zone – Bunch Killer (Bangkok)" — then sets version 2. Nothing is
+  overwritten and nothing deleted later comes back. `createDefaultSettings()` does not carry `seedVersion` (so
+  `normalizeSettings` can't mark an old DB as seeded). Content: `src/db/seed/bangkok.ts`.

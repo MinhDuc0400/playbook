@@ -361,6 +361,8 @@ export interface Settings {
   /** advanced: show every feature (D-26). Missing/false = Simple mode. */
   ui: { theme: ThemePref; snap: boolean; showGrid: boolean; advanced?: boolean };
   lastExportAt?: number; // ms epoch, FR-IO-05
+  /** D-42: version of the built-in sample content written to this DB. Missing = 1. */
+  seedVersion?: number;
 }
 
 // ---------- §11.2 tuning ----------

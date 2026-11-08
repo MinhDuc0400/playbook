@@ -49,4 +49,18 @@ describe('T-AM lanes (D-40)', () => {
     const lanes = computeAreaLanes([def('A', -2, { role: 'inside' }), def('B', 2, { role: 'inside' })])!;
     expect(lanes.outside).toEqual([null, null]);
   });
+
+  it('slots the engine ignores (rush / man / spy) get no lane', () => {
+    const rusher: PlayerSlot = {
+      ...def('R', -7, { role: 'corner' }),
+      actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }],
+    };
+    const man: PlayerSlot = {
+      ...def('M', 12, { role: 'corner' }),
+      actions: [{ type: 'man', target: { kind: 'number', side: 'strong', number: 1 }, technique: 'trail' }],
+    };
+    const lanes = computeAreaLanes([...bangkok(), rusher, man])!;
+    expect(lanes.order).toEqual(['CB2', 'LB', 'S', 'CB1']);
+    expect(lanes.boundaries).toEqual([-4.75, 1.25, 6.5]);
+  });
 });

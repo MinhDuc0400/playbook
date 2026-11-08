@@ -1,5 +1,5 @@
 /** Editor warnings panel rules (FR-ED-07). Warnings never block saving. Pure. */
-import { computeAreaLanes } from './areaLanes';
+import { computeAreaLanes, isAreaMatchActive } from './areaLanes';
 import { DEFAULT_BALL_SPOT, isInsideField } from './field';
 import { defaultGhostFormation } from './formations';
 import { numberReceivers, resolveReceiverRef } from './numbering';
@@ -17,6 +17,7 @@ export type WarningCode =
   | 'catch-behind-los' // slotId; route/option whose every point (incl. start) has y ≤ 0
   | 'too-many-motions' // params: { count }; offense slots with a 'motion' action, count > 1 (D-01)
   | 'man-target-missing' // slotId; man target ref does not resolve against the ghost formation
+  | 'area-match-ignored' // slotId; D-40: area-match role on a slot that rushes / plays man / spies
   | 'area-match-incomplete'; // slotId?; D-40: a single area-match defender, or an inside one with no corner beside it
 
 export interface PlayWarning {
@@ -119,6 +120,10 @@ export function validatePlay(
     }
   }
   if (isDefense) {
+    for (const slot of play.players) {
+      if (slot.areaMatch && !isAreaMatchActive(slot))
+        out.push({ code: 'area-match-ignored', slotId: slot.id });
+    }
     const lanes = computeAreaLanes(play.players);
     if (lanes && lanes.order.length < 2) {
       out.push({ code: 'area-match-incomplete', slotId: lanes.order[0]! });

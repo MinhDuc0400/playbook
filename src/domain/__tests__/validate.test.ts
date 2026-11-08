@@ -474,3 +474,15 @@ describe('D-40 area-match-incomplete', () => {
     expect(codes(validatePlay(play, field5))).not.toContain('area-match-incomplete');
   });
 });
+
+describe('D-40 area-match-ignored', () => {
+  it('a rusher or man defender with an area-match role is flagged', () => {
+    const play = defense('5v5-def-cover-1');
+    const cb1 = slot(play, 'CB1');
+    cb1.actions = [man({ kind: 'number', side: 'strong', number: 1 })];
+    cb1.areaMatch = { role: 'corner' };
+    const ws = validatePlay(play, field5);
+    expect(ws).toContainEqual({ code: 'area-match-ignored', slotId: cb1.id });
+    expect(codes(ws)).not.toContain('area-match-incomplete');
+  });
+});

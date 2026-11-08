@@ -169,4 +169,23 @@ describe('D-40 Bunch Killer (Bangkok) as a pattern-match option', () => {
     render(<MatchRulesForm slotId="cb" />);
     expect(screen.queryByTestId('rule-mode')).toBeNull();
   });
+
+  it('a rusher that still carries an area-match role shows the select so it can be removed', () => {
+    act(() =>
+      store().load({
+        ...mk(),
+        players: [
+          {
+            ...mk().players[0]!,
+            role: 'R',
+            areaMatch: { role: 'corner' },
+            actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }],
+          },
+        ],
+      }),
+    );
+    render(<MatchRulesForm slotId="cb" />);
+    change('rule-mode', 'rules');
+    expect(store().play?.players[0]?.areaMatch).toBeUndefined();
+  });
 });

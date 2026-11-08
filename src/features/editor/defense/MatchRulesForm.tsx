@@ -308,7 +308,7 @@ export function MatchRulesForm({ slotId }: MatchRulesFormProps): JSX.Element | n
   return (
     <section aria-label={r.title} className="flex flex-col gap-2">
       <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{r.title}</h4>
-      {!rusher ? <ModeControls slot={slot} /> : null}
+      {!rusher || slot.areaMatch ? <ModeControls slot={slot} /> : null}
       {area ? null : (
         <>
           {rules.length === 0 ? (

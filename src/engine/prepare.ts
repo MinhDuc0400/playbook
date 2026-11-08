@@ -96,8 +96,12 @@ export function prepareSim(input: SimInput): PreparedSim {
   const bindings: Record<ID, DefenderBinding> = {};
   for (const slot of defense.players) {
     const plain = bindDefender(slot, numbering, input, warnings);
-    bindings[slot.id] =
-      lanes && slot.areaMatch ? bindArea(slot, plain, lanes, squeezeAfter, info, warnings) : plain;
+    if (lanes && lanes.order.includes(slot.id)) {
+      bindings[slot.id] = bindArea(slot, plain, lanes, squeezeAfter, info, warnings);
+    } else {
+      if (slot.areaMatch) warnings.push(`${slot.label}: area match ignored (${plain.kind})`);
+      bindings[slot.id] = plain;
+    }
   }
 
   const stats: Record<ID, Stats> = {};

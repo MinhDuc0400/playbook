@@ -11,10 +11,21 @@ export interface AreaLanes {
   outside: (number | null)[];
 }
 
-/** Lanes of the slots that have `areaMatch`; null when there are none. */
+/**
+ * True when the engine plays the slot's `areaMatch`: it is set and the slot does not rush, play man or spy
+ * (those keep their own assignment and get no lane).
+ */
+export function isAreaMatchActive(slot: PlayerSlot): boolean {
+  return (
+    slot.areaMatch !== undefined &&
+    !slot.actions.some((a) => a.type === 'rush' || a.type === 'man' || a.type === 'spy')
+  );
+}
+
+/** Lanes of the slots whose `areaMatch` is active; null when there are none. */
 export function computeAreaLanes(slots: readonly PlayerSlot[]): AreaLanes | null {
   const area = slots
-    .filter((s) => s.areaMatch !== undefined)
+    .filter(isAreaMatchActive)
     .sort((a, b) => a.start.x - b.start.x || (a.id < b.id ? -1 : 1));
   if (area.length === 0) return null;
   const roles = area.map((s) => s.areaMatch!.role);

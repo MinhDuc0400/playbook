@@ -1,5 +1,5 @@
 /** First-open seeding (FR-DAT-05, FR-DAT-04) and versioned sample content (D-42). */
-import { createDefaultSettings } from '@/domain/defaults';
+import { createDefaultSettings, normalizeSettings } from '@/domain/defaults';
 import { withDbErrors } from '../errors';
 import { getDb } from '../schema';
 import { createBangkokContent } from './bangkok';
@@ -30,7 +30,7 @@ export async function ensureSeeded(now: number = Date.now()): Promise<{ seeded: 
         return { seeded: true };
       }
       if ((settings.seedVersion ?? 1) < 2) {
-        const v2 = createBangkokContent(now, settings.fields['5v5']);
+        const v2 = createBangkokContent(now, normalizeSettings(settings).fields['5v5']);
         for (const p of v2.plays) if (!(await db.plays.get(p.id))) await db.plays.put(p);
         // A matchup is only added when both its plays exist (the user may have deleted Trips Flood).
         const kept: string[] = [];

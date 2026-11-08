@@ -90,6 +90,15 @@ describe('T-AM area match in the sim (D-40)', () => {
     expect(b.base.dropPoint.y).toBe(5);
   });
 
+  it("areaMatch on a rusher does not change the other defenders' claims", () => {
+    const off = bunchTightPlay({ x: 'slant', c: 'hitch', y: 'flat', z: 'out', depths: { z: 2 } });
+    const d = bangkokPlay();
+    d.players = d.players.map((p) => (p.id === 'b-r' ? { ...p, areaMatch: { role: 'corner' as const } } : p));
+    const withR = claims(simulate(input(off, d)).events);
+    const without = claims(simulate(input(off)).events);
+    expect(withR).toEqual(without);
+  });
+
   it('areaMatch on a rusher is ignored with a warning', () => {
     const d = bangkokPlay();
     d.players = d.players.map((p) => (p.id === 'b-r' ? { ...p, areaMatch: { role: 'corner' as const } } : p));

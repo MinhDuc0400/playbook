@@ -334,4 +334,13 @@ describe('seed v2 (D-42)', () => {
     expect(install.items.map((i) => i.matchupId)).toEqual(BANGKOK_IDS.matchups.slice(0, 2));
     expect(await matchupsRepo.get(BANGKOK_IDS.matchups[2])).toBeUndefined();
   });
+
+  it('a v1 record missing field configs still gets the v2 content (normalized)', async () => {
+    const v1 = createDefaultSettings() as unknown as Record<string, unknown>;
+    delete v1.fields;
+    await settingsRepo.put(v1 as unknown as ReturnType<typeof createDefaultSettings>);
+    for (const p of createSamplePlays(NOW)) await playsRepo.put(p);
+    await ensureSeeded(NOW);
+    expect((await matchupsRepo.get(BANGKOK_IDS.matchups[0]))?.ballSpot).toEqual({ x: 0, yardLine: 45 });
+  });
 });

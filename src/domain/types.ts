@@ -84,17 +84,6 @@ export interface PlayerSlot {
   leverage?: Leverage; // defense
   actions: Action[]; // in time order
   matchRules?: MatchRule[]; // defense
-  /** Defense: area-match coverage role (D-40, "Bunch Killer"). Base coverage = the slot's zone action. */
-  areaMatch?: AreaMatch;
-}
-
-/**
- * D-40 area match: defenders own vertical lanes from their alignment. A corner takes the first receiver
- * into its lane and otherwise holds its spot (no squeeze, D-47); an inside defender skips the first receiver
- * out to its corner's lane and takes the second, else plays its zone on whoever is left.
- */
-export interface AreaMatch {
-  role: 'corner' | 'inside';
 }
 
 /** D-22: QB read customisation. */
@@ -494,7 +483,6 @@ export type SimEventType =
   | 'read'
   | 'pressure'
   | 'ruleFired'
-  | 'areaClaim'
   | 'optionChoice'
   | 'throwStart'
   | 'throw'

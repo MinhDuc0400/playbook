@@ -268,7 +268,6 @@ interface PlayerSlot {
   leverage?: 'inside' | 'outside' | 'head-up';   // defense
   actions: Action[];                 // thực hiện theo thứ tự thời gian
   matchRules?: MatchRule[];          // defense
-  areaMatch?: { role: 'corner' | 'inside' }; // defense, area match (D-40; no squeeze, D-47)
 }
 ```
 
@@ -322,13 +321,15 @@ interface MatchRule {
   id: ID;
   priority: number;                  // nhỏ chạy trước
   when: {
-    receiver: ReceiverRef;
-    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop';
+    receiver: ReceiverRef | { kind: 'any' } | { kind: 'nth'; n: 1 | 2 }; // D-48: Bất kỳ / Người thứ N
+    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea';
+    area?: { kind: 'self' } | { kind: 'teammate'; slotId: ID }; // D-48: "vào khu vực của" tôi / đồng đội
     minDepth?: number;               // yd tính từ LOS
     beforeTime?: number;             // giây
   };
   then:
     | { type: 'man'; target: ReceiverRef }   // chuyển sang kèm người này
+    | { type: 'manTrigger' }                  // D-48 "Man người đó": kèm receiver làm luật kích hoạt
     | { type: 'zone'; zone: ZonePresetId }   // chuyển về zone khác
     | { type: 'carry' }                       // tiếp tục bám receiver đang trong zone
     | { type: 'passOff' };                    // thả receiver cho zone kế bên
@@ -684,17 +685,15 @@ interface Agent {
 
 Luật khớp đầu tiên theo `priority` được áp dụng, ghi event `ruleFired`. Defender iq thấp nhận ra sự kiện trễ thêm `(1 − iq) × 0.3` giây.
 
-**Area match (D-40, "Bunch Killer (Bangkok)"):** các defender có `areaMatch` chia sân thành các làn dọc theo vị trí đứng (ranh giới = điểm giữa 2 defender cạnh nhau, làn ngoài cùng tới sideline). Mỗi defender chạy cùng một bộ luật trên perception của chính mình, nên tự suy ra đồng đội đã nhận ai mà không cần giao tiếp:
+**Luật khu vực (D-48; thay cho area match D-40):** luật có `event: 'entersArea'` theo dõi một làn dọc. Các defender có luật khu vực, hoặc được luật khu vực của đồng đội nhắc tới (và không rush / man / spy), chia sân thành các làn theo vị trí đứng (ranh giới = điểm giữa 2 defender cạnh nhau, làn ngoài cùng tới sideline). Mỗi defender chạy luật khu vực của tất cả các làn trên perception của chính mình, nên tự suy ra đồng đội đã nhận ai mà không cần giao tiếp:
 
 1. Sau snap, receiver đi vào một làn được ghi theo thứ tự (cùng tick: người gần sideline hơn trước).
-2. Corner nhận (man, trail) receiver đầu tiên vào làn của mình.
-3. Corner không có ai vào làn: đứng yên ở vị trí của mình (không press, không squeeze, không bám receiver ở làn khác), chỉ phản ứng khi bóng bay; ai vào làn thì nhận người đó (D-47).
-4. Inside (LB/S) bỏ qua receiver đầu tiên vào làn corner bên ngoài, nhận người thứ hai (khi corner đã có người).
-5. Inside chưa có người: đá zone gốc, bỏ qua receiver đồng đội đã nhận ("người còn lại").
+2. Thứ tự xét mỗi tick: luật "Người thứ 1", rồi "Người thứ 2", rồi "Bất kỳ"; trong cùng nhóm theo làn từ trái sang phải. Defender đã có người thì bỏ qua.
+3. "Người thứ N vào khu vực của A": trong danh sách người vào làn A, bỏ những người đã bị defender khác (ngoài chủ làn A) nhận, lấy người thứ N nếu chưa ai nhận. "Bất kỳ": người đầu tiên chưa ai nhận.
+4. Luật khu vực kích hoạt ngay, không có độ trễ theo iq. "Man người đó" nhận người đó (man, trail) và giữ đến khi bóng được ném; event `ruleFired` có `targetId`.
+5. Chưa có luật nào kích hoạt: không lên press. Có zone action thì đá zone đó (giữ độ sâu ban đầu, bỏ qua receiver đồng đội đã nhận); không có thì đứng yên ở vị trí, chỉ phản ứng khi bóng bay.
 
-Khi chưa nhận người, defender không lên press. Inside đứng ở vị trí và độ sâu ban đầu, chỉ trượt ngang theo receiver, lùi sâu hơn khi receiver vượt qua; corner đứng yên hẳn (D-47).
-
-Đã nhận thì giữ đến khi bóng được ném. Mỗi lần nhận ghi event `areaClaim`. Zone action của slot là zone gốc; không có thì dùng hình chữ nhật của làn.
+**Mẫu Bunch Killer (Bangkok):** Corner = [Người thứ 1 · vào khu vực của · tôi → Man người đó]; Inside (LB/S) = [Người thứ 2 · vào khu vực của · corner cạnh bên → Man người đó], còn lại đá zone. Play cũ có `areaMatch` được chuyển sang luật khi mở DB, khi import file schemaVersion 1 và khi đọc nháp Freestyle.
 
 **Khi bóng được ném:** defender thấy `throwStarted` (sau reaction) thì chuyển sang lao về điểm bóng rơi.
 

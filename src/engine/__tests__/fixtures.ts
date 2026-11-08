@@ -138,8 +138,12 @@ export function makeInput(
   };
 }
 
-/** Bunch Killer (Bangkok), spec §7 (D-40): 4 area-match defenders + R rushing, or R in a middle zone. */
-export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
+/**
+ * Bunch Killer (Bangkok), spec §7 (D-40, D-48): 4 area-rule defenders (corners: Người thứ 1 vào khu vực của
+ * tôi; LB → CB2 and S → CB1: Người thứ 2) + R rushing, or R in a middle zone.
+ */
+export function bangkokRulesPlay(variant: 'rush' | 'spy' = 'rush'): Play {
+  const teammate: Record<string, ID> = { 'b-lb': 'b-cb2', 'b-s': 'b-cb1' };
   const area = (
     id: ID,
     role: Role,
@@ -147,9 +151,10 @@ export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
     x: number,
     am: 'corner' | 'inside',
     actions: Action[] = [],
-  ) => ({
+  ): PlayerSlot => ({
     ...slot(id, role, label, { x, y: 3.5 }, actions, am === 'corner' ? 'outside' : 'inside'),
-    areaMatch: { role: am },
+    matchRules:
+      am === 'corner' ? cornerRules(() => `${id}-bk`) : insideRules(() => `${id}-bk`, teammate[id] ?? null),
   });
   const r =
     variant === 'rush'
@@ -226,22 +231,4 @@ export function bunchTightPlay(routes: {
     ],
     ['bt-y', 'bt-z', 'bt-x', 'bt-c'],
   );
-}
-
-/** D-48: the Bangkok defense with Bunch Killer rules instead of `areaMatch` (same slots, ids and zones). */
-export function bangkokRulesPlay(variant: 'rush' | 'spy' = 'rush'): Play {
-  const old = bangkokPlay(variant);
-  const teammate: Record<string, string> = { 'b-lb': 'b-cb2', 'b-s': 'b-cb1' };
-  return {
-    ...old,
-    players: old.players.map((p) => {
-      const { areaMatch, ...rest } = p;
-      if (!areaMatch) return p;
-      const id = () => `${p.id}-bk`;
-      return {
-        ...rest,
-        matchRules: areaMatch.role === 'corner' ? cornerRules(id) : insideRules(id, teammate[p.id] ?? null),
-      };
-    }),
-  };
 }

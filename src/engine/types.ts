@@ -17,7 +17,7 @@ import type {
   Stats,
   TuningParams,
 } from '@/domain/types';
-import type { AreaLanes, Lanes } from '@/domain/areaLanes';
+import type { Lanes } from '@/domain/areaLanes';
 import type { LaneMember } from './areaCoordinator';
 
 export type { Rng };
@@ -111,7 +111,6 @@ export type DefenderBinding =
   | { kind: 'zone'; polygon: Point[]; dropPoint: Point; deep: boolean; fallback: boolean }
   | { kind: 'rush'; path: Point[]; delay: number }
   | { kind: 'spy'; targetId: ID | null }
-  | AreaMatchBinding
   | LaneBinding
   | { kind: 'none' };
 
@@ -124,15 +123,5 @@ export interface LaneBinding {
   lanes: Lanes;
   members: LaneMember[];
   base: { polygon: Point[]; dropPoint: Point; deep: boolean } | null;
-  hold: Point;
-}
-
-/** D-40 area match: lane `index` of `lanes`, base zone played while it has no man. */
-export interface AreaMatchBinding {
-  kind: 'areaMatch';
-  index: number;
-  lanes: AreaLanes;
-  base: { polygon: Point[]; dropPoint: Point; deep: boolean };
-  /** Alignment spot held (depth kept, mirrors sideways) until the defender has a man; no press. */
   hold: Point;
 }

@@ -6,7 +6,6 @@
 import { polygonCentroid } from '@/domain/geometry';
 import type {
   Action,
-  AreaMatch,
   FieldConfig,
   ID,
   Leverage,
@@ -183,15 +182,4 @@ export function setAlignTo(alignTo: 'ball' | 'strength'): Recipe {
 /** FR-DEF-01: Play.strength = strength of the ghost at design time. */
 export function setDesignStrength(strength: Strength): Recipe {
   return (play) => (play.strength === strength ? play : { ...play, strength });
-}
-
-/** D-40: set (or with undefined remove) the slot's area-match role. */
-export function setAreaMatch(slotId: ID, areaMatch: AreaMatch | undefined): Recipe {
-  return (play) =>
-    replaceSlot(play, slotId, (slot) => {
-      const next: PlayerSlot = { ...slot };
-      if (areaMatch === undefined) delete next.areaMatch;
-      else next.areaMatch = { ...areaMatch };
-      return next;
-    });
 }

@@ -90,6 +90,12 @@ Live tracker. Status: todo / in progress / review / done.
   (Bangkok)"). Tests: T-AM-01..06 (`areaMatch*.test.ts`), T-TD-01, seed v2, E2E 19.
 - Plan: `docs/superpowers/plans/2026-11-08-bangkok-bunch-killer.md`.
 
+## 2026-11-09 Bunch Killer as custom rules (D-48)
+- Rules gain "Bất kỳ / Người thứ 1/2", "vào khu vực của" (tôi / đồng đội) and "Man người đó"; the "Mẫu" select fills
+  in the Bunch Killer corner / inside rule. Engine: `areaCoordinator.ts` + lane mode in `ruleDefender`
+  (`laneDefender.ts`). Old `areaMatch` mode removed; data converted (`areaMatchToRules`, Dexie v3, schemaVersion 2,
+  Freestyle draft). Plan: `docs/superpowers/plans/2026-11-09-area-rules.md`.
+
 ## Open questions / blockers
 
 None.

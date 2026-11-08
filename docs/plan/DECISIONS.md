@@ -421,3 +421,19 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   unchanged (second-out, else their zone). `AreaMatch.squeezeAfter`, the "Squeeze sau (s)" input and the
   `squeeze` claim reason are gone; an old export or saved play that still has `squeezeAfter` loads and the key is
   ignored (import drops it).
+
+## D-48 Bunch Killer as custom pattern-match rules: one system (user request 2026-11-09)
+- Decision: custom rules gain receiver "Bất kỳ" / "Người thứ 1/2", event "vào khu vực của" (tôi / a teammate) and
+  reaction "Man người đó" (`manTrigger`). Areas are the D-40 alignment lanes of the "lane members" (slots with an
+  area rule or named by one, not rush / man / spy). Every member evaluates all members' area rules on its own
+  perception (order: nth 1, nth 2, any; lanes left → right), so it infers who teammates took. Area rules fire
+  with no iq delay (as the old tracker); direction rules keep it. Base before a rule fires: never press; zone
+  action → that zone ignoring taken receivers; no zone → stand on the spot, react only to the ball.
+- The "Kiểu" select becomes "Mẫu": Bunch Killer Corner / Inside fill in the rule (Inside picks the neighbouring
+  corner-rule holder, left first, else the neighbour toward the nearer sideline; a zone-less inside also gets its
+  lane as a zone). The separate `areaMatch` mode, `areaMatch.ts`, `areaMatchDefender` and `areaClaim` are gone.
+- Conversion (`areaMatchToRules`): corner → corner rule, its zone removed (it had no effect); inside → inside rule
+  on its old outside corner, lane rectangle zone if it had none (ball centred for an outer lane); old custom rules
+  on an area slot dropped; a note line added. Runs in the Dexie v3 upgrade (schemaVersion 2 on every record), in
+  import of schemaVersion ≤ 1 files and in the Freestyle draft loader. A converted play gives the same frames as
+  the old one (checked before the old path was removed).

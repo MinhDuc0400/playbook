@@ -4,7 +4,7 @@ import { playToEnd, tokenCenter } from './fixtures';
 // D-40..D-42: the Bunch Killer (Bangkok) install ships ready-made and runs.
 const INSTALL = 'seed-install-bangkok';
 
-test('19 Bunch Killer install is seeded, its matchup runs, the editor shows area-match lanes', async ({
+test('19 Bunch Killer install is seeded, its matchup runs, the editor shows the Bunch Killer lanes and template', async ({
   page,
 }) => {
   await page.goto('/install');
@@ -26,5 +26,5 @@ test('19 Bunch Killer install is seeded, its matchup runs, the editor shows area
   await expect(page.getByTestId('area-lane-boundary')).toHaveCount(3);
   const cb1 = await tokenCenter(page, 'CB1');
   await page.mouse.click(cb1.x, cb1.y);
-  await expect(page.getByTestId('rule-mode')).toHaveValue('corner');
+  await expect(page.getByTestId('rule-template')).toHaveValue('corner');
 });

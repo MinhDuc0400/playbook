@@ -14,7 +14,6 @@ export const playback = {
     snap: 'Snap: bóng được đưa vào cuộc',
     break: 'Receiver bẻ route',
     ruleFired: 'Luật pattern match kích hoạt',
-    areaClaim: 'Area match: defender nhận người',
     throw: 'QB ném bóng',
     catch: 'Bắt được bóng',
     sack: 'QB bị sack',

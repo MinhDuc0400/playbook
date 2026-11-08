@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FieldSvg } from '@/components/field/FieldSvg';
 import { defaultViewport, toScreen } from '@/components/field/viewport';
 import { createDefaultFields, DEFAULT_BALL_SPOT } from '@/domain/field';
+import { cornerRules, insideRules } from '@/domain/areaRules';
 import { createPlay } from '@/domain/formations';
 import type { Play } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
@@ -166,8 +167,8 @@ describe('AssignmentLayer (FR-DEF-02..04, §12.2)', () => {
   });
 });
 
-describe('D-40 lane boundaries', () => {
-  it('draws one dashed line per boundary between area-match defenders', () => {
+describe('D-40/D-48 lane boundaries', () => {
+  it('draws one dashed line per boundary between area-rule defenders', () => {
     const play = newDefense('5v5-def-cover-2');
     const roles: Record<string, 'corner' | 'inside'> = {
       CB2: 'corner',
@@ -179,7 +180,13 @@ describe('D-40 lane boundaries', () => {
       store().load({
         ...play,
         players: play.players.map((p) =>
-          roles[p.label] ? { ...p, areaMatch: { role: roles[p.label]! } } : p,
+          roles[p.label]
+            ? {
+                ...p,
+                matchRules:
+                  roles[p.label] === 'corner' ? cornerRules(() => 'c') : insideRules(() => 'i', null),
+              }
+            : p,
         ),
       }),
     );
@@ -187,7 +194,7 @@ describe('D-40 lane boundaries', () => {
     expect(screen.getAllByTestId('area-lane-boundary')).toHaveLength(3);
   });
 
-  it('draws no lane lines without area-match defenders', () => {
+  it('draws no lane lines without area-rule defenders', () => {
     act(() => store().load(newDefense('5v5-def-cover-2')));
     renderLayer();
     expect(screen.queryAllByTestId('area-lane-boundary')).toHaveLength(0);

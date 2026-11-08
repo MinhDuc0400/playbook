@@ -129,18 +129,10 @@ describe('MatchRulesForm (FR-DEF-07)', () => {
   });
 });
 
-describe('D-40 legacy mode select (slots still carrying areaMatch, removed in D-48)', () => {
+describe('D-48 template select on a plain slot', () => {
   beforeEach(() => act(() => store().load(null)));
 
-  it('a slot with areaMatch shows the old Kiểu select and hides the rules', () => {
-    act(() => store().load({ ...mk(), players: [{ ...mk().players[0]!, areaMatch: { role: 'corner' } }] }));
-    render(<MatchRulesForm slotId="cb" />);
-    expect((screen.getByTestId('rule-mode') as HTMLSelectElement).value).toBe('corner');
-    expect(screen.queryByTestId('rules-list')).toBeNull();
-    expect(screen.queryByTestId('rule-template')).toBeNull();
-  });
-
-  it('a plain slot shows the template select, not the old one; rules stay visible', () => {
+  it('shows the template select (value "rules") and the rule list stays visible', () => {
     setup([rule('a', 0)]);
     expect(screen.queryByTestId('rule-mode')).toBeNull();
     expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('rules');

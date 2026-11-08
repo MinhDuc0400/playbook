@@ -39,7 +39,6 @@ const MARKER_COLORS: Partial<Record<SimEventType, string>> = {
   snap: 'bg-slate-700 dark:bg-slate-200',
   break: 'bg-amber-500',
   ruleFired: 'bg-purple-500',
-  areaClaim: 'bg-teal-500',
   throw: 'bg-blue-600 dark:bg-blue-400',
   catch: 'bg-green-600 dark:bg-green-400',
   sack: 'bg-red-600 dark:bg-red-400',

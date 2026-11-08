@@ -134,8 +134,6 @@ const PlayerSlotSchema = z.object({
   leverage: LeverageSchema.optional(),
   actions: z.array(ActionSchema),
   matchRules: z.array(MatchRuleSchema).optional(),
-  // D-47: an old `squeezeAfter` key is dropped (z.object strips unknown keys).
-  areaMatch: z.object({ role: z.enum(['corner', 'inside']) }).optional(),
 });
 
 const ReadPlanSchema = z.object({

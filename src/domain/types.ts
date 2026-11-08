@@ -177,7 +177,12 @@ export type ZonePresetId =
   | 'shallow-half-L'
   | 'shallow-half-R'
   | 'curl-flat-L'
-  | 'curl-flat-R';
+  | 'curl-flat-R'
+  // D-49: quarters of the width, LOS to the back (Cover 4 / Bangkok split)
+  | 'quarter-out-L'
+  | 'quarter-mid-L'
+  | 'quarter-mid-R'
+  | 'quarter-out-R';
 
 export const ZONE_PRESET_IDS: readonly ZonePresetId[] = [
   'deep-half-L',
@@ -195,6 +200,10 @@ export const ZONE_PRESET_IDS: readonly ZonePresetId[] = [
   'shallow-half-R',
   'curl-flat-L',
   'curl-flat-R',
+  'quarter-out-L',
+  'quarter-mid-L',
+  'quarter-mid-R',
+  'quarter-out-R',
 ];
 
 /** NFL FLAG: delay must be 0. */

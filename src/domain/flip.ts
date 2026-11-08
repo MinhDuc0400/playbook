@@ -91,6 +91,14 @@ export function flipZonePreset(id: ZonePresetId): ZonePresetId {
       return 'curl-flat-R';
     case 'curl-flat-R':
       return 'curl-flat-L';
+    case 'quarter-out-L':
+      return 'quarter-out-R';
+    case 'quarter-out-R':
+      return 'quarter-out-L';
+    case 'quarter-mid-L':
+      return 'quarter-mid-R';
+    case 'quarter-mid-R':
+      return 'quarter-mid-L';
     case 'deep-third-M':
     case 'hook-M':
     case 'deep-middle':

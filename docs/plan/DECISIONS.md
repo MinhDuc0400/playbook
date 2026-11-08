@@ -437,3 +437,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   on an area slot dropped; a note line added. Runs in the Dexie v3 upgrade (schemaVersion 2 on every record), in
   import of schemaVersion ≤ 1 files and in the Freestyle draft loader. A converted play gives the same frames as
   the old one (checked before the old path was removed).
+
+## D-49 Quarter zone presets (user request 2026-11-09)
+- Decision: four presets split the field width in quarters, like Cover 4: `quarter-out-L` (x −15..−7.5 at W 30),
+  `quarter-mid-L` (−7.5..0), `quarter-mid-R` (0..7.5), `quarter-out-R` (7.5..15). They run from the LOS to y 30
+  (the user chose "from the LOS to the back", for the Bangkok four-way split), drop point at the quarter centre,
+  5 yd deep. They play the closest receiver (zone kind `curl`), flip L↔R, and scale with the field width.

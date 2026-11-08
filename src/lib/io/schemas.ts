@@ -60,6 +60,10 @@ const ZonePresetSchema = z.enum([
   'shallow-half-R',
   'curl-flat-L',
   'curl-flat-R',
+  'quarter-out-L',
+  'quarter-mid-L',
+  'quarter-mid-R',
+  'quarter-out-R',
 ]);
 
 export const ActionSchema: z.ZodType<Action> = z.discriminatedUnion('type', [

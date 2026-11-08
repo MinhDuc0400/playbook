@@ -536,6 +536,10 @@ describe('FR-FLP-01 flipPlay table (SRS §6.4)', () => {
       'shallow-half-R': 'shallow-half-L',
       'curl-flat-L': 'curl-flat-R',
       'curl-flat-R': 'curl-flat-L',
+      'quarter-out-L': 'quarter-out-R',
+      'quarter-mid-L': 'quarter-mid-R',
+      'quarter-mid-R': 'quarter-mid-L',
+      'quarter-out-R': 'quarter-out-L',
     };
     for (const id of ZONE_PRESET_IDS) expect(flipZonePreset(id)).toBe(expected[id]);
     expect(Object.keys(expected)).toHaveLength(ZONE_PRESET_IDS.length);

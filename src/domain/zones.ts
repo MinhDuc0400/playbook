@@ -12,6 +12,8 @@
  * | hook-M | [−4, 4] | [3, 10] | (0, 6) |
  * | shallow-half-L | [−15, 0] | [3, 10] | (−7.5, 7) |   shallow-half-R mirrored (half the field, not a quarter)
  * | curl-flat-L | [−15, −4] | [0, 12] | (−9, 7) |       curl-flat-R mirrored
+ * | quarter-out-L | [−15, −7.5] | [0, 30] | (−11.25, 5) | quarter-out-R mirrored (D-49)
+ * | quarter-mid-L | [−7.5, 0] | [0, 30] | (−3.75, 5) |   quarter-mid-R mirrored
  * Polygons are axis-aligned rectangles listed counter-clockwise from the bottom-left corner.
  */
 import type { FieldConfig, LateralSide, Point, ZoneAction, ZonePresetId } from './types';
@@ -47,6 +49,10 @@ const SPECS: Record<ZonePresetId, PresetSpec> = {
   'shallow-half-R': { x: [0, 15], y: [3, 10], drop: { x: 7.5, y: 7 } },
   'curl-flat-L': { x: [-15, -4], y: [0, 12], drop: { x: -9, y: 7 } },
   'curl-flat-R': { x: [4, 15], y: [0, 12], drop: { x: 9, y: 7 } },
+  'quarter-out-L': { x: [-15, -7.5], y: [0, 30], drop: { x: -11.25, y: 5 } },
+  'quarter-mid-L': { x: [-7.5, 0], y: [0, 30], drop: { x: -3.75, y: 5 } },
+  'quarter-mid-R': { x: [0, 7.5], y: [0, 30], drop: { x: 3.75, y: 5 } },
+  'quarter-out-R': { x: [7.5, 15], y: [0, 30], drop: { x: 11.25, y: 5 } },
 };
 
 /** `v * k` without producing -0. */
@@ -105,6 +111,8 @@ export function zoneKind(zone: ZoneAction['zone']): ZoneKind {
     if (zone.startsWith('deep-')) return 'deep';
     if (zone.startsWith('flat-')) return 'flat';
     if (zone.startsWith('hook-') || zone.startsWith('shallow-')) return 'hook';
+    // D-49 quarters start at the LOS: they play the closest receiver, like curl-flat.
+    if (zone.startsWith('quarter-')) return 'curl';
     return 'curl';
   }
   if (zone.polygon.length === 0) return 'custom';

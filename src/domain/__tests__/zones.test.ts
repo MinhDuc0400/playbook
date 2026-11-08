@@ -25,6 +25,10 @@ const TABLE: Record<ZonePresetId, [number, number, number, number, number, numbe
   'hook-M': [-4, 4, 3, 10, 0, 6],
   'curl-flat-L': [-15, -4, 0, 12, -9, 7],
   'curl-flat-R': [4, 15, 0, 12, 9, 7],
+  'quarter-out-L': [-15, -7.5, 0, 30, -11.25, 5],
+  'quarter-mid-L': [-7.5, 0, 0, 30, -3.75, 5],
+  'quarter-mid-R': [0, 7.5, 0, 30, 3.75, 5],
+  'quarter-out-R': [7.5, 15, 0, 30, 11.25, 5],
 };
 
 describe('zonePreset (FR-DEF-03)', () => {
@@ -105,6 +109,36 @@ describe('zonePreset (FR-DEF-03)', () => {
   });
 });
 
+describe('D-49 quarter zones (Cover 4 / Bangkok split): LOS to the back', () => {
+  const field30 = createDefaultFields()['5v5'];
+  const xs = (id: ZonePresetId) => zonePreset(id, field30).polygon.map((p) => p.x);
+  const ys = (id: ZonePresetId) => zonePreset(id, field30).polygon.map((p) => p.y);
+
+  it('four quarters of the field width, out left → out right, from the LOS to y 30', () => {
+    const ids: ZonePresetId[] = ['quarter-out-L', 'quarter-mid-L', 'quarter-mid-R', 'quarter-out-R'];
+    const ranges = ids.map((id) => [Math.min(...xs(id)), Math.max(...xs(id))]);
+    const half = field30.width / 2;
+    expect(ranges).toEqual([
+      [-half, -half / 2],
+      [-half / 2, 0],
+      [0, half / 2],
+      [half / 2, half],
+    ]);
+    for (const id of ids) {
+      expect(Math.min(...ys(id))).toBe(0);
+      expect(Math.max(...ys(id))).toBe(30);
+      expect(ZONE_PRESET_IDS).toContain(id);
+    }
+  });
+
+  it('drop point at the quarter centre, 5 yd deep; sides; not a deep zone (closest receiver)', () => {
+    expect(zonePreset('quarter-mid-R', field30).dropPoint).toEqual({ x: field30.width / 8, y: 5 });
+    expect(zoneSide('quarter-out-L')).toBe('left');
+    expect(zoneSide('quarter-mid-R')).toBe('right');
+    expect(isDeepZone('quarter-out-R')).toBe(false);
+  });
+});
+
 describe('zonePolygon', () => {
   it('preset → zonePreset polygon', () => {
     expect(zonePolygon('flat-R', F5)).toEqual(zonePreset('flat-R', F5).polygon);
@@ -180,6 +214,10 @@ describe('zoneKind / isDeepZone (§8.6)', () => {
     'shallow-half-R': 'hook',
     'curl-flat-L': 'curl',
     'curl-flat-R': 'curl',
+    'quarter-out-L': 'curl',
+    'quarter-mid-L': 'curl',
+    'quarter-mid-R': 'curl',
+    'quarter-out-R': 'curl',
   };
 
   it.each(ZONE_PRESET_IDS)('%s', (id) => {

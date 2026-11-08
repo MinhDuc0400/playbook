@@ -7,6 +7,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ExportPngButton } from '@/components/ExportPngButton';
 import { PanelTabs, Select } from '@/components/ui';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
+import { eventMarkers } from '@/components/field/markers';
 import { usePlayback } from '@/components/field/usePlayback';
 import { useFeatures } from '@/config/features';
 import { useDbSnapshot, useMatchupBundle } from '@/db/hooks';
@@ -181,8 +182,11 @@ function MatchupEditor({
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
-      (result?.events ?? []).filter((e) => MARKER_TYPES.has(e.type)).map((e) => ({ t: e.t, type: e.type })),
-    [result],
+      eventMarkers(result?.events ?? [], MARKER_TYPES, [
+        ...(built?.offense.players ?? []),
+        ...(built?.defense.players ?? []),
+      ]),
+    [result, built],
   );
   const markTimes = useMemo(() => markers.map((m) => m.t), [markers]);
   useMatchupShortcuts(playback, markTimes);

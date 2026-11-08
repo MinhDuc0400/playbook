@@ -160,35 +160,54 @@ export function Timeline({
     </span>
   );
 
+  const [tip, setTip] = useState<number | null>(null);
+
   const scrubber = (
     <div className="relative min-w-0 flex-1">
-      <div className="relative h-3">
-        {markers.map((m, i) => (
-          <span
-            key={`${m.type}-${m.t}-${i}`}
-            data-testid="timeline-marker"
-            data-type={m.type}
-            title={m.label ?? m.type}
-            style={{ left: `${pct(m.t)}%` }}
-            className={`absolute bottom-0 h-3 w-1 -translate-x-1/2 rounded-sm ${MARKER_COLORS[m.type] ?? 'bg-slate-500'}`}
-          />
-        ))}
+      <div className="relative h-5">
+        {markers.map((m, i) => {
+          const at = pct(m.t);
+          const shown = tip === i;
+          const text = `${p.events[m.type as keyof typeof p.events] ?? m.type}${m.label ? ` · ${m.label}` : ''} · ${formatTime(m.t)}`;
+          return (
+            <span
+              key={`${m.type}-${m.t}-${i}`}
+              data-testid="timeline-marker"
+              data-type={m.type}
+              tabIndex={0}
+              role="img"
+              aria-label={text}
+              style={{ left: `${at}%` }}
+              className={`absolute bottom-0 flex h-5 w-4 -translate-x-1/2 cursor-help items-end justify-center ${focusRing}`}
+              onPointerEnter={() => setTip(i)}
+              onPointerLeave={() => setTip((v) => (v === i ? null : v))}
+              onFocus={() => setTip(i)}
+              onBlur={() => setTip((v) => (v === i ? null : v))}
+              onClick={() => setTip(i)}
+            >
+              <span className={`h-4 w-1.5 rounded-sm ${MARKER_COLORS[m.type] ?? 'bg-slate-500'}`} />
+              {shown && (
+                <span
+                  role="tooltip"
+                  data-testid="marker-tooltip"
+                  className={`pointer-events-none absolute bottom-full z-30 mb-1 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900 ${
+                    at < 15 ? 'left-0' : at > 85 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+                  }`}
+                >
+                  {text}
+                </span>
+              )}
+            </span>
+          );
+        })}
       </div>
-      <div className="relative h-8 rounded-sm focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-blue-600">
-        <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-slate-300 dark:bg-slate-600" />
+      <div className="relative h-10">
+        <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-300 dark:bg-slate-600" />
         <div
           data-testid="timeline-progress"
-          className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-blue-600 dark:bg-blue-400"
+          className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-blue-600 dark:bg-blue-400"
           style={{ width: `${head}%` }}
         />
-        <div
-          data-testid="timeline-playhead"
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-3 bottom-0 w-px -translate-x-1/2 bg-slate-900 dark:bg-white"
-          style={{ left: `${head}%` }}
-        >
-          <span className="absolute -top-0.5 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-sm bg-slate-900 dark:bg-white" />
-        </div>
         <input
           type="range"
           data-testid="timeline-scrubber"
@@ -198,8 +217,16 @@ export function Timeline({
           step={1 / 30}
           value={playback.t}
           onChange={(e) => playback.seek(Number(e.target.value))}
-          className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 [&::-moz-range-thumb]:w-0 [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:appearance-none"
+          className={`peer absolute inset-0 h-full w-full cursor-grab appearance-none bg-transparent opacity-0 active:cursor-grabbing [&::-moz-range-thumb]:w-0 [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:appearance-none`}
         />
+        <div
+          data-testid="timeline-playhead"
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-5 bottom-0 w-px -translate-x-1/2 bg-slate-900 peer-hover:[&>span]:scale-110 peer-active:[&>span]:scale-125 peer-focus-visible:[&>span]:ring-2 peer-focus-visible:[&>span]:ring-blue-600 peer-focus-visible:[&>span]:ring-offset-2 dark:bg-white"
+          style={{ left: `${head}%` }}
+        >
+          <span className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-blue-600 shadow-md transition-transform dark:border-slate-900 dark:bg-blue-400" />
+        </div>
       </div>
     </div>
   );

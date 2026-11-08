@@ -10,4 +10,15 @@ export const playback = {
   seconds: ' s',
   bar: 'Điều khiển phát lại',
   markers: 'Mốc event',
+  events: {
+    snap: 'Snap: bóng được đưa vào cuộc',
+    break: 'Receiver bẻ route',
+    ruleFired: 'Luật pattern match kích hoạt',
+    throw: 'QB ném bóng',
+    catch: 'Bắt được bóng',
+    sack: 'QB bị sack',
+    int: 'Bóng bị chặn (interception)',
+    deflect: 'Bóng bị phá',
+    incomplete: 'Bóng không tới (incomplete)',
+  },
 } as const;

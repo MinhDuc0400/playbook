@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
+import { eventMarkers } from '@/components/field/markers';
 import { usePlayback } from '@/components/field/usePlayback';
 import type { DbSnapshot, Play, Settings, SimEventType } from '@/domain/types';
 import { bestThrowTime } from '@/features/matchup/bestThrow';
@@ -127,8 +128,11 @@ export function TrialView({
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
-      (result?.events ?? []).filter((e) => MARKER_TYPES.has(e.type)).map((e) => ({ t: e.t, type: e.type })),
-    [result],
+      eventMarkers(result?.events ?? [], MARKER_TYPES, [
+        ...(built?.offense.players ?? []),
+        ...(built?.defense.players ?? []),
+      ]),
+    [result, built],
   );
   const markTimes = useMemo(() => markers.map((m) => m.t), [markers]);
   useMatchupShortcuts(playback, markTimes);

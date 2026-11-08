@@ -68,7 +68,11 @@ describe('Timeline (FR-MU-03/04)', () => {
     render(<Timeline playback={makePlayback()} duration={4} minT={-1} markers={markers} />);
     const els = screen.getAllByTestId('timeline-marker');
     expect(els.map((e) => e.getAttribute('data-type'))).toEqual(['snap', 'break', 'throw']);
-    expect(els.map((e) => e.getAttribute('title'))).toEqual(['snap', 'X break', 'throw']);
+    expect(els.map((e) => e.getAttribute('aria-label'))).toEqual([
+      `${t.playback.events.snap} · -1.0 s`,
+      `${t.playback.events.break} · X break · 1.0 s`,
+      `${t.playback.events.throw} · 3.0 s`,
+    ]);
     // span = 5: (-1 + 1)/5 = 0%, (1 + 1)/5 = 40%, (3 + 1)/5 = 80%
     expect(els[0]?.style.left).toBe('0%');
     expect(els[1]?.style.left).toBe('40%');
@@ -113,6 +117,22 @@ describe('Timeline (FR-MU-03/04)', () => {
     const row = screen.getByTestId('timeline-scrubber').closest('.items-end')!;
     expect((row.firstElementChild as HTMLElement).className).toContain('w-16');
     expect((row.lastElementChild as HTMLElement).className).toContain('w-20');
+  });
+
+  it('D-34 hovering or focusing a marker shows what it is; leaving hides it', () => {
+    render(<Timeline playback={makePlayback()} duration={4} minT={-1} markers={markers} />);
+    const els = screen.getAllByTestId('timeline-marker');
+    expect(screen.queryByTestId('marker-tooltip')).toBeNull();
+    fireEvent.pointerEnter(els[1]!);
+    expect(screen.getByTestId('marker-tooltip')).toHaveTextContent(
+      `${t.playback.events.break} · X break · 1.0 s`,
+    );
+    fireEvent.pointerLeave(els[1]!);
+    expect(screen.queryByTestId('marker-tooltip')).toBeNull();
+    fireEvent.focus(els[2]!);
+    expect(screen.getByTestId('marker-tooltip')).toHaveTextContent(t.playback.events.throw);
+    fireEvent.blur(els[2]!);
+    expect(screen.queryByTestId('marker-tooltip')).toBeNull();
   });
 
   it('prev / next event buttons call stepToMark with the marker times', () => {

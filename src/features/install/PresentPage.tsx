@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
+import { eventMarkers } from '@/components/field/markers';
 import { usePlayback } from '@/components/field/usePlayback';
 import { useDbSnapshot, useInstall, useMatchupBundle } from '@/db/hooks';
 import type { DbSnapshot, Install, InstallItem, Matchup, Play, SimEventType } from '@/domain/types';
@@ -71,8 +72,11 @@ function PlayView({
 
   const markers = useMemo<TimelineMarker[]>(
     () =>
-      (result?.events ?? []).filter((e) => MARKER_TYPES.has(e.type)).map((e) => ({ t: e.t, type: e.type })),
-    [result],
+      eventMarkers(result?.events ?? [], MARKER_TYPES, [
+        ...(built?.offense.players ?? []),
+        ...(built?.defense.players ?? []),
+      ]),
+    [result, built],
   );
   const levels = useMemo(() => {
     const out: Record<string, ReturnType<typeof levelOf>> = {};

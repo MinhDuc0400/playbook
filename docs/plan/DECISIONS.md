@@ -311,3 +311,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   clicks and keys map exactly to what is drawn. Speed buttons became a gear menu (`btn-speed-menu`, items
   `btn-speed-<s>`, role `menuitemradio`; closes on pick, Escape, outside click). Present now starts at the
   pre-snap time like Matchup so both share the same scale. Engine and data unchanged.
+
+## D-34 Bigger playhead, marker tooltips (user request 2026-11-08)
+- Decision: the playhead knob is 24 px (grows on hover/press) and the scrubber area is 40 px tall, so it is easy to
+  grab. Event markers are 16 px wide hit targets, focusable, with an instant tooltip: event name, the player's label
+  (the target for throw/catch) and the time. Touch: tap shows it. Texts in `i18n/vi/playback.ts`, marker labels built
+  by `components/field/markers.ts`. Engine unchanged.

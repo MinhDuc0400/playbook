@@ -405,3 +405,53 @@ test('18 dragging the LOS moves the ball spot; it survives a reload', async ({ p
   );
   expect(again).toEqual(saved);
 });
+
+test('18 box-select the defense and drag it as a group (D-45)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await buildFreestyleBoard(page); // ends on the defense side: two CBs and an S
+  await page.getByTestId('tray-chip-CB').click(); // disarm: an armed chip places a player on a field click
+  await expect(page.getByTestId('tray-chip-CB')).toHaveAttribute('aria-pressed', 'false');
+  await page.getByTestId('tool-select').click();
+  const centers = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[data-testid="editor-canvas"] [data-kind="player"]')]
+        .filter((el) => el.closest('[data-testid="passive-layer"]') === null)
+        .map((el) => {
+          const b = (el.querySelector('[data-part="body"]') ?? el).getBoundingClientRect();
+          return { id: el.getAttribute('data-slot-id'), x: b.x + b.width / 2, y: b.y + b.height / 2 };
+        }),
+    );
+  const before = await centers();
+  expect(before).toHaveLength(3);
+  const svg = (await page.getByTestId('field-svg').boundingBox())!;
+
+  // Box from the empty field above-left of the defense to below-right of it (still above the LOS).
+  const top = Math.min(...before.map((c) => c.y)) - 25;
+  const bottom = Math.max(...before.map((c) => c.y)) + 15;
+  await page.mouse.move(svg.x + svg.width * 0.08, top);
+  await page.mouse.down();
+  await page.mouse.move(svg.x + svg.width * 0.92, bottom, { steps: 6 });
+  await expect(page.getByTestId('selection-box')).toBeVisible();
+  await page.mouse.up();
+  await expect(page.getByTestId('selection-box')).toHaveCount(0);
+
+  // Drag one defender: all three move by the same amount.
+  const grab = before[1]!;
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 60, grab.y - 40, { steps: 6 });
+  await page.mouse.up();
+  const after = await centers();
+  for (const b of before) {
+    const a = after.find((c) => c.id === b.id)!;
+    expect(a.x - b.x).toBeGreaterThan(40);
+    expect(b.y - a.y).toBeGreaterThan(25);
+    expect(Math.abs(a.x - b.x - (after[1]!.x - grab.x))).toBeLessThan(3);
+  }
+
+  // One undo step puts everyone back.
+  await page.keyboard.press('Control+z');
+  await expect
+    .poll(async () => (await centers()).map((c) => Math.round(c.x)))
+    .toEqual(before.map((c) => Math.round(c.x)));
+});

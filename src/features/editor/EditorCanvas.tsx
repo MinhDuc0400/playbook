@@ -292,6 +292,30 @@ function MotionOptionDraftLayer(): JSX.Element | null {
   );
 }
 
+/** Select tool box (D-45): the dashed rectangle being dragged on the empty field. */
+function SelectionBoxLayer(): JSX.Element | null {
+  const { viewport } = useFieldContext();
+  const box = useEditorStore((s) =>
+    s.draft?.kind === 'generic' ? (s.draft.data['box'] as { from: Point; to: Point } | undefined) : undefined,
+  );
+  if (!box) return null;
+  const a = toScreen(box.from, viewport);
+  const b = toScreen(box.to, viewport);
+  return (
+    <rect
+      data-testid="selection-box"
+      x={Math.min(a.x, b.x)}
+      y={Math.min(a.y, b.y)}
+      width={Math.abs(b.x - a.x)}
+      height={Math.abs(b.y - a.y)}
+      pointerEvents="none"
+      strokeDasharray="5 4"
+      strokeWidth={1.5}
+      className="fill-blue-500/10 stroke-blue-600 dark:stroke-blue-300"
+    />
+  );
+}
+
 const NO_SELECTION: ID[] = [];
 
 function SlotLayers({ play: playProp }: { play?: Play } = {}): JSX.Element | null {
@@ -665,6 +689,7 @@ export function EditorCanvas({
         {liveOffense && tool === 'man' && <LiveOffenseHitLayer offense={liveOffense} />}
         <RouteDraftLayer />
         <MotionOptionDraftLayer />
+        <SelectionBoxLayer />
       </FieldStage>
     </div>
   );

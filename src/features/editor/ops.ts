@@ -172,6 +172,25 @@ export function movePlayer(slotId: ID, pos: Point): Recipe {
   };
 }
 
+/** Move several players by the same delta (yd), each with its routes / zones (D-45). Same play when nothing moves. */
+export function movePlayers(slotIds: readonly ID[], delta: Point): Recipe {
+  return (play) => {
+    if (slotIds.length === 0 || (delta.x === 0 && delta.y === 0)) return play;
+    const ids = new Set(slotIds);
+    let changed = false;
+    const players = play.players.map((slot) => {
+      if (!ids.has(slot.id)) return slot;
+      changed = true;
+      return {
+        ...slot,
+        start: { x: slot.start.x + delta.x, y: slot.start.y + delta.y },
+        actions: translateActions(slot.actions, delta.x, delta.y),
+      };
+    });
+    return changed ? withStrength({ ...play, players }) : play;
+  };
+}
+
 /** Remove slot ids from a read plan's windows / minScore. */
 function dropSlots(plan: ReadPlan, gone: ReadonlySet<ID>): ReadPlan {
   const out: ReadPlan = { mode: plan.mode };

@@ -186,6 +186,101 @@ describe('selectTool (FR-ED-02, FR-OFF-02)', () => {
   });
 });
 
+describe('selectTool: move the selection, box select (D-45)', () => {
+  const start = (id: string) => play().players.find((s) => s.id === id)?.start;
+  const box = () => {
+    const d = store().draft;
+    return d?.kind === 'generic' ? (d.data['box'] as { from: Point; to: Point } | undefined) : undefined;
+  };
+
+  it('dragging one of several selected players moves them all, with routes, as one undo step', () => {
+    store().select(['x', 'z']);
+    selectTool.onPointerDown?.(ev({ x: -8, y: 0 }, onPlayer('x')), ctx);
+    expect(store().selection).toEqual(['x', 'z']);
+    selectTool.onPointerMove?.(ev({ x: -7, y: -1 }), ctx);
+    selectTool.onPointerMove?.(ev({ x: -6, y: -2 }), ctx);
+    selectTool.onPointerUp?.(ev({ x: -6, y: -2 }), ctx);
+    expect(start('x')).toEqual({ x: -6, y: -2 });
+    expect(start('z')).toEqual({ x: 10, y: -2 });
+    expect(start('q')).toEqual({ x: 0, y: -5 });
+    expect(getRoute(play(), 'x')?.path[0]).toEqual({ x: -6, y: 8 });
+    expect(history()).toBe(1);
+    store().undo();
+    expect(start('z')).toEqual({ x: 8, y: 0 });
+  });
+
+  it('a click (no drag) on one of several selected players selects only that one', () => {
+    store().select(['x', 'z']);
+    click(selectTool, ev({ x: -8, y: 0 }, onPlayer('x')));
+    expect(store().selection).toEqual(['x']);
+    expect(history()).toBe(0);
+  });
+
+  it('shift+click to add, then drag moves the whole selection', () => {
+    click(selectTool, ev({ x: -8, y: 0 }, onPlayer('x')));
+    selectTool.onPointerDown?.(ev({ x: 8, y: 0 }, onPlayer('z'), { shiftKey: true }), ctx);
+    selectTool.onPointerMove?.(ev({ x: 8, y: -2 }), ctx);
+    selectTool.onPointerUp?.(ev({ x: 8, y: -2 }), ctx);
+    expect(store().selection).toEqual(['x', 'z']);
+    expect(start('x')).toEqual({ x: -8, y: -2 });
+    expect(start('z')).toEqual({ x: 8, y: -2 });
+  });
+
+  it('dragging on the field draws a box and selects the players inside it, without history', () => {
+    store().select(['q']);
+    selectTool.onPointerDown?.(ev({ x: -10, y: 2 }), ctx);
+    expect(store().selection).toEqual([]);
+    selectTool.onPointerMove?.(ev({ x: 1, y: -1 }), ctx);
+    expect(box()).toEqual({ from: { x: -10, y: 2 }, to: { x: 1, y: -1 } });
+    expect(store().selection).toEqual(['c', 'x']); // live while dragging
+    selectTool.onPointerMove?.(ev({ x: 9, y: -6 }), ctx);
+    selectTool.onPointerUp?.(ev({ x: 9, y: -6 }), ctx);
+    expect(store().selection).toEqual(['q', 'c', 'x', 'z']);
+    expect(box()).toBeUndefined();
+    expect(store().draft).toBeNull();
+    expect(history()).toBe(0);
+  });
+
+  it('the box uses the raw (unsnapped) pointer', () => {
+    // Snapped, the box would reach X at (-8, 0); the raw box stops short of it.
+    selectTool.onPointerDown?.(ev({ x: -8.5, y: 0.5 }, FIELD, { raw: { x: -8.4, y: 0.4 } }), ctx);
+    selectTool.onPointerMove?.(ev({ x: -8, y: 0 }, FIELD, { raw: { x: -8.1, y: 0.1 } }), ctx);
+    expect(box()).toEqual({ from: { x: -8.4, y: 0.4 }, to: { x: -8.1, y: 0.1 } });
+    expect(store().selection).toEqual([]);
+  });
+
+  it('shift+box adds to the selection', () => {
+    store().select(['q']);
+    selectTool.onPointerDown?.(ev({ x: 7, y: 1 }, FIELD, { shiftKey: true }), ctx);
+    selectTool.onPointerMove?.(ev({ x: 9, y: -1 }, FIELD, { shiftKey: true }), ctx);
+    selectTool.onPointerUp?.(ev({ x: 9, y: -1 }), ctx);
+    expect(store().selection).toEqual(['q', 'z']);
+  });
+
+  it('then dragging a boxed player moves the boxed group', () => {
+    selectTool.onPointerDown?.(ev({ x: -10, y: 2 }), ctx);
+    selectTool.onPointerMove?.(ev({ x: 10, y: -1 }), ctx);
+    selectTool.onPointerUp?.(ev({ x: 10, y: -1 }), ctx);
+    expect(store().selection).toEqual(['c', 'x', 'z']);
+    selectTool.onPointerDown?.(ev({ x: 0, y: 0 }, onPlayer('c')), ctx);
+    selectTool.onPointerMove?.(ev({ x: 0, y: -1 }), ctx);
+    selectTool.onPointerUp?.(ev({ x: 0, y: -1 }), ctx);
+    expect([start('c'), start('x'), start('z'), start('q')]).toEqual([
+      { x: 0, y: -1 },
+      { x: -8, y: -1 },
+      { x: 8, y: -1 },
+      { x: 0, y: -5 },
+    ]);
+  });
+
+  it('switching tools mid-box clears the box', () => {
+    selectTool.onPointerDown?.(ev({ x: -10, y: 2 }), ctx);
+    selectTool.onPointerMove?.(ev({ x: 1, y: -1 }), ctx);
+    selectTool.onDeactivate?.(ctx);
+    expect(store().draft).toBeNull();
+  });
+});
+
 describe('routeTool (FR-OFF-01)', () => {
   const start = () => click(routeTool, ev({ x: 8, y: 0 }, onPlayer('z')));
   const A = { x: 8, y: 6 };

@@ -110,6 +110,31 @@ describe('EditorCanvas place tool (FR-ED-02, FR-ED-03)', () => {
 });
 
 describe('EditorCanvas select tool', () => {
+  it('D-45 dragging on the empty field draws a box and selects the players in it', () => {
+    const svg = renderCanvas();
+    expect(screen.queryByTestId('selection-box')).toBeNull();
+    fireEvent.pointerDown(svg, { pointerId: 1, ...px({ x: -10, y: 2 }) });
+    fireEvent.pointerMove(svg, { pointerId: 1, ...px({ x: 1, y: -1 }) });
+    const box = screen.getByTestId('selection-box');
+    const a = toScreen({ x: -10, y: 2 }, vp);
+    const b = toScreen({ x: 1, y: -1 }, vp);
+    expect(Number(box.getAttribute('x'))).toBeCloseTo(Math.min(a.x, b.x), 0);
+    expect(Number(box.getAttribute('width'))).toBeCloseTo(Math.abs(b.x - a.x), 0);
+    expect(Number(box.getAttribute('height'))).toBeCloseTo(Math.abs(b.y - a.y), 0);
+    expect(store().selection).toEqual(['c', 'x']);
+    fireEvent.pointerUp(svg, { pointerId: 1, ...px({ x: 1, y: -1 }) });
+    expect(screen.queryByTestId('selection-box')).toBeNull();
+
+    // Then dragging X moves C with it.
+    fireEvent.pointerDown(screen.getByTestId('token-X'), { pointerId: 1, ...px({ x: -8, y: 0 }) });
+    fireEvent.pointerMove(svg, { pointerId: 1, ...px({ x: -7, y: -1 }) });
+    fireEvent.pointerUp(svg, { pointerId: 1, ...px({ x: -7, y: -1 }) });
+    const starts = Object.fromEntries(store().play!.players.map((s) => [s.id, s.start]));
+    expect(starts['x']).toEqual({ x: -7, y: -1 });
+    expect(starts['c']).toEqual({ x: 1, y: -1 });
+    expect(starts['z']).toEqual({ x: 8, y: 0 });
+  });
+
   it('drags a player with the pointer', () => {
     const svg = renderCanvas();
     const token = screen.getByTestId('token-Z');

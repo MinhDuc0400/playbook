@@ -107,4 +107,19 @@ describe('useEditorShortcuts (SRS §12.3)', () => {
     await user.keyboard('{Control>}z{/Control}');
     expect(useEditorStore.getState().play!.players).toHaveLength(4);
   });
+
+  it('Ctrl+A / Cmd+A selects every player of the play and switches to the Select tool (D-45)', async () => {
+    const user = userEvent.setup();
+    useEditorStore.getState().load(makePlay('offense'));
+    useEditorStore.setState({ tool: 'route' });
+    render(<Harness />);
+    await user.keyboard('{Control>}a{/Control}');
+    const ids = useEditorStore.getState().play!.players.map((p) => p.id);
+    expect(useEditorStore.getState().selection).toEqual(ids);
+    expect(useEditorStore.getState().tool).toBe('select');
+    useEditorStore.getState().select([]);
+    await user.keyboard('{Meta>}a{/Meta}');
+    expect(useEditorStore.getState().selection).toEqual(ids);
+    expect(useEditorStore.temporal.getState().pastStates).toHaveLength(0);
+  });
 });

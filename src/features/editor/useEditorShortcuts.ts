@@ -1,4 +1,4 @@
-/** Editor keyboard shortcuts (SRS §12.3): tool hotkeys, F flip, undo/redo, Ctrl+D duplicate. */
+/** Editor keyboard shortcuts (SRS §12.3): tool hotkeys, F flip, undo/redo, Ctrl+D duplicate, Ctrl+A select all. */
 import { nanoid } from 'nanoid';
 import { useEffect } from 'react';
 import { duplicatePlayer, flip } from '@/features/editor/ops';
@@ -32,6 +32,11 @@ export function useEditorShortcuts(maxPlayers: number): void {
         } else if (key === 'y') {
           e.preventDefault();
           store.redo();
+        } else if (key === 'a') {
+          // D-45: select every player of the side being edited, ready to drag.
+          e.preventDefault();
+          store.setTool('select');
+          useEditorStore.getState().select(play.players.map((p) => p.id));
         } else if (key === 'd') {
           e.preventDefault();
           const ids = store.selection.slice();

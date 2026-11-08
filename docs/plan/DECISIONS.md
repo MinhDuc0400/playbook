@@ -395,3 +395,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   It was y 1.5..10 (half way into the end zone). `SEED_VERSION = 3`: a database at v2 or below whose Spy play still
   has the v2 zone exactly gets only that one action replaced (name and other players kept); an edited zone or a
   deleted play is left alone.
+
+## D-45 Select tool: box select, Ctrl+A, move the selection (user request 2026-11-08)
+- Decision: with the Select tool, dragging on the empty field draws a dashed box (raw, unsnapped yards) and selects
+  the active side's players whose spot is inside it, live while dragging; Shift adds to the selection. Ctrl+A / ⌘A
+  selects every player of the side being edited and switches to the Select tool. Pressing a player that is already
+  selected drags the whole selection: the grabbed player follows the (snapped) pointer and the others keep their
+  spacing; routes, motion, options, zones and drop points move with their players (`movePlayers`); one drag = one
+  undo step. A click without movement on one player of a group selects just that one. Freestyle edits one side at
+  a time, so the box and Ctrl+A never pick the faded side. Same tool in the play editor and Freestyle.

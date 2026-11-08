@@ -13,6 +13,7 @@ import {
   insertRoutePoint,
   moveRoutePoint,
   movePlayer,
+  movePlayers,
   refreshStrength,
   removePlayers,
   setLabel,
@@ -150,6 +151,30 @@ describe('addPlayer / canAddPlayer (FR-ED-02)', () => {
     expect(p.strength).toBe('left');
     const q = run(p, addPlayer('WR', { x: 9, y: 0 }, 5, idGen));
     expect(q.strength).toBe('balanced');
+  });
+});
+
+describe('movePlayers (D-45)', () => {
+  it('moves every listed player by the same delta with its route; others stay', () => {
+    const p = run(offense(), movePlayers(['x', 'c'], { x: 2, y: -1 }));
+    expect(slotOf(p, 'x').start).toEqual({ x: -6, y: -1 });
+    expect(slotOf(p, 'x').actions).toEqual([route([{ x: -6, y: 9 }])]);
+    expect(slotOf(p, 'c').start).toEqual({ x: 2, y: -1 });
+    expect(slotOf(p, 'z').start).toEqual({ x: 8, y: 0 });
+    expect(slotOf(p, 'q').start).toEqual({ x: 0, y: -5 });
+  });
+
+  it('moves a defense zone with its player', () => {
+    const p = run(defense(), movePlayers(['cb', 'r'], { x: 1, y: 1 }));
+    expect(slotOf(p, 'cb').start).toEqual({ x: -7, y: 6 });
+    expect(slotOf(p, 'cb').actions[0]).toMatchObject({ dropPoint: { x: -7, y: 8 }, offset: { x: 1, y: 1 } });
+    expect(slotOf(p, 'r').start).toEqual({ x: 3, y: 8 });
+  });
+
+  it('a zero delta or no ids returns the same play', () => {
+    const base = deepFreeze(offense());
+    expect(movePlayers(['x'], { x: 0, y: 0 })(base)).toBe(base);
+    expect(movePlayers([], { x: 3, y: 0 })(base)).toBe(base);
   });
 });
 

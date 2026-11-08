@@ -135,7 +135,7 @@ export function TrialView({
     [result, built],
   );
   const markTimes = useMemo(() => markers.map((m) => m.t), [markers]);
-  useMatchupShortcuts(playback, markTimes);
+  useMatchupShortcuts(playback, markTimes, qb.enabled);
 
   const field = settings.fields[offense.format];
   const hideReadInfo = qb.enabled && !qbThrown;

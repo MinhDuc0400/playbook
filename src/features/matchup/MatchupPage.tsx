@@ -189,7 +189,7 @@ function MatchupEditor({
     [result, built],
   );
   const markTimes = useMemo(() => markers.map((m) => m.t), [markers]);
-  useMatchupShortcuts(playback, markTimes);
+  useMatchupShortcuts(playback, markTimes, qb.enabled);
 
   const levels = useMemo(() => {
     if (!features.showStats) return NO_LEVELS;

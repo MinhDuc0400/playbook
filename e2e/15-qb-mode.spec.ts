@@ -34,6 +34,16 @@ test('15 QB mode: a key press throws to that read at the playhead time', async (
   await expect(page.getByTestId('timeline-time')).toHaveText('1.0 s');
   await expect(page.getByTestId('qb-tally')).toContainText('2');
 
+  // D-36: Space plays/pauses even when the scrubber or a button kept the focus.
+  const playBtn = page.getByTestId('btn-play');
+  await page.getByTestId('timeline-scrubber').focus();
+  await page.keyboard.press(' ');
+  await expect(playBtn).toHaveAttribute('aria-label', 'Tạm dừng');
+  await page.getByTestId('qb-best-Y').focus();
+  await page.keyboard.press(' ');
+  await expect(playBtn).toHaveAttribute('aria-label', 'Phát');
+  await expect(page.getByTestId('qb-feedback-target')).toHaveText('Y');
+
   // Retry clears the throw; leaving the mode restores the auto QB decision.
   await page.getByTestId('qb-retry').click();
   await page.getByTestId('qb-exit').click();

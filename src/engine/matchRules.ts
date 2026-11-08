@@ -47,6 +47,7 @@ export function eventHolds(
 
 export type RuleOutcome =
   | { type: 'man'; targetId: ID }
+  | { type: 'manTrigger'; targetId: ID }
   | { type: 'zone'; zone: ZonePresetId }
   | { type: 'carry'; receiverId: ID }
   | { type: 'passOff'; receiverId: ID };
@@ -68,6 +69,8 @@ export function evaluateRules(opts: {
   heldSince: Readonly<Record<ID, number>>;
   strongSign: 1 | -1;
   resolveThenRef: (ref: ReceiverRef) => ID | null;
+  /** Sideline bounds for `any` ties (nearer the sideline first); default: larger |x| first. */
+  bounds?: { minX: number; maxX: number };
 }): { fired: { rule: MatchRule; outcome: RuleOutcome } | null; heldSince: Record<ID, number> } {
   const delay = (1 - Math.min(1, Math.max(0, opts.iq))) * IQ_DELAY;
   const held: Record<ID, number> = { ...opts.heldSince };
@@ -75,13 +78,20 @@ export function evaluateRules(opts: {
   for (const rule of ordered) {
     if (opts.fired.has(rule.id)) continue;
     const { when } = rule;
-    // D-48 receivers (any / nth) are handled by the area coordinator and the lane defender.
-    const id = isReceiverRef(when.receiver) ? opts.resolveRef(when.receiver) : null;
-    const seen = id === null ? undefined : opts.perceived.find((p) => p.id === id);
-    const holds =
-      seen !== undefined &&
-      (when.beforeTime === undefined || opts.t < when.beforeTime) &&
-      eventHolds(when.event, seen, { minDepth: when.minDepth, strongSign: opts.strongSign });
+    // D-48: area rules are the area coordinator's; `nth` only exists with them.
+    if (when.event === 'entersArea' || when.receiver.kind === 'nth') continue;
+    const inTime = when.beforeTime === undefined || opts.t < when.beforeTime;
+    const holdsFor = (p: PerceivedPlayer): boolean =>
+      eventHolds(when.event as MatchEvent, p, { minDepth: when.minDepth, strongSign: opts.strongSign });
+    let seen: PerceivedPlayer | undefined;
+    if (isReceiverRef(when.receiver)) {
+      const id = opts.resolveRef(when.receiver);
+      seen = id === null ? undefined : opts.perceived.find((p) => p.id === id);
+      if (seen && !holdsFor(seen)) seen = undefined;
+    } else {
+      seen = inTime ? anyFirst(opts.perceived.filter(holdsFor), opts.bounds) : undefined;
+    }
+    const holds = seen !== undefined && inTime;
     if (!holds || seen === undefined) {
       delete held[rule.id];
       continue;
@@ -96,7 +106,7 @@ export function evaluateRules(opts: {
       if (targetId === null) continue;
       outcome = { type: 'man', targetId };
     } else if (then.type === 'manTrigger') {
-      outcome = { type: 'man', targetId: seen.id };
+      outcome = { type: 'manTrigger', targetId: seen.id };
     } else if (then.type === 'zone') {
       outcome = { type: 'zone', zone: then.zone };
     } else {
@@ -105,6 +115,15 @@ export function evaluateRules(opts: {
     return { fired: { rule, outcome }, heldSince: held };
   }
   return { fired: null, heldSince: held };
+}
+
+/** `any` receiver: the candidate nearer the sideline, then by id. */
+function anyFirst(
+  candidates: readonly PerceivedPlayer[],
+  bounds: { minX: number; maxX: number } | undefined,
+): PerceivedPlayer | undefined {
+  const dist = (x: number): number => (bounds ? Math.min(x - bounds.minX, bounds.maxX - x) : -Math.abs(x));
+  return [...candidates].sort((a, b) => dist(a.pos.x) - dist(b.pos.x) || (a.id < b.id ? -1 : 1))[0];
 }
 
 /** Helper for tests/UI: centre of a set of points. */

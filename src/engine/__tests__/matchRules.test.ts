@@ -182,3 +182,28 @@ describe('centroid', () => {
     ).toEqual({ x: 2, y: 2 });
   });
 });
+
+describe('D-48 evaluateRules: any receiver, manTrigger, area rules skipped', () => {
+  it('any + out fires on the receiver running out, nearer the sideline first', () => {
+    const r = ev({
+      rules: [rule('a', 1, { when: { receiver: { kind: 'any' }, event: 'out' } })],
+      perceived: [pp(5, 2, 6, 0, 'wr1'), pp(10, 2, 6, 0, 'wr2'), pp(-3, 2, -0.5, 4, 'wr3')],
+      bounds: { minX: -12.5, maxX: 12.5 },
+    });
+    expect(r.fired?.outcome).toEqual({ type: 'carry', receiverId: 'wr2' });
+  });
+
+  it('manTrigger returns the trigger as target', () => {
+    const r = ev({ rules: [rule('a', 1, { then: { type: 'manTrigger' } })] });
+    expect(r.fired?.outcome).toEqual({ type: 'manTrigger', targetId: 'wr1' });
+  });
+
+  it('entersArea rules are left to the area coordinator; nth never fires here', () => {
+    const area = rule('a', 1, {
+      when: { receiver: { kind: 'any' }, event: 'entersArea', area: { kind: 'self' } },
+      then: { type: 'manTrigger' },
+    });
+    const nth = rule('b', 2, { when: { receiver: { kind: 'nth', n: 1 }, event: 'vertical' } });
+    expect(ev({ rules: [area, nth] }).fired).toBeNull();
+  });
+});

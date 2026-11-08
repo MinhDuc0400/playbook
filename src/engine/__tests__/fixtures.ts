@@ -1,4 +1,5 @@
 /** Shared engine test fixtures (no @/db imports: shapes copied from the seed plays). */
+import { cornerRules, insideRules } from '@/domain/areaRules';
 import { createDefaultFields, DEFAULT_BALL_SPOT } from '@/domain/field';
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import { DEFAULT_PRESETS } from '@/domain/presets';
@@ -225,4 +226,22 @@ export function bunchTightPlay(routes: {
     ],
     ['bt-y', 'bt-z', 'bt-x', 'bt-c'],
   );
+}
+
+/** D-48: the Bangkok defense with Bunch Killer rules instead of `areaMatch` (same slots, ids and zones). */
+export function bangkokRulesPlay(variant: 'rush' | 'spy' = 'rush'): Play {
+  const old = bangkokPlay(variant);
+  const teammate: Record<string, string> = { 'b-lb': 'b-cb2', 'b-s': 'b-cb1' };
+  return {
+    ...old,
+    players: old.players.map((p) => {
+      const { areaMatch, ...rest } = p;
+      if (!areaMatch) return p;
+      const id = () => `${p.id}-bk`;
+      return {
+        ...rest,
+        matchRules: areaMatch.role === 'corner' ? cornerRules(id) : insideRules(id, teammate[p.id] ?? null),
+      };
+    }),
+  };
 }

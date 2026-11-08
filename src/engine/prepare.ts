@@ -1,5 +1,6 @@
 /** Pre-snap preparation (SRS §8.2 steps 2–4, FR-ENG-02, D-10). Pure. */
-import { computeAreaLanes, laneSpan, type AreaLanes } from '@/domain/areaLanes';
+import { computeAreaLanes, laneSpan, type AreaLanes, type Lanes } from '@/domain/areaLanes';
+import { computeRuleLanes, isAreaRule } from '@/domain/areaRules';
 import { fieldBounds, sidelineBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Numbering } from '@/domain/numbering';
@@ -21,6 +22,7 @@ import { hookZoneForX, isDeepZone, zonePolygon, zonePreset } from '@/domain/zone
 import { forkRng, uniform } from './rng';
 import { planMotion, planOption, planRoute } from './routeFollower';
 import type { MotionPlan, OptionPlan, RoutePlan } from './routeFollower';
+import type { LaneMember } from './areaCoordinator';
 import type { DefenderBinding, FieldInfo } from './types';
 
 export interface PreparedSim {
@@ -87,10 +89,24 @@ export function prepareSim(input: SimInput): PreparedSim {
   const warnings: string[] = [];
 
   const lanes = computeAreaLanes(defense.players);
+  // D-48 lanes from area rules (the old `areaMatch` path wins while a slot still carries it).
+  const ruleLanes = lanes ? null : computeRuleLanes(defense.players);
+  const laneMembers = ruleLanes ? bindLaneMembers(defense.players, ruleLanes, warnings) : null;
   const bindings: Record<ID, DefenderBinding> = {};
   for (const slot of defense.players) {
     const plain = bindDefender(slot, numbering, input, warnings);
-    if (lanes && lanes.order.includes(slot.id)) {
+    if (ruleLanes && laneMembers && ruleLanes.order.includes(slot.id)) {
+      bindings[slot.id] = {
+        kind: 'lane',
+        lanes: ruleLanes,
+        members: laneMembers,
+        base:
+          plain.kind === 'zone' && !plain.fallback
+            ? { polygon: plain.polygon, dropPoint: plain.dropPoint, deep: plain.deep }
+            : null,
+        hold: { x: slot.start.x, y: slot.start.y },
+      };
+    } else if (lanes && lanes.order.includes(slot.id)) {
       bindings[slot.id] = bindArea(slot, plain, lanes, info, warnings);
     } else {
       if (slot.areaMatch) warnings.push(`${slot.label}: area match ignored (${plain.kind})`);
@@ -191,6 +207,31 @@ function bindDefender(
     case 'spy':
       return { kind: 'spy', targetId: numbering.qbId ?? null };
   }
+}
+
+/**
+ * D-48: lane members with their valid area rules. An area rule is dropped with "<label>: area rule ignored"
+ * when its slot is not a lane member (rush / man / spy), when it names a teammate that is not a lane member
+ * (missing, rusher…) or itself, or when an `nth` receiver is used with a non-area event.
+ */
+function bindLaneMembers(slots: readonly PlayerSlot[], lanes: Lanes, warnings: string[]): LaneMember[] {
+  const members = new Set(lanes.order);
+  const out: LaneMember[] = [];
+  for (const slot of slots) {
+    const rules = slot.matchRules ?? [];
+    const bad = rules.some((r) => !isAreaRule(r) && r.when.receiver.kind === 'nth');
+    const area = rules.filter(isAreaRule);
+    const valid = area.filter((r) => {
+      if (r.when.area?.kind !== 'teammate') return true;
+      const mate = r.when.area.slotId;
+      return mate !== slot.id && members.has(mate);
+    });
+    if (bad || (area.length > 0 && (!members.has(slot.id) || valid.length < area.length))) {
+      warnings.push(`${slot.label}: area rule ignored`);
+    }
+    if (members.has(slot.id)) out.push({ id: slot.id, rules: valid });
+  }
+  return out;
 }
 
 /** Area-match lane rectangle depth (yd past the LOS) used as base zone when the slot has none. */

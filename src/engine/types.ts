@@ -17,7 +17,8 @@ import type {
   Stats,
   TuningParams,
 } from '@/domain/types';
-import type { AreaLanes } from '@/domain/areaLanes';
+import type { AreaLanes, Lanes } from '@/domain/areaLanes';
+import type { LaneMember } from './areaCoordinator';
 
 export type { Rng };
 
@@ -111,7 +112,20 @@ export type DefenderBinding =
   | { kind: 'rush'; path: Point[]; delay: number }
   | { kind: 'spy'; targetId: ID | null }
   | AreaMatchBinding
+  | LaneBinding
   | { kind: 'none' };
+
+/**
+ * D-48 lane member: owns a lane of `lanes`; its area rules run in the area coordinator together with the
+ * other `members`. `base` is its zone, or null = stand on `hold` (reacts only to the ball). Never presses.
+ */
+export interface LaneBinding {
+  kind: 'lane';
+  lanes: Lanes;
+  members: LaneMember[];
+  base: { polygon: Point[]; dropPoint: Point; deep: boolean } | null;
+  hold: Point;
+}
 
 /** D-40 area match: lane `index` of `lanes`, base zone played while it has no man. */
 export interface AreaMatchBinding {

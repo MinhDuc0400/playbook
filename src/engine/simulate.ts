@@ -34,6 +34,8 @@ import type { DefenderAgent } from './agents/common';
 import { createRuleDefender } from './agents/ruleDefender';
 import { goalLineY } from '@/domain/field';
 import { createAreaMatchDefender } from './agents/areaMatchDefender';
+import { createLaneDefender } from './agents/laneDefender';
+import { isAreaRule } from '@/domain/areaRules';
 import { createRusherAgent } from './agents/rusher';
 import { createZoneDefender } from './agents/zoneDefender';
 import { computeMetrics } from './metrics';
@@ -271,7 +273,18 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     let agent: Agent;
     let coverage: DefenderAgent | undefined;
     const rules = slot.matchRules ?? [];
-    if (b?.kind === 'areaMatch') {
+    if (b?.kind === 'lane') {
+      agent = coverage = createLaneDefender({
+        id: slot.id,
+        binding: b,
+        rules: rules.filter((r) => !isAreaRule(r)),
+        leverage: slot.leverage,
+        info,
+        anticipation,
+        resolveRef: (ref) => resolveReceiverRef(ref, numbering),
+        strongSign: numbering.strongSide === 'right' ? 1 : -1,
+      });
+    } else if (b?.kind === 'areaMatch') {
       agent = coverage = createAreaMatchDefender({
         id: slot.id,
         binding: b,
@@ -326,7 +339,7 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     if (
       anticipation.readingEnabled &&
       b &&
-      (b.kind === 'man' || b.kind === 'zone' || b.kind === 'areaMatch')
+      (b.kind === 'man' || b.kind === 'zone' || b.kind === 'areaMatch' || b.kind === 'lane')
     ) {
       const tells = new Map<ID, { state: TellState; ema: number | null }>();
       de.tells = tells;

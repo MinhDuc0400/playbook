@@ -23,7 +23,9 @@ import type {
   Side,
   Role,
 } from '@/domain/types';
+import { dragYardLine } from '@/domain/field';
 import { alignedPlayers, numberReceivers, refForPlayer } from '@/domain/numbering';
+import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { AssignmentLayer } from './defense/AssignmentLayer';
 import { GhostLayer } from './defense/GhostLayer';
@@ -42,6 +44,8 @@ export interface EditorCanvasProps {
   /** Freestyle tray hooks (FR-FS-04): a role dropped on / clicked onto the field. */
   onPlace?: (role: Role, point: Point) => void;
   pendingRole?: Role | null;
+  /** Freestyle: makes the LOS draggable; called with the new ball spot (whole yards) while dragging. */
+  onBallSpotChange?: (ballSpot: BallSpot) => void;
 }
 
 /** dataTransfer type carrying a Role string from the Freestyle tray. */
@@ -396,6 +400,63 @@ function MinimapDots(): JSX.Element | null {
   );
 }
 
+/** Half height (yd) of the invisible strip along the LOS that grabs a drag. */
+const LOS_GRIP = 0.6;
+
+/**
+ * Freestyle: a transparent strip on the LOS (under the player tokens). Dragging it moves the ball spot by the
+ * dragged yards; the stage shifts the view by the same amount, so the LOS and the players follow the pointer.
+ */
+function LosHandle({
+  field,
+  ballSpot,
+  onChange,
+}: {
+  field: FieldConfig;
+  ballSpot: BallSpot;
+  onChange: (ballSpot: BallSpot) => void;
+}): JSX.Element {
+  const { viewport } = useFieldContext();
+  const drag = useRef<{ id: number; y: number; yardLine: number } | null>(null);
+  const a = toScreen({ x: -1000, y: LOS_GRIP }, viewport);
+  const b = toScreen({ x: 1000, y: -LOS_GRIP }, viewport);
+  return (
+    <rect
+      data-testid="los-handle"
+      x={0}
+      y={a.y}
+      width={viewport.width}
+      height={Math.max(b.y - a.y, 8)}
+      fill="transparent"
+      style={{ cursor: 'ns-resize' }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        drag.current = { id: e.pointerId, y: e.clientY, yardLine: ballSpot.yardLine };
+        try {
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+        } catch {
+          // capture is best-effort
+        }
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d || d.id !== e.pointerId) return;
+        e.stopPropagation();
+        const yardLine = dragYardLine(d.yardLine, (d.y - e.clientY) / viewport.scale, field);
+        if (yardLine !== ballSpot.yardLine) onChange({ ...ballSpot, yardLine });
+      }}
+      onPointerUp={(e) => {
+        if (!drag.current) return;
+        e.stopPropagation();
+        drag.current = null;
+      }}
+    >
+      <title>{t.freestyle.dragLos}</title>
+    </rect>
+  );
+}
+
 export function EditorCanvas({
   field,
   ballSpot,
@@ -403,6 +464,7 @@ export function EditorCanvas({
   showGrid,
   onPlace,
   pendingRole,
+  onBallSpotChange,
 }: EditorCanvasProps): JSX.Element {
   const side = useEditorStore((s) => s.play?.side);
   const play = useEditorStore((s) => s.play);
@@ -581,12 +643,17 @@ export function EditorCanvas({
         ballSpot={ballSpot}
         showGrid={showGrid}
         minimapContent={() => <MinimapDots />}
+        anchorFieldOnBallMove={onBallSpotChange !== undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDoubleClick={onDoubleClick}
       >
         <ViewportProbe target={viewportRef} />
+        {/* Only with the Select tool and no armed chip, so clicks on the LOS still place / draw. */}
+        {onBallSpotChange && tool === 'select' && !pendingRole && (
+          <LosHandle field={field} ballSpot={ballSpot} onChange={onBallSpotChange} />
+        )}
         {companion && <PassiveLayer companion={companion} active={play} />}
         {side === 'defense' && (
           <>

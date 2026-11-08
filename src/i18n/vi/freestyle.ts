@@ -1,6 +1,7 @@
 /** Freestyle mode strings (FR-FS-16, D-27). */
 export const freestyle = {
   trayLabel: 'Khay cầu thủ',
+  dragLos: 'Kéo LOS lên/xuống để đổi vị trí bóng',
   chipHint: 'Kéo vào sân hoặc chạm để chọn rồi chạm sân',
   remaining: 'còn lại',
   removeSelected: 'Xóa cầu thủ',

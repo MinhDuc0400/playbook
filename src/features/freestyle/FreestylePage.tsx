@@ -4,7 +4,7 @@
  */
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useState } from 'react';
-import type { Settings } from '@/domain/types';
+import type { BallSpot, Settings } from '@/domain/types';
 import { PanelTabs } from '@/components/ui/PanelTabs';
 import { useSettings } from '@/db/hooks';
 import { DEFAULT_BALL_SPOT } from '@/domain/field';
@@ -20,7 +20,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { FreestyleTopBar } from './FreestyleTopBar';
 import { PlayerTray } from './PlayerTray';
 import { TrialView } from './TrialView';
-import { loadDraft } from './draft';
+import { loadBallSpot, loadDraft, saveBallSpot } from './draft';
 import { emptyPlay, placeRole } from './trayOps';
 import { useFreestyleDraft } from './useFreestyleDraft';
 import { trialHint, useTrialKeys, useTrialPlays } from './useFreestyleTrial';
@@ -56,6 +56,11 @@ interface BoardProps {
 function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX.Element {
   const isDesktop = useIsDesktop();
   const [trial, setTrial] = useState(false);
+  const [ballSpot, setBallSpot] = useState<BallSpot>(() => loadBallSpot() ?? DEFAULT_BALL_SPOT);
+  const onBallSpotChange = useCallback((b: BallSpot) => {
+    setBallSpot(b);
+    saveBallSpot(b);
+  }, []);
   const [liveOn, setLiveOn] = useState(false);
   const live = isDesktop && liveOn;
   const plays = useTrialPlays();
@@ -72,6 +77,7 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
       live={live}
       onLiveChange={isDesktop ? setLiveOn : undefined}
       field={field}
+      ballSpot={ballSpot}
     />
   );
   const isOffense = useEditorStore((s) => s.play?.side !== 'defense');
@@ -95,7 +101,8 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
     <EditorCanvas
       key={live ? 'live' : 'edit'} // remount: the stage keeps its zoom on resize, so refit to the new column
       field={field}
-      ballSpot={DEFAULT_BALL_SPOT}
+      ballSpot={ballSpot}
+      onBallSpotChange={onBallSpotChange}
       snap={snap}
       showGrid={showGrid}
       pendingRole={pendingRole}
@@ -108,7 +115,9 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
   const panel = isOffense ? <OffensePanel /> : <DefensePanel />;
 
   if (trial && plays.offense && plays.defense) {
-    const view = <TrialView offense={plays.offense} defense={plays.defense} settings={settings} />;
+    const view = (
+      <TrialView offense={plays.offense} defense={plays.defense} settings={settings} ballSpot={ballSpot} />
+    );
     return isDesktop ? (
       <div data-testid="freestyle-page" className="flex h-[calc(100vh-3.5rem)] min-h-[480px] flex-col">
         {topBar}
@@ -148,7 +157,13 @@ function Board({ maxPlayers, snap, showGrid, field, settings }: BoardProps): JSX
       className="min-h-0 min-w-0 border-l border-slate-200 dark:border-slate-700"
     >
       {hint === null && plays.offense && plays.defense ? (
-        <TrialView embedded offense={plays.offense} defense={plays.defense} settings={settings} />
+        <TrialView
+          embedded
+          offense={plays.offense}
+          defense={plays.defense}
+          settings={settings}
+          ballSpot={ballSpot}
+        />
       ) : (
         <p
           data-testid="fs-live-hint"

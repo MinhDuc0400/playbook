@@ -136,3 +136,34 @@ describe('T-FS-02 placement hooks', () => {
     expect(onPlace).not.toHaveBeenCalled();
   });
 });
+
+describe('Freestyle LOS drag', () => {
+  it('no handle without onBallSpotChange', () => {
+    renderCanvas();
+    expect(screen.queryByTestId('los-handle')).toBeNull();
+  });
+
+  it('dragging the LOS handle up 4 yd moves the ball 4 yd downfield, without touching the selection', () => {
+    const onBallSpotChange = vi.fn();
+    store().select(['x']);
+    renderCanvas({ onBallSpotChange });
+    const handle = screen.getByTestId('los-handle');
+    fireEvent.pointerDown(handle, { pointerId: 1, button: 0, ...px({ x: 3, y: 0 }) });
+    fireEvent.pointerMove(handle, { pointerId: 1, ...px({ x: 3, y: 4 }) });
+    expect(onBallSpotChange).toHaveBeenLastCalledWith({ x: 0, yardLine: DEFAULT_BALL_SPOT.yardLine + 4 });
+    fireEvent.pointerUp(handle, { pointerId: 1, ...px({ x: 3, y: 4 }) });
+    expect(store().selection).toEqual(['x']);
+  });
+});
+
+describe('Freestyle LOS drag only with the Select tool and no armed chip', () => {
+  it('an armed tray chip or another tool leaves the LOS free for clicks', () => {
+    const onBallSpotChange = vi.fn();
+    const { unmount } = renderCanvas({ onBallSpotChange, pendingRole: 'WR', onPlace: vi.fn() });
+    expect(screen.queryByTestId('los-handle')).toBeNull();
+    unmount();
+    store().setTool('route');
+    renderCanvas({ onBallSpotChange });
+    expect(screen.queryByTestId('los-handle')).toBeNull();
+  });
+});

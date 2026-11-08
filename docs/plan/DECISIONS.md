@@ -380,3 +380,11 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   only when both plays exist); Install "Red Zone – Bunch Killer (Bangkok)" — then sets version 2. Nothing is
   overwritten and nothing deleted later comes back. `createDefaultSettings()` does not carry `seedVersion` (so
   `normalizeSettings` can't mark an old DB as seeded). Content: `src/db/seed/bangkok.ts`.
+
+## D-43 Freestyle: drag the LOS (user request 2026-11-08)
+- Decision: with the Select tool and no armed tray chip, a transparent strip along the LOS (under the tokens) can be
+  dragged up/down. The ball spot's yard line follows in whole yards (own 1 … opponent 1, `dragYardLine`); the stage
+  shifts the view by the same yards (`FieldStage.anchorFieldOnBallMove`) so the field stays put and the LOS and the
+  players follow the pointer. The spot is kept in localStorage (`flagbook.freestyle.ball.v1`, survives "Mới") and is
+  used by Chạy thử, the live split and the warnings badge. Plays stay ball-relative, so a saved play does not store
+  it. The hash (x) is not draggable.

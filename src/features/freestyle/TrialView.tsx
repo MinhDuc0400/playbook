@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Timeline, type TimelineMarker } from '@/components/field/Timeline';
 import { eventMarkers } from '@/components/field/markers';
 import { usePlayback } from '@/components/field/usePlayback';
-import type { DbSnapshot, Play, Settings, SimEventType } from '@/domain/types';
+import type { BallSpot, DbSnapshot, Play, Settings, SimEventType } from '@/domain/types';
 import { bestThrowTime } from '@/features/matchup/bestThrow';
 import { createMatchup, type levelOf } from '@/features/matchup/buildSimInput';
 import { MatchupField } from '@/features/matchup/MatchupField';
@@ -36,7 +36,7 @@ const MARKER_TYPES: ReadonlySet<SimEventType> = new Set([
 const NO_LEVELS: Record<string, ReturnType<typeof levelOf>> = {};
 
 /** Transient matchup of a freestyle trial: seed 1, no flips, never saved. */
-export function trialMatchup(offense: Play, defense: Play) {
+export function trialMatchup(offense: Play, defense: Play, ballSpot?: BallSpot) {
   return {
     ...createMatchup({
       offensePlayId: offense.id,
@@ -46,6 +46,7 @@ export function trialMatchup(offense: Play, defense: Play) {
     }),
     defenseFlip: 'none' as const,
     offenseFlipped: false,
+    ...(ballSpot ? { ballSpot: { ...ballSpot } } : {}),
   };
 }
 
@@ -59,15 +60,18 @@ export function TrialView({
   defense,
   settings,
   embedded = false,
+  ballSpot,
 }: {
   offense: Play;
   defense: Play;
   settings: Settings;
+  /** Freestyle LOS position; missing = the default spot. */
+  ballSpot?: BallSpot;
   /** Live split pane next to the editor: compact field, no own scroll owner. */
   embedded?: boolean;
 }): JSX.Element {
   const isDesktop = useIsDesktop();
-  const matchup = useMemo(() => trialMatchup(offense, defense), [offense, defense]);
+  const matchup = useMemo(() => trialMatchup(offense, defense, ballSpot), [offense, defense, ballSpot]);
   const snapshot = useMemo(() => trialSnapshot(settings), [settings]);
   const qb = useQbModeState();
   const { built, result, error } = useMatchupSim(

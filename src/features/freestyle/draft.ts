@@ -1,5 +1,5 @@
 /** Freestyle draft persistence in localStorage (FR-FS-09, D-27). Every access is guarded. */
-import type { Play, Side } from '@/domain/types';
+import type { BallSpot, Play, Side } from '@/domain/types';
 import { PlaySchema } from '@/lib/io/schemas';
 
 export const DRAFT_KEY = 'flagbook.freestyle.v1';
@@ -46,5 +46,29 @@ export function clearDraft(): void {
     localStorage.removeItem(DRAFT_KEY);
   } catch {
     // storage unavailable: nothing to clear
+  }
+}
+
+/** Freestyle ball spot (LOS position), kept apart from the board draft so "Mới" keeps it. */
+export const BALL_KEY = 'flagbook.freestyle.ball.v1';
+
+export function loadBallSpot(): BallSpot | null {
+  try {
+    const raw = localStorage.getItem(BALL_KEY);
+    if (raw === null) return null;
+    const d = JSON.parse(raw) as Record<string, unknown> | null;
+    if (!d || typeof d.x !== 'number' || typeof d.yardLine !== 'number') return null;
+    if (!Number.isFinite(d.x) || !Number.isFinite(d.yardLine)) return null;
+    return { x: d.x, yardLine: d.yardLine };
+  } catch {
+    return null;
+  }
+}
+
+export function saveBallSpot(ballSpot: BallSpot): void {
+  try {
+    localStorage.setItem(BALL_KEY, JSON.stringify(ballSpot));
+  } catch {
+    // storage unavailable: the LOS just won't survive a reload
   }
 }

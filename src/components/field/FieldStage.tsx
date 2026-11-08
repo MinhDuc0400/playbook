@@ -1,7 +1,7 @@
 /**
  * Field + zoom/pan + "Vừa màn hình" button in a sized container. Used by Editor, Matchup, Present.
  */
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { fieldBounds } from '@/domain/field';
 import type { BallSpot, FieldConfig } from '@/domain/types';
 import { t } from '@/i18n/vi';
@@ -19,6 +19,11 @@ export interface FieldStageProps extends Omit<FieldSvgProps, 'viewport' | 'child
   overlayControls?: ReactNode;
   /** Drawn inside the corner mini-map (inside its FieldContext), e.g. player dots. */
   minimapContent?: () => ReactNode;
+  /**
+   * Freestyle LOS drag: when ballSpot.yardLine changes, shift the view by the same yards so the field markings
+   * stay where they are and the LOS (the origin) moves on screen instead.
+   */
+  anchorFieldOnBallMove?: boolean;
 }
 
 export function FieldStage({
@@ -27,6 +32,7 @@ export function FieldStage({
   children,
   overlayControls,
   minimapContent,
+  anchorFieldOnBallMove = false,
   className,
   ...svgProps
 }: FieldStageProps): JSX.Element {
@@ -37,6 +43,15 @@ export function FieldStage({
   );
   const bounds = useCallback(() => fieldBounds(field, ballSpot), [field, ballSpot]);
   const { viewport, setViewport, fit, zoomBy, panning } = useZoomPan(containerRef, makeFit, { bounds });
+  const lastYardLine = useRef(ballSpot.yardLine);
+  useLayoutEffect(() => {
+    const d = ballSpot.yardLine - lastYardLine.current;
+    lastYardLine.current = ballSpot.yardLine;
+    if (!anchorFieldOnBallMove || d === 0 || !viewport) return;
+    setViewport({ ...viewport, center: { x: viewport.center.x, y: viewport.center.y - d } });
+    // Only a yard-line change moves the view; viewport changes alone must not re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ballSpot.yardLine, anchorFieldOnBallMove]);
   // The mini-map would cover a large part of a phone-sized field: closed by default there (D-25).
   const isDesktop = useIsDesktop();
   const [minimapOpen, setMinimapOpen] = useState(isDesktop);

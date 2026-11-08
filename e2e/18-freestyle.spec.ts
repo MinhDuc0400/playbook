@@ -375,3 +375,33 @@ test('18 a zone sits on its defender and moves with it (FR-DEF-03, D-29)', async
   expect(after!.y).toBeGreaterThan(before!.y);
   expect(await contains(await tokenCenter(page, 'FS'))).toBe(true);
 });
+
+test('18 dragging the LOS moves the ball spot; it survives a reload', async ({ page }) => {
+  await page.goto('/freestyle');
+  const handle = page.getByTestId('los-handle');
+  await expect(handle).toBeAttached();
+  const losBefore = await page.getByTestId('los').boundingBox();
+  const yardBefore = await page.getByTestId('yardline-20').boundingBox();
+  const box = (await handle.boundingBox())!;
+  const x = box.x + box.width * 0.85;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - 60, { steps: 6 });
+  await page.mouse.up();
+  const losAfter = await page.getByTestId('los').boundingBox();
+  const yardAfter = await page.getByTestId('yardline-20').boundingBox();
+  // The LOS followed the pointer up; the field markings stayed put.
+  expect(losAfter!.y).toBeLessThan(losBefore!.y - 30);
+  expect(Math.abs(yardAfter!.y - yardBefore!.y)).toBeLessThan(2);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('flagbook.freestyle.ball.v1') ?? 'null'),
+  );
+  expect(saved.yardLine).toBeGreaterThan(15);
+  await page.reload();
+  await expect(page.getByTestId('los-handle')).toBeAttached();
+  const again = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('flagbook.freestyle.ball.v1') ?? 'null'),
+  );
+  expect(again).toEqual(saved);
+});

@@ -8,7 +8,8 @@ import type { Play } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import FreestylePage from '../FreestylePage';
-import { DRAFT_KEY, loadDraft } from '../draft';
+import { BALL_KEY, DRAFT_KEY, loadBallSpot, loadDraft, saveBallSpot } from '../draft';
+import { trialMatchup } from '../TrialView';
 import { AUTOSAVE_MS, useFreestyleDraft } from '../useFreestyleDraft';
 
 vi.mock('@/db/errors', () => ({ onDbError: vi.fn(() => () => undefined) }));
@@ -197,5 +198,22 @@ describe('T-FS-06 warnings badge and flip', () => {
     expect(store().companion?.players).toHaveLength(1);
     fireEvent.click(screen.getByTestId('fs-undo'));
     expect(store().play?.players[0]?.start.x).toBe(3);
+  });
+});
+
+describe('Freestyle ball spot (LOS drag)', () => {
+  it('saves and loads the ball spot; a bad value falls back to null', () => {
+    saveBallSpot({ x: 0, yardLine: 45 });
+    expect(loadBallSpot()).toEqual({ x: 0, yardLine: 45 });
+    localStorage.setItem(BALL_KEY, '{"x":0,"yardLine":"far"}');
+    expect(loadBallSpot()).toBeNull();
+  });
+
+  it('the trial matchup uses the given ball spot', () => {
+    const m = trialMatchup(makePlay('o', { side: 'offense' }), makePlay('d', { side: 'defense' }), {
+      x: 0,
+      yardLine: 45,
+    });
+    expect(m.ballSpot).toEqual({ x: 0, yardLine: 45 });
   });
 });

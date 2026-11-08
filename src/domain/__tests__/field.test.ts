@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampToField,
+  dragYardLine,
   createDefaultFields,
   DEFAULT_BALL_SPOT,
   fieldBounds,
@@ -78,5 +79,17 @@ describe('isInNoRunZone', () => {
     expect(isInNoRunZone(f5, { x: 0, yardLine: 45 })).toBe(true);
     expect(isInNoRunZone(f5, { x: 0, yardLine: 50 })).toBe(true);
     expect(isInNoRunZone(f5, { x: 0, yardLine: 19.9 })).toBe(false);
+  });
+});
+
+describe('dragYardLine (Freestyle LOS drag)', () => {
+  const f = createDefaultFields()['5v5'];
+  it('adds the dragged yards, rounded to a whole yard', () => {
+    expect(dragYardLine(15, 2.4, f)).toBe(17);
+    expect(dragYardLine(15, -3.6, f)).toBe(11);
+  });
+  it('stays between the 1 and the opponent 1', () => {
+    expect(dragYardLine(48, 10, f)).toBe(49);
+    expect(dragYardLine(2, -5, f)).toBe(1);
   });
 });

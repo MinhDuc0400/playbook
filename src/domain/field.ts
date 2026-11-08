@@ -60,6 +60,14 @@ export function yardLineToY(ballSpot: BallSpot, yardLine: number): number {
   return yardLine - ballSpot.yardLine;
 }
 
+/**
+ * Freestyle LOS drag: the yard line after dragging the LOS `deltaYards` downfield (negative = back), rounded
+ * to a whole yard and kept between the own 1 and the opponent 1.
+ */
+export function dragYardLine(startYardLine: number, deltaYards: number, field: FieldConfig): number {
+  return Math.min(field.length - 1, Math.max(1, Math.round(startYardLine + deltaYards)));
+}
+
 /** Inverse of yardLineToY. */
 export function yToYardLine(ballSpot: BallSpot, y: number): number {
   return y + ballSpot.yardLine;

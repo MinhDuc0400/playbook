@@ -293,3 +293,39 @@ describe('FieldStage without ResizeObserver', () => {
     expect(screen.getByTestId('field-svg')).toHaveAttribute('width', String(W));
   });
 });
+
+describe('anchorFieldOnBallMove (Freestyle LOS drag)', () => {
+  it('shifts the view by the yard-line change so the field stays put', () => {
+    let latest: Viewport | null = null;
+    const probe = <Probe onVp={(vp) => (latest = vp)} />;
+    const { rerender } = render(
+      <FieldStage field={field} ballSpot={{ x: 0, yardLine: 15 }} anchorFieldOnBallMove>
+        {probe}
+      </FieldStage>,
+    );
+    const before = latest!.center.y;
+    rerender(
+      <FieldStage field={field} ballSpot={{ x: 0, yardLine: 20 }} anchorFieldOnBallMove>
+        {probe}
+      </FieldStage>,
+    );
+    expect(latest!.center.y).toBeCloseTo(before - 5);
+  });
+
+  it('without the flag the view stays on the ball', () => {
+    let latest: Viewport | null = null;
+    const probe = <Probe onVp={(vp) => (latest = vp)} />;
+    const { rerender } = render(
+      <FieldStage field={field} ballSpot={{ x: 0, yardLine: 15 }}>
+        {probe}
+      </FieldStage>,
+    );
+    const before = latest!.center.y;
+    rerender(
+      <FieldStage field={field} ballSpot={{ x: 0, yardLine: 20 }}>
+        {probe}
+      </FieldStage>,
+    );
+    expect(latest!.center.y).toBeCloseTo(before);
+  });
+});

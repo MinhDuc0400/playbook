@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from 'zustand';
 import { t } from '@/i18n/vi';
 import { flipPlay } from '@/domain/flip';
-import type { FieldConfig, Side } from '@/domain/types';
+import type { BallSpot, FieldConfig, Side } from '@/domain/types';
 import { validatePlay } from '@/domain/validate';
 import { useEditorStore } from '@/store/editorStore';
 import { clearDraft } from './draft';
@@ -26,6 +26,8 @@ export interface FreestyleTopBarProps {
   onLiveChange?: (v: boolean) => void;
   /** Field used for warnings (FR-FS-12); badge hidden without it. */
   field?: FieldConfig;
+  /** Ball spot the warnings are checked at (route out of bounds near the end zone). */
+  ballSpot?: BallSpot;
 }
 
 export function FreestyleTopBar({
@@ -36,6 +38,7 @@ export function FreestyleTopBar({
   live = false,
   onLiveChange,
   field,
+  ballSpot,
 }: FreestyleTopBarProps = {}): JSX.Element {
   const side = useEditorStore((s) => s.play?.side ?? 'offense');
   const canUndo = useStore(useEditorStore.temporal, (s) => s.pastStates.length > 0);
@@ -48,7 +51,7 @@ export function FreestyleTopBar({
     const { offense, defense } = pickTrialPlays(play, companion);
     return [offense, defense].flatMap((p) => {
       if (!p || p.players.length === 0) return [];
-      return validatePlay(p, field).map((w) => {
+      return validatePlay(p, field, ballSpot ? { ballSpot } : undefined).map((w) => {
         const slot = p.players.find((s) => s.id === w.slotId)?.label ?? '?';
         const values: Record<string, string | number> = { ...w.params, slot, rushLine: field.rushLine };
         return t.editor.warnings.messages[w.code].replace(/\{(\w+)\}/g, (_, k: string) =>
@@ -56,7 +59,7 @@ export function FreestyleTopBar({
         );
       });
     });
-  }, [play, companion, field]);
+  }, [play, companion, field, ballSpot]);
 
   const choose = (target: Side): void => {
     if (useEditorStore.getState().play?.side !== target) useEditorStore.getState().switchSide();

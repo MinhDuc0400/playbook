@@ -75,16 +75,44 @@ describe('Timeline (FR-MU-03/04)', () => {
     expect(els[2]?.style.left).toBe('80%');
   });
 
-  it('speed buttons set speed and aria-pressed marks the active one', () => {
+  it('D-33 speed lives in a menu: closed by default, checked item is the current speed, picking closes it', () => {
     const pb = makePlayback({ speed: 0.5 });
     render(<Timeline playback={pb} duration={4} />);
+    expect(screen.getByTestId('btn-speed-menu')).toHaveTextContent('0.5x');
+    for (const s of PLAYBACK_SPEEDS) expect(screen.queryByTestId(`btn-speed-${s}`)).toBeNull();
+    fireEvent.click(screen.getByTestId('btn-speed-menu'));
     for (const s of PLAYBACK_SPEEDS) {
-      expect(screen.getByTestId(`btn-speed-${s}`)).toHaveAttribute('aria-pressed', String(s === 0.5));
+      expect(screen.getByTestId(`btn-speed-${s}`)).toHaveAttribute('aria-checked', String(s === 0.5));
     }
     fireEvent.click(screen.getByTestId('btn-speed-2'));
     expect(pb.setSpeed).toHaveBeenCalledWith(2);
+    expect(screen.queryByTestId('speed-menu')).toBeNull();
+    fireEvent.click(screen.getByTestId('btn-speed-menu'));
     fireEvent.click(screen.getByTestId('btn-speed-0.25'));
     expect(pb.setSpeed).toHaveBeenCalledWith(0.25);
+  });
+
+  it('D-33 the speed menu closes on Escape and on an outside click', () => {
+    render(<Timeline playback={makePlayback()} duration={4} />);
+    fireEvent.click(screen.getByTestId('btn-speed-menu'));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('speed-menu')).toBeNull();
+    fireEvent.click(screen.getByTestId('btn-speed-menu'));
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByTestId('speed-menu')).toBeNull();
+  });
+
+  it('D-33 draws the playhead and progress at the same percentage as the markers', () => {
+    render(<Timeline playback={makePlayback({ t: 1 })} duration={4} minT={-1} markers={markers} />);
+    expect(screen.getByTestId('timeline-playhead').style.left).toBe('40%');
+    expect(screen.getByTestId('timeline-progress').style.width).toBe('40%');
+  });
+
+  it('D-33 with a gutter the scrubber columns use the OpenWindows widths', () => {
+    render(<Timeline playback={makePlayback()} duration={4} gutter="large" />);
+    const row = screen.getByTestId('timeline-scrubber').closest('.items-end')!;
+    expect((row.firstElementChild as HTMLElement).className).toContain('w-16');
+    expect((row.lastElementChild as HTMLElement).className).toContain('w-20');
   });
 
   it('prev / next event buttons call stepToMark with the marker times', () => {
@@ -102,7 +130,7 @@ describe('Timeline (FR-MU-03/04)', () => {
     render(<Timeline playback={makePlayback()} duration={4} compact />);
     expect(screen.queryByTestId('btn-prev-event')).toBeNull();
     expect(screen.queryByTestId('btn-next-event')).toBeNull();
-    for (const s of PLAYBACK_SPEEDS) expect(screen.queryByTestId(`btn-speed-${s}`)).toBeNull();
+    expect(screen.queryByTestId('btn-speed-menu')).toBeNull();
     expect(screen.getByTestId('btn-play')).toBeInTheDocument();
     expect(screen.getByTestId('timeline-scrubber')).toBeInTheDocument();
     expect(screen.getByTestId('timeline-time')).toBeInTheDocument();

@@ -224,7 +224,7 @@ export function TrialView({
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-1 px-2 py-2">
-        <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
+        <Timeline playback={playback} duration={duration} minT={minT} markers={markers} gutter="normal" />
         {built && result && (
           <OpenWindows result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
         )}

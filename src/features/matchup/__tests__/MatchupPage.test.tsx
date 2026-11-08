@@ -160,10 +160,9 @@ describe('MatchupPage: shortcuts and overlays', () => {
     await seedMatchup();
     renderAt('/matchup/mu1');
     await screen.findByTestId('matchup-page');
-    const speed1 = screen.getByTestId('btn-speed-1');
-    expect(speed1).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('btn-speed-menu')).toHaveTextContent('1x');
     fireEvent.keyDown(window, { key: ']' });
-    expect(screen.getByTestId('btn-speed-2')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('btn-speed-menu')).toHaveTextContent('2x');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(Number(screen.getByTestId('mock-field').getAttribute('data-t'))).toBeGreaterThan(0);

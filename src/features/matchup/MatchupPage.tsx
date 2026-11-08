@@ -366,7 +366,7 @@ function MatchupEditor({
   );
   const timelines = (
     <>
-      <Timeline playback={playback} duration={duration} minT={minT} markers={markers} />
+      <Timeline playback={playback} duration={duration} minT={minT} markers={markers} gutter="normal" />
       {built && result && (
         <OpenWindows result={result} offense={built.offense} t={playback.t} tuning={built.input.tuning} />
       )}

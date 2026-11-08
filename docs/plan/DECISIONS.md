@@ -302,3 +302,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Decision: the "Khoảng open" panel clips each window at the `throw` event and totals, best window and summary use
   the clipped data. No throw (no event) keeps everything. Display only; `metrics.openWindows`, the engine and
   Suggest scoring are unchanged.
+
+## D-33 Playback bar aligned with the open windows, speed in a menu (user request 2026-11-08)
+- Context: the scrubber and the "Khoảng open" tracks had different widths, so the same time sat at different x.
+- Decision: `Timeline` takes `gutter` (`normal` | `large`) and uses the same label/total column widths
+  (`TRACK_GUTTER`, shared with `OpenWindows`), so one time = one x in both. The scrubber is drawn by us (track,
+  progress, playhead with a handle); the native range input stays on top, transparent with a zero-width thumb, so
+  clicks and keys map exactly to what is drawn. Speed buttons became a gear menu (`btn-speed-menu`, items
+  `btn-speed-<s>`, role `menuitemradio`; closes on pick, Escape, outside click). Present now starts at the
+  pre-snap time like Matchup so both share the same scale. Engine and data unchanged.

@@ -51,7 +51,8 @@ function PlayView({
   const isDesktop = useIsDesktop();
   const { built, result, error } = useMatchupSim(matchup, offense, defense, snapshot);
   const duration = result && result.frames.length > 0 ? result.frames[result.frames.length - 1]!.t : 0;
-  const playback = usePlayback({ duration, autoPlay: true, loop });
+  const minT = result && result.frames.length > 0 ? result.frames[0]!.t : 0;
+  const playback = usePlayback({ duration, minT, autoPlay: true, loop });
   const { setLoop, toggle } = playback;
   useEffect(() => setLoop(loop), [loop, setLoop]);
 
@@ -143,7 +144,14 @@ function PlayView({
         )}
       </div>
       <div className="bg-white px-3 py-1 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-        <Timeline playback={playback} duration={duration} markers={markers} compact />
+        <Timeline
+          playback={playback}
+          duration={duration}
+          minT={minT}
+          markers={markers}
+          compact
+          gutter="large"
+        />
       </div>
     </>
   );

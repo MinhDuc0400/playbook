@@ -5,6 +5,7 @@
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import type { Play, SimResult, TuningParams } from '@/domain/types';
 import { t as strings } from '@/i18n/vi';
+import { TRACK_GUTTER } from '@/components/field/Timeline';
 
 export interface OpenWindowsProps {
   result: SimResult;
@@ -33,6 +34,7 @@ export function OpenWindows({
   const { frames } = result;
   if (frames.length === 0) return null;
   const large = size === 'large';
+  const gutter = TRACK_GUTTER[size];
 
   const minT = frames[0]!.t;
   const span = frames[frames.length - 1]!.t - minT;
@@ -78,7 +80,7 @@ export function OpenWindows({
         <div className={`flex flex-col ${large ? 'gap-2' : 'gap-1'}`}>
           {rows.map((r) => (
             <div key={r.id} data-testid={`ow-row-${r.label}`} className="flex items-center gap-2">
-              <span className={`flex shrink-0 items-center gap-1 ${large ? 'w-16' : 'w-14'}`}>
+              <span className={`flex shrink-0 items-center gap-1 ${gutter.left}`}>
                 <span className="font-medium">{r.label}</span>
                 {r.read >= 0 && (
                   <span
@@ -91,7 +93,7 @@ export function OpenWindows({
               </span>
               <div
                 data-testid={`ow-track-${r.label}`}
-                className={`relative min-w-[320px] flex-1 rounded-sm bg-slate-300 dark:bg-slate-700 ${trackH}`}
+                className={`relative min-w-0 flex-1 rounded-sm bg-slate-300 dark:bg-slate-700 ${trackH}`}
               >
                 {r.wins.map(([a, b], k) => (
                   <div
@@ -130,7 +132,7 @@ export function OpenWindows({
               </div>
               <span
                 data-testid={`ow-total-${r.label}`}
-                className={`shrink-0 text-right tabular-nums ${large ? 'w-20' : 'w-14'}`}
+                className={`shrink-0 text-right tabular-nums ${gutter.right}`}
               >
                 {s.total(r.total)}
               </span>

@@ -5,6 +5,7 @@ export const playback = {
   prevEvent: 'Event trước',
   nextEvent: 'Event kế',
   speed: 'Tốc độ phát',
+  normalSpeed: 'Thường (1x)',
   scrubber: 'Thanh thời gian',
   seconds: ' s',
   bar: 'Điều khiển phát lại',

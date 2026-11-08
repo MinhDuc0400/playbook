@@ -14,7 +14,7 @@ import type { PerceivedPlayer } from './types';
  */
 const RELEASE_Y = 0.5;
 const STOP_SPEED = 1;
-const VERTICAL_RATIO = 0.7;
+export const VERTICAL_RATIO = 0.7;
 const LATERAL_RATIO = 0.6;
 const SHALLOW_DEPTH = 6;
 const ON_BALL_X = 0.25;

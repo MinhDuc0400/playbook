@@ -16,15 +16,16 @@ const log = (name: string, browser: string, data: Record<string, number>): void 
   console.log(`[perf] ${name} (${browser}): ${parts.join(' ')}`);
 };
 
-// NFR-PERF-04: first open, production build, fresh profile: seed + grid with 6 cards in < 2 s.
-test('13 first open shows 6 cards in under 2 s', async ({ browser, browserName }) => {
+// NFR-PERF-04: first open, production build, fresh profile: seed + grid with 9 cards in < 2 s (D-42: 6 samples +
+// 3 Bunch Killer plays).
+test('13 first open shows 9 cards in under 2 s', async ({ browser, browserName }) => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   try {
     const page = await ctx.newPage();
     const t0 = Date.now();
     await page.goto('/');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="playbook-grid"]')?.children.length === 6,
+      () => document.querySelector('[data-testid="playbook-grid"]')?.children.length === 9,
     );
     const ms = Date.now() - t0;
     log('first-open', browserName, { ms });

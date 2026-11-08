@@ -268,6 +268,7 @@ interface PlayerSlot {
   leverage?: 'inside' | 'outside' | 'head-up';   // defense
   actions: Action[];                 // thực hiện theo thứ tự thời gian
   matchRules?: MatchRule[];          // defense
+  areaMatch?: { role: 'corner' | 'inside'; squeezeAfter?: number }; // defense, area match (D-40)
 }
 ```
 
@@ -574,7 +575,7 @@ interface SimResult {
 interface Frame { t: number; players: Record<ID, { pos: Point; vel: Point; state: string }>; ball: BallState }
 
 type Outcome =
-  | { kind: 'complete'; targetId: ID; yards: number; t: number }
+  | { kind: 'complete'; targetId: ID; yards: number; t: number; touchdown?: true } // D-41
   | { kind: 'incomplete' | 'deflected' | 'intercepted'; targetId: ID; t: number }
   | { kind: 'sack' | 'throwaway' | 'timeout'; t: number };
 
@@ -682,6 +683,16 @@ interface Agent {
 | `stop` | Tốc độ < 1 yd/s |
 
 Luật khớp đầu tiên theo `priority` được áp dụng, ghi event `ruleFired`. Defender iq thấp nhận ra sự kiện trễ thêm `(1 − iq) × 0.3` giây.
+
+**Area match (D-40, "Bunch Killer (Bangkok)"):** các defender có `areaMatch` chia sân thành các làn dọc theo vị trí đứng (ranh giới = điểm giữa 2 defender cạnh nhau, làn ngoài cùng tới sideline). Mỗi defender chạy cùng một bộ luật trên perception của chính mình, nên tự suy ra đồng đội đã nhận ai mà không cần giao tiếp:
+
+1. Sau snap, receiver đi vào một làn được ghi theo thứ tự (cùng tick: người gần sideline hơn trước).
+2. Corner nhận (man, trail) receiver đầu tiên vào làn của mình.
+3. Corner chưa có người sau `squeezeAfter` (mặc định 0.5 s): squeeze, nhận receiver chạy vertical sâu ≥ 3 yd ở làn trong kế bên; không có thì dời zone vào ranh giới trong và chờ tiếp.
+4. Inside (LB/S) bỏ qua receiver đầu tiên vào làn corner bên ngoài, nhận người thứ hai (khi corner đã có người).
+5. Inside chưa có người: đá zone gốc, bỏ qua receiver đồng đội đã nhận ("người còn lại").
+
+Đã nhận thì giữ đến khi bóng được ném. Mỗi lần nhận ghi event `areaClaim`. Zone action của slot là zone gốc; không có thì dùng hình chữ nhật của làn.
 
 **Khi bóng được ném:** defender thấy `throwStarted` (sau reaction) thì chuyển sang lao về điểm bóng rơi.
 

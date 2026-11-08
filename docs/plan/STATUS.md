@@ -84,6 +84,12 @@ Live tracker. Status: todo / in progress / review / done.
 | 6g (Freestyle mode, D-27) | PASS (1475 unit, 65 E2E, 7 skipped by guards) | docs/superpowers/specs/2026-10-31-freestyle-mode-design.md, DECISIONS.md D-27 | phase-6g |
 | 6e (responsive, D-25) | PASS (1379 unit, 44 E2E incl. iPhone + iPad overflow checks) | DECISIONS.md D-25 | phase-6e |
 
+## 2026-11-08 Bunch Killer (Bangkok)
+- D-40 area-match coverage (engine `areaMatch.ts`, `agents/areaMatchDefender.ts`, editor role select + lane lines),
+  D-41 touchdown result, D-42 seed v2 (Bunch Tight, Bangkok Rush / No Rush Spy, install "Red Zone – Bunch Killer
+  (Bangkok)"). Tests: T-AM-01..06 (`areaMatch*.test.ts`), T-TD-01, seed v2, E2E 19.
+- Plan: `docs/superpowers/plans/2026-11-08-bangkok-bunch-killer.md`.
+
 ## Open questions / blockers
 
 None.

@@ -443,3 +443,10 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   `quarter-mid-L` (−7.5..0), `quarter-mid-R` (0..7.5), `quarter-out-R` (7.5..15). They run from the LOS to y 30
   (the user chose "from the LOS to the back", for the Bangkok four-way split), drop point at the quarter centre,
   5 yd deep. They play the closest receiver (zone kind `curl`), flip L↔R, and scale with the field width.
+
+## D-50 Ctrl+C / Ctrl+V copy and paste players (user request 2026-11-09)
+- Decision: Ctrl+C (⌘C) copies the selected players to an in-app clipboard (not the OS clipboard; with nothing
+  selected the normal copy happens and the old clipboard stays). Ctrl+V (⌘V) pastes them on the same side 1 yd to
+  the right, then 2 yd on the next paste of the same copy, and so on; the pasted players are selected (Select
+  tool) and it is one undo step. Copies get new slot and rule ids and the next default labels; the player limit
+  stops extra copies. Ctrl+D keeps working as a one-step duplicate.

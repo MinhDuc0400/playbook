@@ -230,21 +230,54 @@ export function removePlayers(slotIds: readonly ID[]): Recipe {
 }
 
 /** Copy a player (Ctrl+D) offset +1 yd in x with a new id and the next default label. No-op at max. */
+/** A copy of `src` moved `dx` yd right, with new slot and rule ids and the next default label. */
+function copySlot(
+  src: PlayerSlot,
+  play: Play,
+  labels: string[],
+  dx: number,
+  id: ID,
+  idGen: () => ID,
+): PlayerSlot {
+  const copy = clone(src);
+  copy.id = id;
+  copy.label = nextDefaultLabel(src.role, labels);
+  copy.start = { x: src.start.x + dx, y: src.start.y };
+  if (play.side === 'offense') copy.actions = translateActions(copy.actions, dx, 0);
+  // Rule ids must not repeat across slots (D-48 area rules are tracked per rule id).
+  if (copy.matchRules) copy.matchRules = copy.matchRules.map((r) => ({ ...r, id: idGen() }));
+  return copy;
+}
+
 export function duplicatePlayer(slotId: ID, maxPlayers: number, idGen: () => ID): Recipe {
   return (play) => {
     const src = play.players.find((s) => s.id === slotId);
     if (!src || !canAddPlayer(play, maxPlayers)) return play;
-    const copy = clone(src);
-    copy.id = idGen();
-    // Rule ids must not repeat across slots (D-48 area rules are tracked per rule id).
-    if (copy.matchRules) copy.matchRules = copy.matchRules.map((r) => ({ ...r, id: idGen() }));
-    copy.label = nextDefaultLabel(
-      src.role,
-      play.players.map((s) => s.label),
-    );
-    copy.start = { x: src.start.x + 1, y: src.start.y };
-    if (play.side === 'offense') copy.actions = translateActions(copy.actions, 1, 0);
+    const labels = play.players.map((s) => s.label);
+    const copy = copySlot(src, play, labels, 1, idGen(), idGen);
     return withStrength({ ...play, players: [...play.players, copy] });
+  };
+}
+
+/**
+ * Ctrl+V (D-50): add copies of `slots` (copied earlier with Ctrl+C) moved `dx` yd right; `ids[i]` is the new
+ * id of `slots[i]`. Stops at maxPlayers. Same play when nothing is added.
+ */
+export function pastePlayers(
+  slots: readonly PlayerSlot[],
+  ids: readonly ID[],
+  dx: number,
+  maxPlayers: number,
+  idGen: () => ID,
+): Recipe {
+  return (play) => {
+    const players = play.players.slice();
+    slots.forEach((src, i) => {
+      if (players.length >= maxPlayers) return;
+      const labels = players.map((s) => s.label);
+      players.push(copySlot(src, play, labels, dx, ids[i] ?? idGen(), idGen));
+    });
+    return players.length === play.players.length ? play : withStrength({ ...play, players });
   };
 }
 

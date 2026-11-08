@@ -55,6 +55,7 @@ export const common = {
       { keys: 'Alt', scope: 'Editor', action: 'Tắt snap' },
       { keys: 'Delete', scope: 'Editor', action: 'Xóa đối tượng đang chọn' },
       { keys: 'Ctrl+Z / Ctrl+Shift+Z', scope: 'Editor', action: 'Undo / redo' },
+      { keys: 'Ctrl+C / Ctrl+V', scope: 'Editor', action: 'Sao chép / dán cầu thủ đang chọn' },
       { keys: 'Ctrl+D', scope: 'Editor', action: 'Nhân bản cầu thủ đang chọn' },
       { keys: 'Ctrl+A', scope: 'Editor', action: 'Chọn tất cả cầu thủ' },
       { keys: 'Kéo trên sân trống', scope: 'Editor', action: 'Chọn các cầu thủ trong khung' },

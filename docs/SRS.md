@@ -1003,6 +1003,7 @@ App có 8 màn hình. Sân luôn nằm giữa, panel thuộc tính bên phải, 
 | Alt | Editor | Tắt snap |
 | Delete | Editor | Xóa đối tượng đang chọn |
 | Ctrl+Z / Ctrl+Shift+Z | Editor | Undo / redo |
+| Ctrl+C / Ctrl+V | Editor | Sao chép / dán cầu thủ đang chọn (dán lệch 1 yd, mỗi lần dán lệch thêm 1 yd) |
 | Ctrl+D | Editor | Nhân bản cầu thủ đang chọn |
 | Ctrl+A | Editor | Chọn tất cả cầu thủ |
 | Kéo trên sân trống | Editor | Chọn các cầu thủ trong khung |

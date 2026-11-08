@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createPlay } from '@/domain/formations';
@@ -121,5 +121,58 @@ describe('useEditorShortcuts (SRS §12.3)', () => {
     await user.keyboard('{Meta>}a{/Meta}');
     expect(useEditorStore.getState().selection).toEqual(ids);
     expect(useEditorStore.temporal.getState().pastStates).toHaveLength(0);
+  });
+
+  it('Ctrl+C / Ctrl+V copies the selected players and pastes them 1 yd over, selected, in one undo step', async () => {
+    const user = userEvent.setup();
+    const play = makePlay('offense');
+    useEditorStore.getState().load({ ...play, players: play.players.slice(0, 3) });
+    const [a, b] = useEditorStore.getState().play!.players;
+    useEditorStore.getState().select([a!.id, b!.id]);
+    render(<Harness max={5} />);
+
+    await user.keyboard('{Control>}c{/Control}');
+    expect(useEditorStore.getState().play!.players).toHaveLength(3); // copy alone changes nothing
+    await user.keyboard('{Control>}v{/Control}');
+    const players = useEditorStore.getState().play!.players;
+    expect(players).toHaveLength(5);
+    const [pa, pb] = players.slice(3);
+    expect(pa!.start).toEqual({ x: a!.start.x + 1, y: a!.start.y });
+    expect(pb!.start).toEqual({ x: b!.start.x + 1, y: b!.start.y });
+    expect(pa!.id).not.toBe(a!.id);
+    expect(useEditorStore.getState().selection).toEqual([pa!.id, pb!.id]);
+    expect(useEditorStore.temporal.getState().pastStates).toHaveLength(1);
+  });
+
+  it('a second paste lands 1 yd further; the player limit stops extra copies', async () => {
+    const user = userEvent.setup();
+    const play = makePlay('offense');
+    useEditorStore.getState().load({ ...play, players: play.players.slice(0, 3) });
+    const a = useEditorStore.getState().play!.players[0]!;
+    useEditorStore.getState().select([a.id]);
+    render(<Harness max={5} />);
+    await user.keyboard(
+      '{Control>}c{/Control}{Control>}v{/Control}{Control>}v{/Control}{Control>}v{/Control}',
+    );
+    const players = useEditorStore.getState().play!.players;
+    expect(players).toHaveLength(5);
+    expect(players[3]!.start.x).toBe(a.start.x + 1);
+    expect(players[4]!.start.x).toBe(a.start.x + 2);
+  });
+
+  it('Ctrl+C with nothing selected keeps the old clipboard; paste needs the same side', async () => {
+    const user = userEvent.setup();
+    const off = makePlay('offense');
+    useEditorStore.getState().load({ ...off, players: off.players.slice(0, 3) });
+    useEditorStore.getState().select([useEditorStore.getState().play!.players[0]!.id]);
+    render(<Harness max={5} />);
+    await user.keyboard('{Control>}c{/Control}');
+    useEditorStore.getState().select([]);
+    await user.keyboard('{Control>}c{/Control}{Control>}v{/Control}');
+    expect(useEditorStore.getState().play!.players).toHaveLength(4);
+    act(() => useEditorStore.getState().load(makePlay('defense')));
+    const n = useEditorStore.getState().play!.players.length;
+    await user.keyboard('{Control>}v{/Control}');
+    expect(useEditorStore.getState().play!.players).toHaveLength(n);
   });
 });

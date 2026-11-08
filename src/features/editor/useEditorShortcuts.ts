@@ -1,9 +1,16 @@
-/** Editor keyboard shortcuts (SRS §12.3): tool hotkeys, F flip, undo/redo, Ctrl+D duplicate, Ctrl+A select all. */
+/**
+ * Editor keyboard shortcuts (SRS §12.3): tool hotkeys, F flip, undo/redo, Ctrl+C / Ctrl+V copy-paste and Ctrl+D
+ * duplicate of the selected players, Ctrl+A select all.
+ */
 import { nanoid } from 'nanoid';
 import { useEffect } from 'react';
-import { duplicatePlayer, flip } from '@/features/editor/ops';
+import { duplicatePlayer, flip, pastePlayers } from '@/features/editor/ops';
 import { TOOLBAR, TOOLS } from '@/features/editor/tools';
+import type { PlayerSlot, Side } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
+
+/** D-50: players copied with Ctrl+C (in-app, not the OS clipboard); each paste lands 1 yd further. */
+let clipboard: { side: Side; slots: PlayerSlot[]; pastes: number } | null = null;
 
 const EDITABLE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
 
@@ -32,6 +39,31 @@ export function useEditorShortcuts(maxPlayers: number): void {
         } else if (key === 'y') {
           e.preventDefault();
           store.redo();
+        } else if (key === 'c') {
+          const ids = new Set(store.selection);
+          const slots = play.players.filter((p) => ids.has(p.id));
+          if (slots.length === 0) return; // nothing selected: keep the old clipboard, normal copy
+          e.preventDefault();
+          clipboard = {
+            side: play.side,
+            slots: JSON.parse(JSON.stringify(slots)) as PlayerSlot[],
+            pastes: 0,
+          };
+        } else if (key === 'v') {
+          if (!clipboard || clipboard.side !== play.side) return;
+          e.preventDefault();
+          clipboard.pastes += 1;
+          const ids = clipboard.slots.map(() => nanoid());
+          const before = play.players.length;
+          store.apply(
+            'paste players',
+            pastePlayers(clipboard.slots, ids, clipboard.pastes, maxPlayers, nanoid),
+          );
+          const added = (useEditorStore.getState().play?.players.length ?? before) - before;
+          if (added > 0) {
+            store.setTool('select');
+            useEditorStore.getState().select(ids.slice(0, added));
+          }
         } else if (key === 'a') {
           // D-45: select every player of the side being edited, ready to drag.
           e.preventDefault();

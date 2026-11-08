@@ -136,11 +136,10 @@ function MatchupEditor({
   // "QB tự ném" (D-23): keys / token clicks throw at the playhead; the re-run keeps t and playback.
   const keyMap = useMemo(() => buildQbKeyMap(result, built?.offense.players ?? []), [result, built]);
   const qbThrown = qb.manualThrow !== null;
-  const { throwTo, record } = qb;
+  const { throwTo } = qb;
   const playbackT = playback.t;
   const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
   useQbKeys(qb.enabled, keyMap, pickReceiver);
-  useEffect(() => record(result, keyMap), [record, result, keyMap]);
   const { seek, play } = playback;
   const minTRef = useRef(minT);
   useEffect(() => {
@@ -289,7 +288,6 @@ function MatchupEditor({
     <QbModePanel
       keyMap={keyMap}
       feedback={feedback}
-      tally={qb.tally}
       bestTime={bestTime}
       bestNone={bestNone}
       onPickBest={pickBest}

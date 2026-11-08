@@ -1,11 +1,10 @@
-/** Feedback panel of the "QB tự ném" mode (D-23): key legend, press-time read, best alternative, tally. */
+/** Feedback panel of the "QB tự ném" mode (D-23): key legend, press-time read. */
 import { t } from '@/i18n/vi';
-import type { QbFeedback, QbKey, QbTally } from './useQbMode';
+import type { QbFeedback, QbKey } from './useQbMode';
 
 export interface QbModePanelProps {
   keyMap: readonly QbKey[];
   feedback: QbFeedback | null;
-  tally: QbTally;
   /** "Ném lúc open nhất" result of the last pick (shown with the feedback). */
   bestTime: { t: number; separation: number } | null;
   /** True when the last "open nhất" pick had no valid throw time. */
@@ -20,7 +19,6 @@ const s = t.matchup.qb;
 export function QbModePanel({
   keyMap,
   feedback,
-  tally,
   bestTime,
   bestNone,
   onPickBest,
@@ -84,9 +82,6 @@ export function QbModePanel({
           </p>
         )}
       </div>
-      <p data-testid="qb-tally">
-        {tally.attempts === 0 ? s.tallyEmpty : s.tally(tally.attempts, tally.completions, tally.best)}
-      </p>
       <div className="flex gap-2">
         <button type="button" data-testid="qb-retry" onClick={onRetry} className="rounded border px-2 py-1">
           {s.retry}

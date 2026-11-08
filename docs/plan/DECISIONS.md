@@ -345,3 +345,8 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   "Tốt nhất lúc đó…"), no longer shows the outcome ("Kết quả: …") and no longer has the heading above the "open nhất"
   buttons (the group keeps its tooltip and aria-label). The panel still shows target, throw time, read score and
   separation. The tally keeps counting best picks internally.
+
+## D-39 QB tự ném has no tally (user request 2026-11-08)
+- Decision: the "Đã ném N lần · bắt được … · …/N ném đúng người tốt nhất" line and the counting behind it (`tally`,
+  `record`) are removed. The panel shows only the current throw (target, time, read score, separation), the key legend,
+  the "open nhất" buttons, Thử lại and Thoát.

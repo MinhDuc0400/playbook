@@ -14,12 +14,6 @@ export interface QbKey {
   label: string;
 }
 
-export interface QbTally {
-  attempts: number;
-  completions: number;
-  best: number;
-}
-
 export interface QbFeedback {
   targetId: ID;
   label: string;
@@ -99,22 +93,16 @@ export interface QbModeState {
   manualThrow: { targetId: ID; t: number } | null;
   /** Memoized override for useMatchupSim; undefined when the mode is off. */
   override: QbOverride | undefined;
-  tally: QbTally;
   enable(): void;
   disable(): void;
   /** Records the throw at `t`; a new throw replaces the previous one (D-35). Ignored when disabled. */
   throwTo(targetId: ID, t: number): void;
   retry(): void;
-  /** Called by the page with the re-run result so the tally counts each throw once. */
-  record(result: SimResult | null, keyMap: readonly QbKey[]): void;
 }
 
 export function useQbModeState(): QbModeState {
   const [enabled, setEnabled] = useState(false);
   const [manualThrow, setManualThrow] = useState<{ targetId: ID; t: number } | null>(null);
-  const [seq, setSeq] = useState(0);
-  const [tally, setTally] = useState<QbTally>({ attempts: 0, completions: 0, best: 0 });
-  const counted = useRef(0);
   const last = useRef<{ targetId: ID; t: number } | null>(null);
 
   const override = useMemo<QbOverride | undefined>(
@@ -137,29 +125,13 @@ export function useQbModeState(): QbModeState {
     if (prev && prev.targetId === targetId && Math.abs(prev.t - t) < 1e-3) return;
     last.current = { targetId, t };
     setManualThrow({ targetId, t });
-    setSeq((n) => n + 1);
   }, []);
   const retry = useCallback(() => {
     last.current = null;
     setManualThrow(null);
   }, []);
 
-  const record = useCallback(
-    (result: SimResult | null, keyMap: readonly QbKey[]) => {
-      if (!manualThrow || !result || seq === counted.current) return;
-      if (result.metrics.reads?.decision.kind !== 'manual') return;
-      counted.current = seq;
-      const fb = qbFeedback(result, keyMap, manualThrow);
-      setTally((t0) => ({
-        attempts: t0.attempts + 1,
-        completions: t0.completions + (result.outcome.kind === 'complete' ? 1 : 0),
-        best: t0.best + (fb.isBest ? 1 : 0),
-      }));
-    },
-    [manualThrow, seq],
-  );
-
-  return { enabled, manualThrow, override, tally, enable, disable, throwTo, retry, record };
+  return { enabled, manualThrow, override, enable, disable, throwTo, retry };
 }
 
 /** Window keydown for the key map. Ignored in inputs, with modifiers and on auto-repeat. */

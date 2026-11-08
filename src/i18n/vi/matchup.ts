@@ -33,9 +33,6 @@ export const matchup = {
     separation: 'Separation lúc ném',
     retry: 'Thử lại',
     exit: 'Thoát',
-    tally: (attempts: number, completions: number, best: number): string =>
-      `Đã ném ${attempts} lần · bắt được ${completions} · ${best}/${attempts} ném đúng người tốt nhất`,
-    tallyEmpty: 'Chưa ném lần nào',
     bestHelp:
       'QB chờ và ném đúng lúc người này open nhất (separation lớn nhất khi bóng tới, còn trong tầm ném và phía trước LOS), rồi chạy lại từ đầu.',
     bestNone: 'Không có thời điểm ném hợp lệ cho người này',

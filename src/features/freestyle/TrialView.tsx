@@ -84,12 +84,11 @@ export function TrialView({
 
   const keyMap = useMemo(() => buildQbKeyMap(result, built?.offense.players ?? []), [result, built]);
   const qbThrown = qb.manualThrow !== null;
-  const { throwTo, record } = qb;
+  const { throwTo } = qb;
   const playbackT = playback.t;
   const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
   useQbKeys(qb.enabled && !embedded, keyMap, pickReceiver);
   useQbKeysExclusive(qb.enabled && embedded, keyMap, pickReceiver);
-  useEffect(() => record(result, keyMap), [record, result, keyMap]);
   const { seek, play } = playback;
   const minTRef = useRef(minT);
   useEffect(() => {
@@ -187,7 +186,6 @@ export function TrialView({
     <QbModePanel
       keyMap={keyMap}
       feedback={feedback}
-      tally={qb.tally}
       bestTime={bestTime}
       bestNone={bestNone}
       onPickBest={pickBest}

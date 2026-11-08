@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -192,7 +192,7 @@ describe('QB mode (D-23)', () => {
     await user.click(screen.getByTestId('mock-token-' + second.label));
     expect(lastOverride()?.manualThrow?.targetId).toBe(second.id);
     expect(lastOverride()?.manualThrow?.t).toBeCloseTo(1.1, 1);
-    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tally(3, 3, 0).split(' ·')[0]!);
+    expect(screen.queryByTestId('qb-tally')).toBeNull();
   });
 
   it('D-35 pressing the same receiver at the same time again does not re-run the sim', async () => {
@@ -215,21 +215,14 @@ describe('QB mode (D-23)', () => {
     expect(lastOverride()?.manualThrow?.targetId).toBe(fieldProps[fieldProps.length - 1]!.qbKeys![0]!.id);
   });
 
-  it('tally counts attempts, completions and best-choice throws across retries; retry clears the throw', async () => {
+  it('D-39 retry clears the throw and no tally is shown', async () => {
     const user = await enter();
-    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tallyEmpty);
-    await user.keyboard('q'); // best, complete
-    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tally(1, 1, 1));
+    await user.keyboard('q');
+    expect(screen.queryByTestId('qb-tally')).toBeNull();
     await user.click(screen.getByTestId('qb-retry'));
     expect(lastOverride()).toEqual({ qbControl: 'manual' });
     expect(screen.getByTestId('qb-hint')).toBeInTheDocument();
-    outcomeKind = 'incomplete';
-    await user.keyboard('e'); // not best, incomplete
-    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tally(2, 1, 1));
-    await user.click(screen.getByTestId('qb-retry'));
-    await user.keyboard('q');
-    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tally(3, 1, 2));
-    expect(within(screen.getByTestId('qb-mode-panel')).getByTestId('qb-tally')).toBeInTheDocument();
+    expect(screen.queryByTestId('qb-tally')).toBeNull();
   });
 });
 

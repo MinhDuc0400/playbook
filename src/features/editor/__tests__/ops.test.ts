@@ -8,6 +8,7 @@ import {
   clearProgression,
   deleteRoutePoint,
   duplicatePlayer,
+  pastePlayers,
   flip,
   getRoute,
   insertRoutePoint,
@@ -292,6 +293,58 @@ describe('removePlayers', () => {
 });
 
 describe('duplicatePlayer (Ctrl+D)', () => {
+  it('a defender copy takes its zone along (D-29), so the zone stays on it', () => {
+    const p = run(defense(), duplicatePlayer('cb', 6, idGen));
+    const copy = p.players[p.players.length - 1]!;
+    expect(copy.start).toEqual({ x: -7, y: 5 });
+    expect(copy.actions).toEqual([
+      { type: 'zone', zone: 'flat-L', dropPoint: { x: -7, y: 7 }, offset: { x: 1, y: 0 } },
+    ]);
+    expect(slotOf(p, 'cb').actions).toEqual(slotOf(defense(), 'cb').actions);
+  });
+
+  it('pastePlayers moves a defender zone (custom polygon too) with the copy, 2 yd on the second paste', () => {
+    const d = defense();
+    const poly: Play = {
+      ...d,
+      players: d.players.map((s) =>
+        s.id === 'cb'
+          ? {
+              ...s,
+              actions: [
+                {
+                  type: 'zone',
+                  zone: {
+                    polygon: [
+                      { x: -10, y: 0 },
+                      { x: -6, y: 0 },
+                      { x: -8, y: 6 },
+                    ],
+                  },
+                  dropPoint: { x: -8, y: 5 },
+                },
+              ],
+            }
+          : s,
+      ),
+    };
+    const src = slotOf(poly, 'cb');
+    const p = run(poly, pastePlayers([src], ['c2'], 2, 6, idGen));
+    expect(slotOf(p, 'c2').actions).toEqual([
+      {
+        type: 'zone',
+        zone: {
+          polygon: [
+            { x: -8, y: 0 },
+            { x: -4, y: 0 },
+            { x: -6, y: 6 },
+          ],
+        },
+        dropPoint: { x: -6, y: 5 },
+      },
+    ]);
+  });
+
   it('Final review (D-48): the copy gets new match-rule ids', () => {
     const d = defense();
     const withRules: Play = {

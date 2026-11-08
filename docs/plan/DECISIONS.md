@@ -450,3 +450,5 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   the right, then 2 yd on the next paste of the same copy, and so on; the pasted players are selected (Select
   tool) and it is one undo step. Copies get new slot and rule ids and the next default labels; the player limit
   stops extra copies. Ctrl+D keeps working as a one-step duplicate.
+- Fix (2026-11-09): a copy (Ctrl+V or Ctrl+D) moves its routes AND its zone / drop point with it, on both sides
+  (D-29). Before, only offense actions moved, so a pasted defender's zone stayed on the original.

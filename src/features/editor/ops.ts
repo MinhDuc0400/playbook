@@ -229,11 +229,9 @@ export function removePlayers(slotIds: readonly ID[]): Recipe {
   };
 }
 
-/** Copy a player (Ctrl+D) offset +1 yd in x with a new id and the next default label. No-op at max. */
 /** A copy of `src` moved `dx` yd right, with new slot and rule ids and the next default label. */
 function copySlot(
   src: PlayerSlot,
-  play: Play,
   labels: string[],
   dx: number,
   id: ID,
@@ -243,18 +241,20 @@ function copySlot(
   copy.id = id;
   copy.label = nextDefaultLabel(src.role, labels);
   copy.start = { x: src.start.x + dx, y: src.start.y };
-  if (play.side === 'offense') copy.actions = translateActions(copy.actions, dx, 0);
+  // Routes and (D-29) zones / drop points move with the copy, on both sides.
+  copy.actions = translateActions(copy.actions, dx, 0);
   // Rule ids must not repeat across slots (D-48 area rules are tracked per rule id).
   if (copy.matchRules) copy.matchRules = copy.matchRules.map((r) => ({ ...r, id: idGen() }));
   return copy;
 }
 
+/** Copy a player (Ctrl+D) offset +1 yd in x with a new id and the next default label. No-op at max. */
 export function duplicatePlayer(slotId: ID, maxPlayers: number, idGen: () => ID): Recipe {
   return (play) => {
     const src = play.players.find((s) => s.id === slotId);
     if (!src || !canAddPlayer(play, maxPlayers)) return play;
     const labels = play.players.map((s) => s.label);
-    const copy = copySlot(src, play, labels, 1, idGen(), idGen);
+    const copy = copySlot(src, labels, 1, idGen(), idGen);
     return withStrength({ ...play, players: [...play.players, copy] });
   };
 }
@@ -275,7 +275,7 @@ export function pastePlayers(
     slots.forEach((src, i) => {
       if (players.length >= maxPlayers) return;
       const labels = players.map((s) => s.label);
-      players.push(copySlot(src, play, labels, dx, ids[i] ?? idGen(), idGen));
+      players.push(copySlot(src, labels, dx, ids[i] ?? idGen(), idGen));
     });
     return players.length === play.players.length ? play : withStrength({ ...play, players });
   };

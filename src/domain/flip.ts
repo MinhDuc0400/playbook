@@ -83,6 +83,10 @@ export function flipZonePreset(id: ZonePresetId): ZonePresetId {
       return 'hook-R';
     case 'hook-R':
       return 'hook-L';
+    case 'shallow-half-L':
+      return 'shallow-half-R';
+    case 'shallow-half-R':
+      return 'shallow-half-L';
     case 'curl-flat-L':
       return 'curl-flat-R';
     case 'curl-flat-R':

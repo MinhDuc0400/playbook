@@ -173,6 +173,8 @@ export type ZonePresetId =
   | 'hook-L'
   | 'hook-R'
   | 'hook-M'
+  | 'shallow-half-L'
+  | 'shallow-half-R'
   | 'curl-flat-L'
   | 'curl-flat-R';
 
@@ -188,6 +190,8 @@ export const ZONE_PRESET_IDS: readonly ZonePresetId[] = [
   'hook-L',
   'hook-R',
   'hook-M',
+  'shallow-half-L',
+  'shallow-half-R',
   'curl-flat-L',
   'curl-flat-R',
 ];

@@ -292,3 +292,8 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   clean). It draws pills on the left sideline (LOS, 1st down, Rush), yard numbers on the right sideline at each
   10 yd line (counted from the nearest goal line), and a football on the LOS under the tokens. Strings in
   `i18n/vi/field.ts`. Data and engine unchanged.
+
+## D-31 Shallow half zones (user request 2026-11-08)
+- Decision: new presets `shallow-half-L` / `shallow-half-R`: half the field wide (x −15..0 / 0..15), y 3..10, drop
+  point (∓7.5, 7). Kind `hook` (shallow, not deep), mirrored by flip, accepted by the import schema. Existing
+  plays are unchanged.

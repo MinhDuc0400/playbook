@@ -532,6 +532,8 @@ describe('FR-FLP-01 flipPlay table (SRS §6.4)', () => {
       'hook-L': 'hook-R',
       'hook-R': 'hook-L',
       'hook-M': 'hook-M',
+      'shallow-half-L': 'shallow-half-R',
+      'shallow-half-R': 'shallow-half-L',
       'curl-flat-L': 'curl-flat-R',
       'curl-flat-R': 'curl-flat-L',
     };

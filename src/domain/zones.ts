@@ -10,6 +10,7 @@
  * | flat-L | [−15, −8] | [0, 7] | (−10, 5) |            flat-R mirrored
  * | hook-L | [−8, −1] | [3, 10] | (−4, 7) |             hook-R mirrored
  * | hook-M | [−4, 4] | [3, 10] | (0, 6) |
+ * | shallow-half-L | [−15, 0] | [3, 10] | (−7.5, 7) |   shallow-half-R mirrored (half the field, not a quarter)
  * | curl-flat-L | [−15, −4] | [0, 12] | (−9, 7) |       curl-flat-R mirrored
  * Polygons are axis-aligned rectangles listed counter-clockwise from the bottom-left corner.
  */
@@ -42,6 +43,8 @@ const SPECS: Record<ZonePresetId, PresetSpec> = {
   'hook-L': { x: [-8, -1], y: [3, 10], drop: { x: -4, y: 7 } },
   'hook-R': { x: [1, 8], y: [3, 10], drop: { x: 4, y: 7 } },
   'hook-M': { x: [-4, 4], y: [3, 10], drop: { x: 0, y: 6 } },
+  'shallow-half-L': { x: [-15, 0], y: [3, 10], drop: { x: -7.5, y: 7 } },
+  'shallow-half-R': { x: [0, 15], y: [3, 10], drop: { x: 7.5, y: 7 } },
   'curl-flat-L': { x: [-15, -4], y: [0, 12], drop: { x: -9, y: 7 } },
   'curl-flat-R': { x: [4, 15], y: [0, 12], drop: { x: 9, y: 7 } },
 };
@@ -101,7 +104,7 @@ export function zoneKind(zone: ZoneAction['zone']): ZoneKind {
   if (typeof zone === 'string') {
     if (zone.startsWith('deep-')) return 'deep';
     if (zone.startsWith('flat-')) return 'flat';
-    if (zone.startsWith('hook-')) return 'hook';
+    if (zone.startsWith('hook-') || zone.startsWith('shallow-')) return 'hook';
     return 'curl';
   }
   if (zone.polygon.length === 0) return 'custom';

@@ -309,7 +309,7 @@ interface ZoneAction {
 }
 type ZonePresetId =
   | 'deep-half-L' | 'deep-half-R' | 'deep-third-L' | 'deep-third-M' | 'deep-third-R'
-  | 'deep-middle' | 'flat-L' | 'flat-R' | 'hook-L' | 'hook-R' | 'hook-M' | 'curl-flat-L' | 'curl-flat-R';
+  | 'deep-middle' | 'flat-L' | 'flat-R' | 'hook-L' | 'hook-R' | 'hook-M' | 'shallow-half-L' | 'shallow-half-R' | 'curl-flat-L' | 'curl-flat-R';
 interface RushAction { type: 'rush'; path: Point[]; delay?: number }   // NFL FLAG: delay = 0
 interface SpyAction { type: 'spy'; target: { kind: 'role'; role: 'QB' } }
 ```

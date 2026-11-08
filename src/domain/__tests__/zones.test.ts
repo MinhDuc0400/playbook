@@ -18,6 +18,8 @@ const TABLE: Record<ZonePresetId, [number, number, number, number, number, numbe
   'deep-middle': [-7, 7, 10, 30, 0, 14],
   'flat-L': [-15, -8, 0, 7, -10, 5],
   'flat-R': [8, 15, 0, 7, 10, 5],
+  'shallow-half-L': [-15, 0, 3, 10, -7.5, 7],
+  'shallow-half-R': [0, 15, 3, 10, 7.5, 7],
   'hook-L': [-8, -1, 3, 10, -4, 7],
   'hook-R': [1, 8, 3, 10, 4, 7],
   'hook-M': [-4, 4, 3, 10, 0, 6],
@@ -174,6 +176,8 @@ describe('zoneKind / isDeepZone (§8.6)', () => {
     'hook-L': 'hook',
     'hook-R': 'hook',
     'hook-M': 'hook',
+    'shallow-half-L': 'hook',
+    'shallow-half-R': 'hook',
     'curl-flat-L': 'curl',
     'curl-flat-R': 'curl',
   };

@@ -54,6 +54,8 @@ const ZonePresetSchema = z.enum([
   'hook-L',
   'hook-R',
   'hook-M',
+  'shallow-half-L',
+  'shallow-half-R',
   'curl-flat-L',
   'curl-flat-R',
 ]);

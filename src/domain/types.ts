@@ -221,19 +221,33 @@ export interface SpyAction {
 
 // ---------- §5.4 pattern match rules ----------
 
-export type MatchEvent = 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop';
+/** `entersArea` (D-48): the receiver enters an alignment lane (`when.area`). */
+export type MatchEvent = 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea';
+
+/** D-48: whose lane an `entersArea` rule watches. */
+export type AreaRef = { kind: 'self' } | { kind: 'teammate'; slotId: ID };
+
+/**
+ * D-48: who a rule watches. `any` = the first receiver that satisfies the event; `nth` = the N-th receiver to
+ * enter the rule's area (only with `entersArea`).
+ */
+export type RuleReceiver = ReceiverRef | { kind: 'any' } | { kind: 'nth'; n: 1 | 2 };
 
 export interface MatchRule {
   id: ID;
   priority: number; // lower runs first
   when: {
-    receiver: ReceiverRef;
+    receiver: RuleReceiver;
     event: MatchEvent;
+    /** Required when event = 'entersArea', ignored otherwise. */
+    area?: AreaRef;
     minDepth?: number; // yd from LOS
     beforeTime?: number; // s
   };
   then:
     | { type: 'man'; target: ReceiverRef }
+    /** D-48 "Man người đó": man (trail) on the receiver that made the rule fire. */
+    | { type: 'manTrigger' }
     | { type: 'zone'; zone: ZonePresetId }
     | { type: 'carry' }
     | { type: 'passOff' };

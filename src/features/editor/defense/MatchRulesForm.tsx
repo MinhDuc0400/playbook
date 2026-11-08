@@ -16,6 +16,7 @@ import {
   type ReceiverRef,
   type ZonePresetId,
 } from '@/domain/types';
+import { isReceiverRef } from '@/domain/areaRules';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { setAreaMatch } from './ops';
@@ -125,7 +126,7 @@ function RuleRow({
       <Select
         label={r.receiver}
         data-testid={`rule-receiver-${id}`}
-        value={refKey(rule.when.receiver)}
+        value={isReceiverRef(rule.when.receiver) ? refKey(rule.when.receiver) : rule.when.receiver.kind}
         onChange={(e) => {
           const ref = parseRef(e.target.value);
           if (ref) patchWhen({ receiver: ref });

@@ -36,6 +36,7 @@ export const rules = {
     under: 'chạy under',
     release: 'release',
     stop: 'dừng (stop)',
+    entersArea: 'vào khu vực của',
   },
   reactions: {
     man: 'Man',

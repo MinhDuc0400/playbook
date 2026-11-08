@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import type {
   Action,
+  AreaRef,
   Athlete,
   ExportFile,
   FieldConfig,
@@ -16,6 +17,7 @@ import type {
   Play,
   Point,
   ReceiverRef,
+  RuleReceiver,
   Settings,
   Stats,
   TuningParams,
@@ -94,17 +96,30 @@ export const ActionSchema: z.ZodType<Action> = z.discriminatedUnion('type', [
   z.object({ type: z.literal('spy'), target: z.object({ kind: z.literal('role'), role: z.literal('QB') }) }),
 ]);
 
+const RuleReceiverSchema: z.ZodType<RuleReceiver> = z.union([
+  ReceiverRefSchema,
+  z.object({ kind: z.literal('any') }),
+  z.object({ kind: z.literal('nth'), n: z.union([z.literal(1), z.literal(2)]) }),
+]);
+
+const AreaRefSchema: z.ZodType<AreaRef> = z.union([
+  z.object({ kind: z.literal('self') }),
+  z.object({ kind: z.literal('teammate'), slotId: z.string() }),
+]);
+
 export const MatchRuleSchema: z.ZodType<MatchRule> = z.object({
   id,
   priority: num,
   when: z.object({
-    receiver: ReceiverRefSchema,
-    event: z.enum(['vertical', 'out', 'in', 'under', 'release', 'stop']),
+    receiver: RuleReceiverSchema,
+    event: z.enum(['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea']),
+    area: AreaRefSchema.optional(),
     minDepth: num.optional(),
     beforeTime: num.optional(),
   }),
   then: z.union([
     z.object({ type: z.literal('man'), target: ReceiverRefSchema }),
+    z.object({ type: z.literal('manTrigger') }),
     z.object({ type: z.literal('zone'), zone: ZonePresetSchema }),
     z.object({ type: z.literal('carry') }),
     z.object({ type: z.literal('passOff') }),

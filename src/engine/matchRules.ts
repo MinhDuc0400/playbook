@@ -1,5 +1,6 @@
 /** Pattern-match rules (SRS §5.4, §8.6 "Luật match", FR-ENG-09). Pure. */
-import type { ID, MatchEvent, MatchRule, Point, ZonePresetId } from '@/domain/types';
+import { isReceiverRef } from '@/domain/areaRules';
+import type { ID, MatchEvent, MatchRule, Point, ReceiverRef, ZonePresetId } from '@/domain/types';
 import type { PerceivedPlayer } from './types';
 
 /**
@@ -60,13 +61,13 @@ export type RuleOutcome =
 export function evaluateRules(opts: {
   rules: readonly MatchRule[];
   perceived: readonly PerceivedPlayer[];
-  resolveRef: (ref: MatchRule['when']['receiver']) => ID | null;
+  resolveRef: (ref: ReceiverRef) => ID | null;
   t: number;
   iq: number;
   fired: ReadonlySet<ID>;
   heldSince: Readonly<Record<ID, number>>;
   strongSign: 1 | -1;
-  resolveThenRef: (ref: MatchRule['when']['receiver']) => ID | null;
+  resolveThenRef: (ref: ReceiverRef) => ID | null;
 }): { fired: { rule: MatchRule; outcome: RuleOutcome } | null; heldSince: Record<ID, number> } {
   const delay = (1 - Math.min(1, Math.max(0, opts.iq))) * IQ_DELAY;
   const held: Record<ID, number> = { ...opts.heldSince };
@@ -74,7 +75,8 @@ export function evaluateRules(opts: {
   for (const rule of ordered) {
     if (opts.fired.has(rule.id)) continue;
     const { when } = rule;
-    const id = opts.resolveRef(when.receiver);
+    // D-48 receivers (any / nth) are handled by the area coordinator and the lane defender.
+    const id = isReceiverRef(when.receiver) ? opts.resolveRef(when.receiver) : null;
     const seen = id === null ? undefined : opts.perceived.find((p) => p.id === id);
     const holds =
       seen !== undefined &&
@@ -93,6 +95,8 @@ export function evaluateRules(opts: {
       const targetId = opts.resolveThenRef(then.target);
       if (targetId === null) continue;
       outcome = { type: 'man', targetId };
+    } else if (then.type === 'manTrigger') {
+      outcome = { type: 'man', targetId: seen.id };
     } else if (then.type === 'zone') {
       outcome = { type: 'zone', zone: then.zone };
     } else {

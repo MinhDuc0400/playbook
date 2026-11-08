@@ -297,3 +297,8 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Decision: new presets `shallow-half-L` / `shallow-half-R`: half the field wide (x −15..0 / 0..15), y 3..10, drop
   point (∓7.5, 7). Kind `hook` (shallow, not deep), mirrored by flip, accepted by the import schema. Existing
   plays are unchanged.
+
+## D-32 Open windows stop at the throw (user request 2026-11-08)
+- Decision: the "Khoảng open" panel clips each window at the `throw` event and totals, best window and summary use
+  the clipped data. No throw (no event) keeps everything. Display only; `metrics.openWindows`, the engine and
+  Suggest scoring are unchanged.

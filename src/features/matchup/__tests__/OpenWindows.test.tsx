@@ -32,7 +32,7 @@ describe('OpenWindows', () => {
   };
 
   it('positions segments proportionally, totals and tooltips', () => {
-    render(<OpenWindows result={fake({}, windows)} offense={offense} t={1} />);
+    render(<OpenWindows result={fake({ events: [] }, windows)} offense={offense} t={1} />);
     const segs = screen.getAllByTestId('ow-open-B');
     expect(segs[0]).toHaveStyle({ left: '0%', width: '25%' });
     expect(segs[1]).toHaveStyle({ left: '50%', width: '37.5%' });
@@ -42,15 +42,32 @@ describe('OpenWindows', () => {
     expect(screen.getByTestId('ow-total-C')).toHaveTextContent('0.00 s');
   });
 
+  it('D-32 stops counting at the throw', () => {
+    render(<OpenWindows result={fake({}, windows)} offense={offense} t={0} />);
+    expect(screen.getAllByTestId('ow-open-B')).toHaveLength(1);
+    expect(screen.getByTestId('ow-total-B')).toHaveTextContent('1.00 s');
+    expect(screen.getByTestId('ow-total-A')).toHaveTextContent('1.00 s');
+  });
+
+  it('D-32 cuts a window that spans the throw', () => {
+    render(<OpenWindows result={fake({}, { c: [[1, 3]] })} offense={offense} t={0} />);
+    expect(screen.getByTestId('ow-open-C')).toHaveStyle({ left: '25%', width: '25%' });
+    expect(screen.getByTestId('ow-total-C')).toHaveTextContent('1.00 s');
+  });
+
   it('summary names the receiver with the largest total; nobody open message', () => {
-    const { rerender } = render(<OpenWindows result={fake({}, windows)} offense={offense} t={0} />);
+    const { rerender } = render(
+      <OpenWindows result={fake({ events: [] }, windows)} offense={offense} t={0} />,
+    );
     expect(screen.getByTestId('ow-summary')).toHaveTextContent('B mở lâu nhất: 2.00–3.50 s (1.50 s)');
     rerender(<OpenWindows result={fake()} offense={offense} t={0} />);
     expect(screen.getByTestId('ow-summary')).toHaveTextContent('Không receiver nào mở ≥ 2.5 yd');
   });
 
   it('playhead follows t; throw marker; outcome only on target', () => {
-    const { rerender } = render(<OpenWindows result={fake({}, windows)} offense={offense} t={1} />);
+    const { rerender } = render(
+      <OpenWindows result={fake({ events: [] }, windows)} offense={offense} t={1} />,
+    );
     expect(screen.getAllByTestId('ow-playhead')[0]).toHaveStyle({ left: '25%' });
     rerender(<OpenWindows result={fake({}, windows)} offense={offense} t={3} />);
     expect(screen.getAllByTestId('ow-playhead')[0]).toHaveStyle({ left: '75%' });
@@ -95,11 +112,11 @@ describe('OpenWindows', () => {
     const result = simulate(makeInput(off, cover3Play()));
     render(<OpenWindows result={result} offense={off} t={0} />);
     for (const p of off.players.filter((q) => q.role !== 'QB')) {
-      const sum = (result.metrics.openWindows[p.id] ?? []).reduce((a, [x, y]) => a + (y - x), 0);
+      const end = result.events.find((e) => e.type === 'throw')?.t ?? Infinity;
+      const wins = (result.metrics.openWindows[p.id] ?? []).filter(([x]) => x < end);
+      const sum = wins.reduce((a, [x, y]) => a + (Math.min(y, end) - x), 0);
       expect(screen.getByTestId(`ow-total-${p.label}`)).toHaveTextContent(`${sum.toFixed(2)} s`);
-      expect(screen.queryAllByTestId(`ow-open-${p.label}`)).toHaveLength(
-        (result.metrics.openWindows[p.id] ?? []).length,
-      );
+      expect(screen.queryAllByTestId(`ow-open-${p.label}`)).toHaveLength(wins.length);
     }
     const ids = screen.getAllByTestId(/^ow-row-/).map((e) => e.getAttribute('data-testid'));
     expect(ids.slice(0, 4)).toEqual(['ow-row-Y', 'ow-row-H', 'ow-row-Z', 'ow-row-C']);

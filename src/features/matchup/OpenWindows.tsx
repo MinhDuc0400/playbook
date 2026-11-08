@@ -1,6 +1,6 @@
 /**
  * "Khoảng open" panel (D-26): per receiver, when separation >= separationOpen, on the same time scale
- * as the playback bar. Everything is drawn from engine data (NFR-ARC-03).
+ * as the playback bar. Everything is drawn from engine data (NFR-ARC-03). Windows stop counting at the throw (D-32).
  */
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import type { Play, SimResult, TuningParams } from '@/domain/types';
@@ -16,6 +16,12 @@ export interface OpenWindowsProps {
 }
 
 const s = strings.openWindows;
+
+/** Keep only the part of each window before `end` (no end: all of it); empty pieces are dropped. */
+function clipAt(wins: readonly [number, number][], end: number | undefined): [number, number][] {
+  if (end === undefined) return [...wins];
+  return wins.filter(([a]) => a < end).map(([a, b]): [number, number] => [a, Math.min(b, end)]);
+}
 
 export function OpenWindows({
   result,
@@ -49,7 +55,7 @@ export function OpenWindows({
 
   const rows = ordered.map((id) => {
     const label = offense.players.find((p) => p.id === id)?.label ?? id;
-    const wins = result.metrics.openWindows[id] ?? [];
+    const wins = clipAt(result.metrics.openWindows[id] ?? [], throwEvent?.t);
     const total = wins.reduce((sum, [a, b]) => sum + Math.max(0, b - a), 0);
     return { id, label, wins, total, read: progression.indexOf(id) };
   });

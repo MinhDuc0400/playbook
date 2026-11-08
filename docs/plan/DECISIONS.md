@@ -350,3 +350,15 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Decision: the "Đã ném N lần · bắt được … · …/N ném đúng người tốt nhất" line and the counting behind it (`tally`,
   `record`) are removed. The panel shows only the current throw (target, time, read score, separation), the key legend,
   the "open nhất" buttons, Thử lại and Thoát.
+
+## D-40 Area-match coverage, "Bunch Killer (Bangkok)" (user request 2026-11-08)
+- Decision: `PlayerSlot.areaMatch?: { role: 'corner' | 'inside'; squeezeAfter?: number }` (default 0.5 s). Area-match
+  defenders own vertical lanes, boundaries at the midpoint of neighbours' `start.x` (after flips), outer lanes to the
+  sidelines (`src/domain/areaLanes.ts`). A corner takes the first released receiver into its lane (ties: nearer the
+  sideline first); with nobody by `squeezeAfter` it takes the deepest vertical receiver in the next lane inside, else
+  shifts its zone onto the inner boundary. An inside defender skips the first receiver into its corner's lane and takes
+  the second; with none it plays its base zone, ignoring receivers the others claimed ("whoever is left"). Claims are
+  sticky. Each defender infers teammates' claims from its own delayed Perception with the same rules: no
+  communication, no opponent Play (NFR-ARC-06). The slot's zone action is the base coverage; without one, a rectangle
+  over its lane. `areaMatch` on a rusher / man / spy slot is ignored with a warning; it overrides `matchRules`.
+- Spec: `docs/superpowers/specs/2026-11-08-bangkok-bunch-killer-design.md`.

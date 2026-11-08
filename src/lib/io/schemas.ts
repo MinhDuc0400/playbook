@@ -119,6 +119,7 @@ const PlayerSlotSchema = z.object({
   leverage: LeverageSchema.optional(),
   actions: z.array(ActionSchema),
   matchRules: z.array(MatchRuleSchema).optional(),
+  areaMatch: z.object({ role: z.enum(['corner', 'inside']), squeezeAfter: num.optional() }).optional(),
 });
 
 const ReadPlanSchema = z.object({

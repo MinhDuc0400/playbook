@@ -158,4 +158,18 @@ describe('D-48 area coordinator (ports T-AM claim tracker)', () => {
     cb1.update(0.2, seen);
     expect(s.update(0.2, seen).manId).toBeNull();
   });
+
+  it('Final review: two members whose rules share an id (Ctrl+D copy) each still fire', () => {
+    const shared = cornerRules(() => 'same');
+    const m: LaneMember[] = [
+      { id: 'A', rules: shared },
+      { id: 'B', rules: shared },
+    ];
+    const two = computeRuleLanes([def('A', -6, shared), def('B', 6, shared)])!;
+    const a = createAreaCoordinator({ lanes: two, members: m, selfId: 'A', minX: -12.5, maxX: 12.5 });
+    const b = createAreaCoordinator({ lanes: two, members: m, selfId: 'B', minX: -12.5, maxX: 12.5 });
+    const seen = [rec('X', { x: -8, y: 1 }, { x: -5, y: 0 }), rec('Y', { x: 8, y: 1 }, { x: 5, y: 0 })];
+    expect(a.update(0.2, seen).manId).toBe('X');
+    expect(b.update(0.2, seen).manId).toBe('Y');
+  });
 });

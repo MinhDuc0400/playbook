@@ -292,6 +292,33 @@ describe('removePlayers', () => {
 });
 
 describe('duplicatePlayer (Ctrl+D)', () => {
+  it('Final review (D-48): the copy gets new match-rule ids', () => {
+    const d = defense();
+    const withRules: Play = {
+      ...d,
+      players: d.players.map((s) =>
+        s.id === 'cb'
+          ? {
+              ...s,
+              matchRules: [
+                {
+                  id: 'cb-bk',
+                  priority: 0,
+                  when: { receiver: { kind: 'nth', n: 1 }, event: 'entersArea', area: { kind: 'self' } },
+                  then: { type: 'manTrigger' },
+                },
+              ],
+            }
+          : s,
+      ),
+    };
+    const p = run(withRules, duplicatePlayer('cb', 6, idGen));
+    const copy = p.players[p.players.length - 1]!;
+    expect(copy.matchRules).toHaveLength(1);
+    expect(copy.matchRules![0]!.id).not.toBe('cb-bk');
+    expect({ ...copy.matchRules![0]!, id: 'cb-bk' }).toEqual(slotOf(p, 'cb').matchRules![0]);
+  });
+
   it('copies with +1 yd in x, a new id and the next default label', () => {
     const p = run(offense(), duplicatePlayer('x', 6, idGen));
     const copy = p.players[p.players.length - 1]!;

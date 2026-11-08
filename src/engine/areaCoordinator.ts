@@ -55,7 +55,9 @@ export function createAreaCoordinator(opts: {
   const entries: ID[][] = Array.from({ length: n }, () => []);
   /** member id → receiver it took. */
   const taken = new Map<ID, ID>();
-  const fired = new Set<ID>();
+  /** `${member}\u0000${rule.id}`: rule ids are only unique per slot (a Ctrl+D copy keeps them). */
+  const fired = new Set<string>();
+  const key = (member: ID, rule: MatchRule): string => `${member}\u0000${rule.id}`;
 
   // Rules in evaluation order: group, then lane (left → right), then priority / array order.
   const ordered = members
@@ -90,7 +92,7 @@ export function createAreaCoordinator(opts: {
 
       let mine: AreaView['fired'] = null;
       for (const { member, rule } of ordered) {
-        if (fired.has(rule.id) || taken.has(member)) continue;
+        if (fired.has(key(member, rule)) || taken.has(member)) continue;
         const { when } = rule;
         if (when.beforeTime !== undefined && t >= when.beforeTime) continue;
         const owner = when.area?.kind === 'teammate' ? when.area.slotId : member;
@@ -110,11 +112,11 @@ export function createAreaCoordinator(opts: {
           if (!p || p.pos.y < when.minDepth) continue;
         }
         if (rule.then.type === 'manTrigger') {
-          fired.add(rule.id);
+          fired.add(key(member, rule));
           taken.set(member, pick);
           if (member === selfId && !mine) mine = { rule, receiverId: pick };
         } else if (member === selfId && !mine) {
-          fired.add(rule.id);
+          fired.add(key(member, rule));
           mine = { rule, receiverId: pick };
         }
       }

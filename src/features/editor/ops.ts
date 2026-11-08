@@ -236,6 +236,8 @@ export function duplicatePlayer(slotId: ID, maxPlayers: number, idGen: () => ID)
     if (!src || !canAddPlayer(play, maxPlayers)) return play;
     const copy = clone(src);
     copy.id = idGen();
+    // Rule ids must not repeat across slots (D-48 area rules are tracked per rule id).
+    if (copy.matchRules) copy.matchRules = copy.matchRules.map((r) => ({ ...r, id: idGen() }));
     copy.label = nextDefaultLabel(
       src.role,
       play.players.map((s) => s.label),

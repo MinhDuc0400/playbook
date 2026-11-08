@@ -388,3 +388,10 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   players follow the pointer. The spot is kept in localStorage (`flagbook.freestyle.ball.v1`, survives "Mới") and is
   used by Chạy thử, the live split and the warnings badge. Plays stay ball-relative, so a saved play does not store
   it. The hash (x) is not draggable.
+
+## D-44 Bunch Killer Spy: R's zone reaches the back of the end zone (user request 2026-11-08)
+- Decision: the seeded "Zone: Bunch Killer (Bangkok) No Rush Spy" play's R zone "MID" is x −6..7, y 1.5 .. 5 +
+  endZoneDepth (15 in 5v5): from just past the LOS to the end line with the ball on the 5, as the design text says.
+  It was y 1.5..10 (half way into the end zone). `SEED_VERSION = 3`: a database at v2 or below whose Spy play still
+  has the v2 zone exactly gets only that one action replaced (name and other players kept); an edited zone or a
+  deleted play is left alone.

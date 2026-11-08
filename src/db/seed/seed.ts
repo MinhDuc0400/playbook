@@ -2,17 +2,25 @@
 import { createDefaultSettings, normalizeSettings } from '@/domain/defaults';
 import { withDbErrors } from '../errors';
 import { getDb } from '../schema';
-import { createBangkokContent } from './bangkok';
+import { BANGKOK_IDS, createBangkokContent, SPY_ZONE_V2, spyZone } from './bangkok';
 import { createSamplePlays } from './samplePlays';
 
-/** Version of the built-in sample content. 1 = the 6 sample plays, 2 = + Bunch Killer (Bangkok). */
-export const SEED_VERSION = 2;
+/**
+ * Version of the built-in sample content. 1 = the 6 sample plays, 2 = + Bunch Killer (Bangkok),
+ * 3 = the Spy play's R zone reaches the back of the end zone (D-44).
+ */
+export const SEED_VERSION = 3;
+
+const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * - No Settings record: write default Settings (seedVersion = SEED_VERSION), the sample plays and the v2
  *   content in one transaction → { seeded: true }.
  * - Settings with seedVersion missing or < 2: add each v2 record (plays, matchups, install) whose fixed id is
- *   missing (a matchup only when both its plays exist), then set seedVersion = 2. Never overwrites; something deleted later is not re-added.
+ *   missing (a matchup only when both its plays exist). Never overwrites; something deleted later is not re-added.
+ * - seedVersion < 3: if the Spy play still has R's v2 zone exactly, replace that one action with the deeper
+ *   zone (nothing else in the play changes). An edited zone or a deleted play is left alone.
+ * - Then seedVersion = SEED_VERSION.
  * Idempotent. Returns whether it seeded a fresh DB.
  */
 export async function ensureSeeded(now: number = Date.now()): Promise<{ seeded: boolean }> {
@@ -45,6 +53,17 @@ export async function ensureSeeded(now: number = Date.now()): Promise<{ seeded: 
             .filter((it) => kept.includes(it.matchupId))
             .map((it, order) => ({ ...it, order }));
           await db.installs.put({ ...v2.install, items });
+        }
+      }
+      if ((settings.seedVersion ?? 1) < 3) {
+        const spy = await db.plays.get(BANGKOK_IDS.spy);
+        const r = spy?.players.find((s) => s.label === 'R');
+        if (spy && r && r.actions.length === 1 && sameJson(r.actions[0], SPY_ZONE_V2)) {
+          const deeper = spyZone(normalizeSettings(settings).fields['5v5']);
+          await db.plays.put({
+            ...spy,
+            players: spy.players.map((s) => (s === r ? { ...s, actions: [deeper] } : s)),
+          });
         }
         await db.settings.put({ ...settings, seedVersion: SEED_VERSION });
       }

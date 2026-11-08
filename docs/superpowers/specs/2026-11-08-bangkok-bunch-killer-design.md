@@ -208,7 +208,7 @@ Positions are measured from the diagram (QB depth 5 yd ≈ diagram scale), y ≥
 R sits at the rush line, which is legal under NFL FLAG, so the play has no warnings.
 
 **Defense "Zone: Bunch Killer (Bangkok) No Rush Spy":** the same four coverage defenders. R starts at
-(0.5, 7) and plays a zone polygon "MID": x −6..7, y 1.5..10, clamped to the field. No rusher.
+(0.5, 7) and plays a zone polygon "MID": x −6..7, y 1.5..15 (the end line with the ball on the 5; was 1.5..10, D-44), clamped to the field. No rusher.
 
 **Install "Red Zone – Bunch Killer (Bangkok)"** with four matchups, ball on the 5
 (`yardLine = field.length − 5`), defenseFlip auto:

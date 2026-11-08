@@ -200,7 +200,7 @@ describe('ensureSeeded (FR-DAT-05, FR-DAT-04)', () => {
 
   it('seeds default settings and 6 plays into an empty DB', async () => {
     expect(await ensureSeeded(NOW)).toEqual({ seeded: true });
-    expect(await settingsRepo.get()).toEqual({ ...createDefaultSettings(), seedVersion: 2 });
+    expect(await settingsRepo.get()).toEqual({ ...createDefaultSettings(), seedVersion: 3 });
     const plays = await playsRepo.list();
     expect(plays).toHaveLength(9);
     expect(plays.map((p) => p.id)).toEqual(expect.arrayContaining(Object.values(SEED_IDS)));
@@ -263,6 +263,16 @@ describe('Bunch Killer (Bangkok) content (D-42)', () => {
     expect(spy.actions[0]?.type).toBe('zone');
   });
 
+  it('the Spy zone runs from just past the LOS to the back of the end zone (ball on the 5)', () => {
+    const spy = c.plays[2]!.players.find((s) => s.label === 'R')!;
+    const zone = spy.actions[0];
+    if (zone?.type !== 'zone' || typeof zone.zone === 'string') throw new Error('no polygon zone');
+    const ys = zone.zone.polygon.map((p) => p.y);
+    expect(Math.min(...ys)).toBe(1.5);
+    expect(Math.max(...ys)).toBe(5 + FIELD5.endZoneDepth);
+    expect(zone.zone.polygon.map((p) => p.x)).toEqual([-6, 7, 7, -6]);
+  });
+
   it('seeded defense and offense plays have no validate warnings', () => {
     for (const p of c.plays) expect(validatePlay(p, FIELD5)).toEqual([]);
   });
@@ -288,9 +298,9 @@ describe('seed v2 (D-42)', () => {
     await resetDb();
   });
 
-  it('a fresh seed writes the Bangkok content and seedVersion 2', async () => {
+  it('a fresh seed writes the Bangkok content and seedVersion 3', async () => {
     await ensureSeeded(NOW);
-    expect((await settingsRepo.get())?.seedVersion).toBe(2);
+    expect((await settingsRepo.get())?.seedVersion).toBe(3);
     expect(await playsRepo.get(BANGKOK_IDS.rush)).toBeDefined();
     expect((await installsRepo.get(BANGKOK_IDS.install))?.items).toHaveLength(4);
     for (const id of BANGKOK_IDS.matchups) expect(await matchupsRepo.get(id)).toBeDefined();
@@ -303,7 +313,7 @@ describe('seed v2 (D-42)', () => {
     expect(await ensureSeeded(NOW)).toEqual({ seeded: false });
     expect(await playsRepo.count()).toBe(9);
     expect(await installsRepo.get(BANGKOK_IDS.install)).toBeDefined();
-    expect((await settingsRepo.get())?.seedVersion).toBe(2);
+    expect((await settingsRepo.get())?.seedVersion).toBe(3);
   });
 
   it('does not overwrite or re-add after v2', async () => {
@@ -342,5 +352,86 @@ describe('seed v2 (D-42)', () => {
     for (const p of createSamplePlays(NOW)) await playsRepo.put(p);
     await ensureSeeded(NOW);
     expect((await matchupsRepo.get(BANGKOK_IDS.matchups[0]))?.ballSpot).toEqual({ x: 0, yardLine: 45 });
+  });
+});
+
+/** The Spy play as seed v2 wrote it: R's zone stopped 10 yd past the LOS. */
+function spyV2(): Play {
+  const spy = createBangkokContent(NOW, FIELD5).plays[2]!;
+  return {
+    ...spy,
+    players: spy.players.map((s) =>
+      s.label !== 'R'
+        ? s
+        : {
+            ...s,
+            actions: [
+              {
+                type: 'zone',
+                zone: {
+                  polygon: [
+                    { x: -6, y: 1.5 },
+                    { x: 7, y: 1.5 },
+                    { x: 7, y: 10 },
+                    { x: -6, y: 10 },
+                  ],
+                },
+                dropPoint: { x: 0.5, y: 5 },
+              },
+            ],
+          },
+    ),
+  };
+}
+
+const spyR = async (): Promise<Play['players'][number] | undefined> =>
+  (await playsRepo.get(BANGKOK_IDS.spy))?.players.find((s) => s.label === 'R');
+
+describe('seed v3: deeper Spy zone (D-44)', () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it('a v2 database with the untouched Spy play gets the zone to the back of the end zone', async () => {
+    await settingsRepo.put({ ...createDefaultSettings(), seedVersion: 2 });
+    await playsRepo.put(spyV2());
+    await ensureSeeded(NOW + 1);
+    const fresh = createBangkokContent(NOW, FIELD5).plays[2]!.players.find((s) => s.label === 'R')!;
+    expect((await spyR())?.actions).toEqual(fresh.actions);
+    expect((await settingsRepo.get())?.seedVersion).toBe(3);
+  });
+
+  it('keeps a Spy zone the user edited, and the rest of the play', async () => {
+    await settingsRepo.put({ ...createDefaultSettings(), seedVersion: 2 });
+    const mine = spyV2();
+    const r = mine.players.find((s) => s.label === 'R')!;
+    const edited: Play = {
+      ...mine,
+      name: 'My Spy',
+      players: mine.players.map((s) =>
+        s === r ? { ...s, actions: [{ type: 'zone', zone: 'hook-M', dropPoint: { x: 0, y: 6 } }] } : s,
+      ),
+    };
+    await playsRepo.put(edited);
+    await ensureSeeded(NOW + 1);
+    expect((await spyR())?.actions).toEqual([{ type: 'zone', zone: 'hook-M', dropPoint: { x: 0, y: 6 } }]);
+    expect((await playsRepo.get(BANGKOK_IDS.spy))?.name).toBe('My Spy');
+  });
+
+  it('a renamed Spy play with the old zone still gets the deeper zone and keeps its name', async () => {
+    await settingsRepo.put({ ...createDefaultSettings(), seedVersion: 2 });
+    await playsRepo.put({ ...spyV2(), name: 'My Spy' });
+    await ensureSeeded(NOW + 1);
+    const ys = (await spyR())?.actions[0];
+    if (ys?.type !== 'zone' || typeof ys.zone === 'string') throw new Error('no polygon zone');
+    expect(Math.max(...ys.zone.polygon.map((p) => p.y))).toBe(15);
+    expect((await playsRepo.get(BANGKOK_IDS.spy))?.name).toBe('My Spy');
+  });
+
+  it('a deleted Spy play is not re-added', async () => {
+    await settingsRepo.put({ ...createDefaultSettings(), seedVersion: 2 });
+    await ensureSeeded(NOW + 1);
+    expect(await playsRepo.get(BANGKOK_IDS.spy)).toBeUndefined();
+    expect((await settingsRepo.get())?.seedVersion).toBe(3);
   });
 });

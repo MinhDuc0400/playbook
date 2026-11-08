@@ -87,6 +87,31 @@ function coverage(playId: ID): PlayerSlot[] {
   ];
 }
 
+/** Spy R's zone "MID": x −6..7, from just past the LOS to the back of the end zone with the ball on the 5 (D-44). */
+export function spyZone(field: FieldConfig): Action {
+  const back = RED_ZONE_YARDS + field.endZoneDepth;
+  return polygonZone(
+    [
+      { x: -6, y: 1.5 },
+      { x: 7, y: 1.5 },
+      { x: 7, y: back },
+      { x: -6, y: back },
+    ],
+    { x: 0.5, y: 5 },
+  );
+}
+
+/** Spy R's zone as seed v2 wrote it (stopped 10 yd past the LOS); seed v3 replaces it when untouched. */
+export const SPY_ZONE_V2: Action = polygonZone(
+  [
+    { x: -6, y: 1.5 },
+    { x: 7, y: 1.5 },
+    { x: 7, y: 10 },
+    { x: -6, y: 10 },
+  ],
+  { x: 0.5, y: 5 },
+);
+
 function defensePlay(id: ID, name: string, r: PlayerSlot, now: number): Play {
   return {
     id,
@@ -156,17 +181,7 @@ export function createBangkokContent(
   const spy = defensePlay(
     BANGKOK_IDS.spy,
     SPY_NAME,
-    slot(BANGKOK_IDS.spy, 'R', 'R', { x: 0.5, y: 7 }, [
-      polygonZone(
-        [
-          { x: -6, y: 1.5 },
-          { x: 7, y: 1.5 },
-          { x: 7, y: 10 },
-          { x: -6, y: 10 },
-        ],
-        { x: 0.5, y: 5 },
-      ),
-    ]),
+    slot(BANGKOK_IDS.spy, 'R', 'R', { x: 0.5, y: 7 }, [spyZone(field)]),
     now,
   );
 

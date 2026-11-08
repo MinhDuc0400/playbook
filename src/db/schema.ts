@@ -5,7 +5,7 @@
  */
 import Dexie, { type Table } from 'dexie';
 import type { Athlete, ID, Install, Lineup, Matchup, Play, Settings } from '@/domain/types';
-import { upgradeToV2 } from './migrations';
+import { upgradeToV2, upgradeToV3 } from './migrations';
 
 export const DB_NAME = 'flagbook';
 
@@ -36,6 +36,7 @@ export class FlagDB extends Dexie {
     super(name);
     this.version(1).stores(STORES_V1);
     this.version(2).stores(STORES_V2).upgrade(upgradeToV2);
+    this.version(3).stores(STORES_V2).upgrade(upgradeToV3);
   }
 }
 

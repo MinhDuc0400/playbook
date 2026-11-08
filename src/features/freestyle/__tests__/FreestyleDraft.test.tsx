@@ -82,6 +82,47 @@ describe('T-FS-06 loadDraft', () => {
   });
 });
 
+describe('D-48 loadDraft converts an old Bunch Killer draft (Review Focus 4)', () => {
+  it('a defense with areaMatch loads with the Bunch Killer rules, not dropped', () => {
+    const oldDef = {
+      ...def(),
+      players: [
+        {
+          id: 'd1-cb',
+          role: 'CB',
+          label: 'CB1',
+          start: { x: 9, y: 3.5 },
+          actions: [],
+          areaMatch: { role: 'corner' },
+        },
+        {
+          id: 'd1-s',
+          role: 'S',
+          label: 'S',
+          start: { x: 4, y: 3.5 },
+          actions: [],
+          areaMatch: { role: 'inside' },
+        },
+      ],
+    };
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ v: 1, offense: off(), defense: oldDef, activeSide: 'defense' }),
+    );
+    const d = loadDraft();
+    expect(d).not.toBeNull();
+    const cb = d!.defense.players.find((p) => p.id === 'd1-cb')!;
+    const sf = d!.defense.players.find((p) => p.id === 'd1-s')!;
+    expect(cb.matchRules?.[0]?.when).toEqual({
+      receiver: { kind: 'nth', n: 1 },
+      event: 'entersArea',
+      area: { kind: 'self' },
+    });
+    expect(sf.matchRules?.[0]?.when.area).toEqual({ kind: 'teammate', slotId: 'd1-cb' });
+    expect('areaMatch' in cb).toBe(false);
+  });
+});
+
 describe('T-FS-06 draft restore and autosave', () => {
   it('restores a stored draft on mount', async () => {
     localStorage.setItem(DRAFT_KEY, stored({ activeSide: 'defense' }));

@@ -6,6 +6,7 @@ import { installsRepo, matchupsRepo, playsRepo, settingsRepo } from '../repos';
 import { resetDb } from '../schema';
 import { SEED_IDS, createSamplePlays } from '../seed/samplePlays';
 import { BANGKOK_IDS, createBangkokContent } from '../seed/bangkok';
+import { matchTemplate } from '@/domain/areaRules';
 import { ensureSeeded } from '../seed/seed';
 import { createDefaultFields } from '@/domain/field';
 import { validatePlay } from '@/domain/validate';
@@ -251,7 +252,7 @@ describe('Bunch Killer (Bangkok) content (D-42)', () => {
 
   it('area-match roles and starts follow the diagram', () => {
     for (const d of [c.plays[1]!, c.plays[2]!]) {
-      const roles = Object.fromEntries(d.players.map((s) => [s.label, s.areaMatch?.role ?? null]));
+      const roles = Object.fromEntries(d.players.map((s) => [s.label, matchTemplate(s.matchRules)]));
       expect(roles).toEqual({ CB2: 'corner', LB: 'inside', S: 'inside', CB1: 'corner', R: null });
       expect(d.players.find((s) => s.label === 'CB1')?.start).toEqual({ x: 9, y: 3.5 });
     }

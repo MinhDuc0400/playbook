@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SCHEMA_VERSION } from '@/domain/types';
 import { migrateRecord } from '../migrations';
-import { FlagDB, STORES_V1 } from '../schema';
+import { FlagDB, STORES_V1, STORES_V2 } from '../schema';
 import { makeAthlete, makeInstall, makeLineup, makeMatchup, makePlay } from './fixtures';
 
 let counter = 0;
@@ -52,9 +52,9 @@ describe('FR-DAT-01 Dexie v1 → v2 upgrade', () => {
     await db.open();
     const after = Date.now();
 
-    expect(await db.plays.get('p1')).toEqual({ ...play, schemaVersion: 1 });
-    expect(await db.matchups.get('m1')).toEqual({ ...matchup, schemaVersion: 1 });
-    expect(await db.installs.get('i1')).toEqual({ ...install, schemaVersion: 1 });
+    expect(await db.plays.get('p1')).toEqual({ ...play, schemaVersion: SCHEMA_VERSION });
+    expect(await db.matchups.get('m1')).toEqual({ ...matchup, schemaVersion: SCHEMA_VERSION });
+    expect(await db.installs.get('i1')).toEqual({ ...install, schemaVersion: SCHEMA_VERSION });
 
     const a = await db.athletes.get('a1');
     expect(a).toMatchObject({
@@ -72,7 +72,7 @@ describe('FR-DAT-01 Dexie v1 → v2 upgrade', () => {
     expect(l?.createdAt).toBeGreaterThanOrEqual(before);
 
     const s = (await db.settings.get('app')) as unknown as Loose;
-    expect(s).toMatchObject({ key: 'app', schemaVersion: 1, ui: { theme: 'dark' } });
+    expect(s).toMatchObject({ key: 'app', schemaVersion: SCHEMA_VERSION, ui: { theme: 'dark' } });
 
     // tag multiEntry index survived the upgrade
     expect((await db.plays.where('tags').equals('quick').toArray()).map((p) => p.id)).toEqual(['p1']);
@@ -108,6 +108,50 @@ describe('FR-DAT-01 Dexie v1 → v2 upgrade', () => {
     opened.push(db);
     await db.open();
     expect(await db.plays.count()).toBe(0);
+  });
+});
+
+describe('D-48 Dexie v2 → v3 upgrade', () => {
+  it('converts areaMatch plays to rules and sets schemaVersion 2 on every record', async () => {
+    const name = uniqueName();
+    const v2 = new Dexie(name);
+    v2.version(1).stores(STORES_V1);
+    v2.version(2).stores(STORES_V2);
+    const play = makePlay('bk', {
+      side: 'defense',
+      schemaVersion: 1,
+      players: [
+        {
+          id: 'CB1',
+          role: 'CB',
+          label: 'CB1',
+          start: { x: 9, y: 3.5 },
+          actions: [],
+          areaMatch: { role: 'corner' },
+        },
+        {
+          id: 'S',
+          role: 'S',
+          label: 'S',
+          start: { x: 4, y: 3.5 },
+          actions: [],
+          areaMatch: { role: 'inside' },
+        },
+      ],
+    } as never);
+    await v2.table('plays').put(play);
+    await v2.table('matchups').put({ ...makeMatchup('m1', 'bk', 'p2'), schemaVersion: 1 });
+    v2.close();
+
+    const db = new FlagDB(name);
+    opened.push(db);
+    await db.open();
+    const p = (await db.plays.get('bk'))!;
+    expect(p.schemaVersion).toBe(2);
+    const cb1 = p.players.find((s) => s.id === 'CB1')!;
+    expect(cb1.matchRules?.[0]?.then).toEqual({ type: 'manTrigger' });
+    expect('areaMatch' in cb1).toBe(false);
+    expect((await db.matchups.get('m1'))?.schemaVersion).toBe(2);
   });
 });
 

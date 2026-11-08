@@ -1,6 +1,14 @@
 /** Freestyle draft persistence in localStorage (FR-FS-09, D-27). Every access is guarded. */
+import { areaMatchToRules } from '@/domain/areaMatchToRules';
+import { createDefaultFields } from '@/domain/field';
 import type { BallSpot, Play, Side } from '@/domain/types';
 import { PlaySchema } from '@/lib/io/schemas';
+
+/** D-48: drafts saved before area rules carry `areaMatch`; convert before validating. */
+function converted(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null || !Array.isArray((raw as Play).players)) return raw;
+  return areaMatchToRules(raw as Play, createDefaultFields()['5v5']);
+}
 
 export const DRAFT_KEY = 'flagbook.freestyle.v1';
 
@@ -21,8 +29,8 @@ export function loadDraft(): Draft | null {
     const d = data as Record<string, unknown>;
     if (d.v !== 1) return null;
     if (d.activeSide !== 'offense' && d.activeSide !== 'defense') return null;
-    const offense = PlaySchema.safeParse(d.offense);
-    const defense = PlaySchema.safeParse(d.defense);
+    const offense = PlaySchema.safeParse(converted(d.offense));
+    const defense = PlaySchema.safeParse(converted(d.defense));
     if (!offense.success || !defense.success) return null;
     if (offense.data.side !== 'offense' || defense.data.side !== 'defense') return null;
     return { v: 1, offense: offense.data, defense: defense.data, activeSide: d.activeSide };

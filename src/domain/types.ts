@@ -24,7 +24,8 @@ export type ReceiverRef =
   { kind: 'number'; side: 'strong' | 'weak'; number: 1 | 2 | 3 } | { kind: 'role'; role: 'RB' | 'QB' | 'C' };
 
 /** Record schema version written on every record (FR-DAT-01, D-07). */
-export const SCHEMA_VERSION = 1;
+/** 2 = Bunch Killer `areaMatch` converted to area rules (D-48). */
+export const SCHEMA_VERSION = 2;
 
 // ---------- §4.2 field ----------
 

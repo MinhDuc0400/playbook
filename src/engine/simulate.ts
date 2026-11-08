@@ -32,6 +32,7 @@ import { createQbAgent, type QbAgent } from './agents/qb';
 import { createReceiverAgent } from './agents/receiver';
 import type { DefenderAgent } from './agents/common';
 import { createRuleDefender } from './agents/ruleDefender';
+import { createAreaMatchDefender } from './agents/areaMatchDefender';
 import { createRusherAgent } from './agents/rusher';
 import { createZoneDefender } from './agents/zoneDefender';
 import { computeMetrics } from './metrics';
@@ -269,7 +270,15 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     let agent: Agent;
     let coverage: DefenderAgent | undefined;
     const rules = slot.matchRules ?? [];
-    if ((b?.kind === 'man' || b?.kind === 'zone') && rules.length > 0) {
+    if (b?.kind === 'areaMatch') {
+      agent = coverage = createAreaMatchDefender({
+        id: slot.id,
+        binding: b,
+        leverage: slot.leverage,
+        info,
+        anticipation,
+      });
+    } else if ((b?.kind === 'man' || b?.kind === 'zone') && rules.length > 0) {
       coverage = createRuleDefender({
         id: slot.id,
         initial: b,
@@ -313,7 +322,7 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     }
     const de = makeEntity(slot, 'defense', agent);
     if (coverage) de.coverage = coverage;
-    if (anticipation.readingEnabled && b && (b.kind === 'man' || b.kind === 'zone')) {
+    if (anticipation.readingEnabled && b && (b.kind === 'man' || b.kind === 'zone' || b.kind === 'areaMatch')) {
       const tells = new Map<ID, { state: TellState; ema: number | null }>();
       de.tells = tells;
       de.tellRng = forkRng(seed, 'tell:' + slot.id);

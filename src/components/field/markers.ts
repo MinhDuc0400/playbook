@@ -12,6 +12,12 @@ export function eventMarkers(
   return events
     .filter((e) => types.has(e.type))
     .map((e) => {
+      if (e.type === 'areaClaim') {
+        const by = labelOf(e.playerId);
+        const to = labelOf(e.targetId);
+        const label = by && to ? `${by} → ${to}` : (by ?? to);
+        return label === undefined ? { t: e.t, type: e.type } : { t: e.t, type: e.type, label };
+      }
       const label = labelOf(
         e.type === 'throw' || e.type === 'catch' ? (e.targetId ?? e.playerId) : e.playerId,
       );

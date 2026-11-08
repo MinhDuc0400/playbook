@@ -136,3 +136,67 @@ export function makeInput(
     ...rest,
   };
 }
+
+/** Bunch Killer (Bangkok), spec §7 (D-40): 4 area-match defenders + R rushing, or R in a middle zone. */
+export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
+  const area = (id: ID, role: Role, label: string, x: number, am: 'corner' | 'inside', actions: Action[] = []) => ({
+    ...slot(id, role, label, { x, y: 3.5 }, actions, am === 'corner' ? 'outside' : 'inside'),
+    areaMatch: { role: am },
+  });
+  const r =
+    variant === 'rush'
+      ? slot('b-r', 'R', 'R', { x: -7, y: 7 }, [{ type: 'rush', path: [{ x: 0, y: -5 }], delay: 0 }])
+      : slot('b-r', 'R', 'R', { x: 0.5, y: 7 }, [
+          {
+            type: 'zone',
+            zone: { polygon: [{ x: -6, y: 1.5 }, { x: 7, y: 1.5 }, { x: 7, y: 10 }, { x: -6, y: 10 }] },
+            dropPoint: { x: 0.5, y: 5 },
+          },
+        ]);
+  return makePlay('defense', [
+    area('b-cb2', 'CB', 'CB2', -8, 'corner'),
+    area('b-lb', 'LB', 'LB', -1.5, 'inside', [
+      {
+        type: 'zone',
+        zone: { polygon: [{ x: -4.8, y: 0 }, { x: 1.4, y: 0 }, { x: -1.3, y: 6.5 }] },
+        dropPoint: { x: -1.3, y: 3 },
+      },
+    ]),
+    area('b-s', 'S', 'S', 4, 'inside', [
+      {
+        type: 'zone',
+        zone: { polygon: [{ x: -0.6, y: 0 }, { x: 4.8, y: 0 }, { x: 4.8, y: 6 }] },
+        dropPoint: { x: 3.5, y: 3 },
+      },
+    ]),
+    area('b-cb1', 'CB', 'CB1', 9, 'corner'),
+    r,
+  ]);
+}
+
+/** Bunch Tight (spec §7): Q, X (−3), C (0), Y (3), Z (6) with the given routes. */
+export function bunchTightPlay(routes: {
+  x: RouteTemplateId;
+  c: RouteTemplateId;
+  y: RouteTemplateId;
+  z: RouteTemplateId;
+  depths?: Partial<Record<'x' | 'c' | 'y' | 'z', number>>;
+}): Play {
+  const d = routes.depths ?? {};
+  const wr = (label: 'X' | 'Y' | 'Z', x: number, t: RouteTemplateId, depth?: number): PlayerSlot => {
+    const start = { x, y: -1 };
+    return slot(`bt-${label.toLowerCase()}`, 'WR', label, start, [buildRoute(t, start, { depth })]);
+  };
+  const cStart = { x: 0, y: -0.5 };
+  return makePlay(
+    'offense',
+    [
+      slot('bt-q', 'QB', 'Q', { x: 0, y: -5 }, [{ type: 'qbDrop', depth: 2, style: 'shotgun' }]),
+      wr('X', -3, routes.x, d.x),
+      slot('bt-c', 'C', 'C', cStart, [buildRoute(routes.c, cStart, { depth: d.c })]),
+      wr('Y', 3, routes.y, d.y),
+      wr('Z', 6, routes.z, d.z),
+    ],
+    ['bt-y', 'bt-z', 'bt-x', 'bt-c'],
+  );
+}

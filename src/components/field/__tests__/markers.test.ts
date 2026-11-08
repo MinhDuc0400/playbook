@@ -28,4 +28,12 @@ describe('eventMarkers (D-34)', () => {
       { t: 1, type: 'break' },
     ]);
   });
+
+  it('D-40 an area claim reads "defender → receiver"', () => {
+    const all = [...players, { id: 'cb', label: 'CB1' }] as PlayerSlot[];
+    const ev: SimEvent = { t: 0.8, type: 'areaClaim', playerId: 'cb', targetId: 'a' };
+    expect(eventMarkers([ev], new Set(['areaClaim']), all)).toEqual([
+      { t: 0.8, type: 'areaClaim', label: 'CB1 → X' },
+    ]);
+  });
 });

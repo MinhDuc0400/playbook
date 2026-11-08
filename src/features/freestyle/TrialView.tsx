@@ -25,6 +25,7 @@ const MARKER_TYPES: ReadonlySet<SimEventType> = new Set([
   'snap',
   'break',
   'ruleFired',
+  'areaClaim',
   'throw',
   'catch',
   'sack',

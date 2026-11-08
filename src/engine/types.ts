@@ -17,6 +17,7 @@ import type {
   Stats,
   TuningParams,
 } from '@/domain/types';
+import type { AreaLanes } from '@/domain/areaLanes';
 
 export type { Rng };
 
@@ -109,4 +110,15 @@ export type DefenderBinding =
   | { kind: 'zone'; polygon: Point[]; dropPoint: Point; deep: boolean; fallback: boolean }
   | { kind: 'rush'; path: Point[]; delay: number }
   | { kind: 'spy'; targetId: ID | null }
+  | AreaMatchBinding
   | { kind: 'none' };
+
+/** D-40 area match: lane `index` of `lanes`, base zone played while it has no man. */
+export interface AreaMatchBinding {
+  kind: 'areaMatch';
+  index: number;
+  lanes: AreaLanes;
+  /** Per lane index (corners use it). */
+  squeezeAfter: number[];
+  base: { polygon: Point[]; dropPoint: Point; deep: boolean };
+}

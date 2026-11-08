@@ -1,9 +1,10 @@
 /** Pre-snap preparation (SRS §8.2 steps 2–4, FR-ENG-02, D-10). Pure. */
+import { computeAreaLanes, laneSpan, type AreaLanes } from '@/domain/areaLanes';
 import { fieldBounds, sidelineBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Numbering } from '@/domain/numbering';
 import { DEFAULT_PRESETS } from '@/domain/presets';
-import { STAT_KEYS } from '@/domain/types';
+import { DEFAULT_SQUEEZE_AFTER, STAT_KEYS } from '@/domain/types';
 import type {
   Action,
   ID,
@@ -85,9 +86,18 @@ export function prepareSim(input: SimInput): PreparedSim {
   );
   const warnings: string[] = [];
 
+  const lanes = computeAreaLanes(defense.players);
+  const squeezeAfter = lanes
+    ? lanes.order.map((id) => {
+        const am = defense.players.find((s) => s.id === id)?.areaMatch;
+        return am?.squeezeAfter ?? DEFAULT_SQUEEZE_AFTER;
+      })
+    : [];
   const bindings: Record<ID, DefenderBinding> = {};
   for (const slot of defense.players) {
-    bindings[slot.id] = bindDefender(slot, numbering, input, warnings);
+    const plain = bindDefender(slot, numbering, input, warnings);
+    bindings[slot.id] =
+      lanes && slot.areaMatch ? bindArea(slot, plain, lanes, squeezeAfter, info, warnings) : plain;
   }
 
   const stats: Record<ID, Stats> = {};
@@ -183,6 +193,49 @@ function bindDefender(
     case 'spy':
       return { kind: 'spy', targetId: numbering.qbId ?? null };
   }
+}
+
+/** Area-match lane rectangle depth (yd past the LOS) used as base zone when the slot has none. */
+const LANE_ZONE_DEPTH = 10;
+
+/**
+ * D-40: a slot with `areaMatch` whose coverage is a zone (or nothing) becomes an areaMatch binding; the
+ * zone is its base, else a rectangle over its lane (y 0..10, drop at the lane centre, y 5). Rush / man /
+ * spy keep their binding with a warning. Match rules on the slot are ignored with a warning.
+ */
+function bindArea(
+  slot: PlayerSlot,
+  plain: DefenderBinding,
+  lanes: AreaLanes,
+  squeezeAfter: number[],
+  info: FieldInfo,
+  warnings: string[],
+): DefenderBinding {
+  const hasCoverage = slot.actions.some(isCoverageAction);
+  if (hasCoverage && (plain.kind !== 'zone' || plain.fallback)) {
+    const kind = slot.actions.find(isCoverageAction)?.type ?? plain.kind;
+    warnings.push(`${slot.label}: area match ignored (${kind})`);
+    return plain;
+  }
+  if ((slot.matchRules?.length ?? 0) > 0) warnings.push(`${slot.label}: match rules ignored (area match)`);
+  const index = lanes.order.indexOf(slot.id);
+  let base: { polygon: Point[]; dropPoint: Point; deep: boolean };
+  if (plain.kind === 'zone') {
+    base = { polygon: plain.polygon, dropPoint: plain.dropPoint, deep: plain.deep };
+  } else {
+    const [left, right] = laneSpan(lanes, index, info.minX, info.maxX);
+    base = {
+      polygon: [
+        { x: left, y: 0 },
+        { x: right, y: 0 },
+        { x: right, y: LANE_ZONE_DEPTH },
+        { x: left, y: LANE_ZONE_DEPTH },
+      ],
+      dropPoint: { x: (left + right) / 2, y: LANE_ZONE_DEPTH / 2 },
+      deep: false,
+    };
+  }
+  return { kind: 'areaMatch', index, lanes, squeezeAfter, base };
 }
 
 function resolveStats(slotId: ID, byId: Record<ID, Stats>, input: SimInput): Stats {

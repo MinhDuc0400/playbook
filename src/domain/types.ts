@@ -481,6 +481,7 @@ export type SimEventType =
   | 'read'
   | 'pressure'
   | 'ruleFired'
+  | 'areaClaim'
   | 'optionChoice'
   | 'throwStart'
   | 'throw'

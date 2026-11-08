@@ -413,3 +413,11 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   is breaking toward the corner's lane: sideways speed toward the corner ≥ 1 yd/s and ≥ its downfield speed
   (`headsOut`). A vertical stem that drifts outward does not count. The corner holds (no inward zone shift) and
   takes that receiver as first-in when he arrives; if the receiver stops or turns, the squeeze goes ahead.
+
+## D-47 Area match: no squeeze; a corner with nobody in his lane stays (user request 2026-11-08)
+- Decision: the time-based squeeze is removed (supersedes the squeeze part of D-40 and D-46). A corner takes the
+  first receiver into his lane, whenever that happens; until then he stays on his alignment spot: his zone reacts
+  to nobody (it does not shade toward receivers near his lane), only to a ball in the air. Inside defenders are
+  unchanged (second-out, else their zone). `AreaMatch.squeezeAfter`, the "Squeeze sau (s)" input and the
+  `squeeze` claim reason are gone; an old export or saved play that still has `squeezeAfter` loads and the key is
+  ignored (import drops it).

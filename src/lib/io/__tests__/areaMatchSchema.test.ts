@@ -19,13 +19,19 @@ describe('D-40 schema', () => {
       format: '5v5',
       formation: 'Bunch Killer',
       strength: 'right',
-      players: [def('CB1', 9, { role: 'corner', squeezeAfter: 0.8 }), def('LB', 0)],
+      players: [def('CB1', 9, { role: 'corner' }), def('LB', 0)],
       tags: [],
       createdAt: 1,
       updatedAt: 1,
     };
-    expect(PlaySchema.parse(play).players[0]!.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
+    expect(PlaySchema.parse(play).players[0]!.areaMatch).toEqual({ role: 'corner' });
     expect(PlaySchema.parse(play).players[1]!.areaMatch).toBeUndefined();
+    // D-47: an old export with the removed squeeze time still imports; the field is dropped.
+    const old = {
+      ...play,
+      players: [{ ...play.players[0]!, areaMatch: { role: 'corner', squeezeAfter: 0.8 } }],
+    };
+    expect(PlaySchema.parse(old).players[0]!.areaMatch).toEqual({ role: 'corner' });
   });
 
   it('D-42 settings keep seedVersion through the schema', () => {

@@ -268,7 +268,7 @@ interface PlayerSlot {
   leverage?: 'inside' | 'outside' | 'head-up';   // defense
   actions: Action[];                 // thực hiện theo thứ tự thời gian
   matchRules?: MatchRule[];          // defense
-  areaMatch?: { role: 'corner' | 'inside'; squeezeAfter?: number }; // defense, area match (D-40)
+  areaMatch?: { role: 'corner' | 'inside' }; // defense, area match (D-40; no squeeze, D-47)
 }
 ```
 
@@ -688,11 +688,11 @@ Luật khớp đầu tiên theo `priority` được áp dụng, ghi event `ruleF
 
 1. Sau snap, receiver đi vào một làn được ghi theo thứ tự (cùng tick: người gần sideline hơn trước).
 2. Corner nhận (man, trail) receiver đầu tiên vào làn của mình.
-3. Corner chưa có người sau `squeezeAfter` (mặc định 0.5 s): squeeze, nhận receiver chạy vertical sâu ≥ 3 yd ở làn trong kế bên; không có thì dời zone vào ranh giới trong và chờ tiếp. Nếu ở làn trong kế bên có receiver đang bẻ ra phía corner (chạy ngang nhiều hơn chạy dọc), corner chưa squeeze mà chờ người đó vào làn mình (D-46).
+3. Corner không có ai vào làn: đứng yên ở vị trí của mình (không press, không squeeze, không bám receiver ở làn khác), chỉ phản ứng khi bóng bay; ai vào làn thì nhận người đó (D-47).
 4. Inside (LB/S) bỏ qua receiver đầu tiên vào làn corner bên ngoài, nhận người thứ hai (khi corner đã có người).
 5. Inside chưa có người: đá zone gốc, bỏ qua receiver đồng đội đã nhận ("người còn lại").
 
-Khi chưa nhận người, defender không lên press: đứng ở vị trí và độ sâu ban đầu, chỉ trượt ngang theo receiver, lùi sâu hơn khi receiver vượt qua.
+Khi chưa nhận người, defender không lên press. Inside đứng ở vị trí và độ sâu ban đầu, chỉ trượt ngang theo receiver, lùi sâu hơn khi receiver vượt qua; corner đứng yên hẳn (D-47).
 
 Đã nhận thì giữ đến khi bóng được ném. Mỗi lần nhận ghi event `areaClaim`. Zone action của slot là zone gốc; không có thì dùng hình chữ nhật của làn.
 

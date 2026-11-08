@@ -125,7 +125,7 @@ function defensePlay(id: ID, name: string, r: PlayerSlot, now: number): Play {
     players: [...coverage(id), r],
     tags: ['cov:zone', 'cov:match', 'red-zone', 'vs:bunch', 'vs:trips'],
     notes:
-      'CB nhận receiver đầu tiên vào làn của mình; không ai vào thì squeeze vào trong. ' +
+      'CB nhận receiver đầu tiên vào làn của mình; không ai vào thì đứng yên ở vị trí. ' +
       'LB/S bỏ qua receiver đầu tiên ra ngoài, nhận người thứ hai; không ai ra ngoài thì đá zone người còn lại.',
     createdAt: now,
     updatedAt: now,

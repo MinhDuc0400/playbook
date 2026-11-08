@@ -32,14 +32,17 @@ describe('T-AM area match in the sim (D-40)', () => {
     expect(ev?.targetId).toBe('bt-z');
   });
 
-  it('T-AM-02 Z slant, Y seam, nobody out → CB1 squeezes onto Y, S never goes man', () => {
+  it('T-AM-02 Z slant, Y seam, nobody out → CB1 never claims and holds his spot; S never goes man', () => {
     const r = simulate(input(bunchTightPlay({ x: 'hitch', c: 'hitch', y: 'go', z: 'slant' })));
     const c = claims(r.events);
-    expect(c['b-cb1']).toMatchObject({ receiverId: 'bt-y', reason: 'squeeze' });
-    expect(c['b-cb1']!.t).toBeGreaterThanOrEqual(0.5);
-    expect(c['b-cb1']!.t).toBeLessThanOrEqual(1.5);
+    expect(c['b-cb1']).toBeUndefined();
     const s = c['b-s'];
     expect(s === undefined || s.t >= throwTime(r.events)).toBe(true);
+    const until = Math.min(throwTime(r.events), 3);
+    for (const f of r.frames.filter((fr) => fr.t <= until)) {
+      const p = f.players['b-cb1']!.pos;
+      expect(Math.hypot(p.x - 9, p.y - 3.5)).toBeLessThan(1);
+    }
   });
 
   it('T-AM-03 flipped offense: CB2 on Z first, LB on Y second', () => {
@@ -212,5 +215,7 @@ describe('T-AM area match in the sim (D-40)', () => {
     const c = claims(simulate(makeInput(off, def, { ballSpot: RED_ZONE })).events);
     expect(c['cb2']).toMatchObject({ receiverId: 'c', reason: 'first' });
     expect(c['ss']?.receiverId).not.toBe('c');
+    // B goes vertical in FS's lane: CB1 does not leave his lane for him.
+    expect(c['cb1']?.receiverId).not.toBe('b');
   });
 });

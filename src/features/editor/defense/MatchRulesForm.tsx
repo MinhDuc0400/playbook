@@ -5,9 +5,8 @@
  */
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
-import { Button, IconButton, Select, TextInput } from '@/components/ui';
+import { Button, IconButton, Select } from '@/components/ui';
 import {
-  DEFAULT_SQUEEZE_AFTER,
   ZONE_PRESET_IDS,
   type AreaMatch,
   type ID,
@@ -244,24 +243,13 @@ function RuleRow({
   );
 }
 
-const SQUEEZE_MIN = 0;
-const SQUEEZE_MAX = 3;
-
-/** D-40: pattern-match mode select (custom rules / Bangkok corner / Bangkok inside) + corner squeeze time. */
+/** D-40: pattern-match mode select (custom rules / Bangkok corner / Bangkok inside). */
 function ModeControls({ slot }: { slot: PlayerSlot }): JSX.Element {
   const apply = useEditorStore.getState().apply;
-  const [draft, setDraft] = useState<string | null>(null);
   const am = slot.areaMatch;
   const onMode = (v: string): void => {
-    setDraft(null);
     const next: AreaMatch | undefined = v === 'corner' || v === 'inside' ? { role: v } : undefined;
     apply('area match', setAreaMatch(slot.id, next));
-  };
-  const onSqueeze = (raw: string): void => {
-    setDraft(raw);
-    const n = parseOptional(raw);
-    if (n === undefined || n < SQUEEZE_MIN || n > SQUEEZE_MAX || !am) return;
-    apply('squeeze after', setAreaMatch(slot.id, { ...am, squeezeAfter: n }));
   };
   return (
     <>
@@ -279,19 +267,6 @@ function ModeControls({ slot }: { slot: PlayerSlot }): JSX.Element {
         <p data-testid="rule-area-hint" className="text-xs text-slate-500 dark:text-slate-400">
           {am.role === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
         </p>
-      ) : null}
-      {am?.role === 'corner' ? (
-        <TextInput
-          label={r.areaMatch.squeezeAfter}
-          type="number"
-          data-testid="rule-squeeze-after"
-          min={SQUEEZE_MIN}
-          max={SQUEEZE_MAX}
-          step={0.1}
-          value={draft ?? String(am.squeezeAfter ?? DEFAULT_SQUEEZE_AFTER)}
-          onChange={(e) => onSqueeze(e.target.value)}
-          onBlur={() => setDraft(null)}
-        />
       ) : null}
     </>
   );

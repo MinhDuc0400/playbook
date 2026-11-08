@@ -6,9 +6,7 @@ export const rules = {
     rules: 'Luật tự đặt',
     corner: 'Bunch Killer (Bangkok): Corner',
     inside: 'Bunch Killer (Bangkok): Inside (LB/S)',
-    squeezeAfter: 'Squeeze sau (s)',
-    cornerHint:
-      'Nhận receiver đầu tiên vào làn của mình. Không ai vào thì sau thời gian squeeze, nhận người chạy dọc ở làn bên trong.',
+    cornerHint: 'Nhận receiver đầu tiên vào làn của mình. Không ai vào thì đứng yên ở vị trí của mình.',
     insideHint:
       'Bỏ qua receiver đầu tiên ra làn corner, nhận người thứ hai. Không ai ra ngoài thì đá zone với người còn lại.',
   },

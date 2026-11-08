@@ -133,7 +133,7 @@ describe('D-40 Bunch Killer (Bangkok) as a pattern-match option', () => {
   beforeEach(() => act(() => store().load(null)));
   const slot0 = () => store().play?.players[0];
 
-  it('mode defaults to custom rules; corner hides the rules and shows the squeeze time', () => {
+  it('mode defaults to custom rules; corner hides the rules and has no squeeze time (D-47)', () => {
     setup([rule('a', 0)]);
     const mode = screen.getByTestId('rule-mode') as HTMLSelectElement;
     expect(mode.value).toBe('rules');
@@ -143,15 +143,13 @@ describe('D-40 Bunch Killer (Bangkok) as a pattern-match option', () => {
     expect(screen.queryByTestId('rules-list')).toBeNull();
     expect(screen.queryByTestId('rule-add')).toBeNull();
     expect(screen.getByTestId('rule-area-hint')).toHaveTextContent(t.rules.areaMatch.cornerHint);
-    change('rule-squeeze-after', '0.8');
-    expect(slot0()?.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
+    expect(screen.queryByTestId('rule-squeeze-after')).toBeNull();
   });
 
-  it('inside has no squeeze time; back to custom rules keeps the old rules; undo restores', () => {
+  it('inside: back to custom rules keeps the old rules; undo restores', () => {
     setup([rule('a', 0)]);
     change('rule-mode', 'inside');
     expect(slot0()?.areaMatch).toEqual({ role: 'inside' });
-    expect(screen.queryByTestId('rule-squeeze-after')).toBeNull();
     change('rule-mode', 'rules');
     expect(slot0()?.areaMatch).toBeUndefined();
     expect(rules().map((x) => x.id)).toEqual(['a']);

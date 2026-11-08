@@ -4,7 +4,7 @@ import { fieldBounds, sidelineBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Numbering } from '@/domain/numbering';
 import { DEFAULT_PRESETS } from '@/domain/presets';
-import { DEFAULT_SQUEEZE_AFTER, STAT_KEYS } from '@/domain/types';
+import { STAT_KEYS } from '@/domain/types';
 import type {
   Action,
   ID,
@@ -87,17 +87,11 @@ export function prepareSim(input: SimInput): PreparedSim {
   const warnings: string[] = [];
 
   const lanes = computeAreaLanes(defense.players);
-  const squeezeAfter = lanes
-    ? lanes.order.map((id) => {
-        const am = defense.players.find((s) => s.id === id)?.areaMatch;
-        return am?.squeezeAfter ?? DEFAULT_SQUEEZE_AFTER;
-      })
-    : [];
   const bindings: Record<ID, DefenderBinding> = {};
   for (const slot of defense.players) {
     const plain = bindDefender(slot, numbering, input, warnings);
     if (lanes && lanes.order.includes(slot.id)) {
-      bindings[slot.id] = bindArea(slot, plain, lanes, squeezeAfter, info, warnings);
+      bindings[slot.id] = bindArea(slot, plain, lanes, info, warnings);
     } else {
       if (slot.areaMatch) warnings.push(`${slot.label}: area match ignored (${plain.kind})`);
       bindings[slot.id] = plain;
@@ -211,7 +205,6 @@ function bindArea(
   slot: PlayerSlot,
   plain: DefenderBinding,
   lanes: AreaLanes,
-  squeezeAfter: number[],
   info: FieldInfo,
   warnings: string[],
 ): DefenderBinding {
@@ -239,7 +232,7 @@ function bindArea(
       deep: false,
     };
   }
-  return { kind: 'areaMatch', index, lanes, squeezeAfter, base, hold: { x: slot.start.x, y: slot.start.y } };
+  return { kind: 'areaMatch', index, lanes, base, hold: { x: slot.start.x, y: slot.start.y } };
 }
 
 function resolveStats(slotId: ID, byId: Record<ID, Stats>, input: SimInput): Stats {

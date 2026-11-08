@@ -139,4 +139,24 @@ describe('T-AM area match in the sim (D-40)', () => {
     expect(r.frames.length).toBeGreaterThan(0);
     expect(r.frames[Math.min(30, r.frames.length - 1)]!.players['solo']?.state).toBe('zone');
   });
+
+  it('area defenders hold their alignment depth until they pick up a man (no press)', () => {
+    const d = bangkokPlay();
+    const r = simulate(input(bunchTightPlay({ x: 'slant', c: 'hitch', y: 'flat', z: 'corner' }), d));
+    const c = claims(r.events);
+    const tThrow = throwTime(r.events);
+    const report: Record<string, number> = {};
+    for (const id of ['b-cb2', 'b-lb', 'b-s', 'b-cb1']) {
+      const start = d.players.find((p) => p.id === id)!.start;
+      const until = Math.min(c[id]?.t ?? Infinity, tThrow);
+      let minY = Infinity;
+      for (const f of r.frames) {
+        if (f.t <= 0 || f.t >= until) continue;
+        minY = Math.min(minY, f.players[id]!.pos.y);
+      }
+      report[id] = Number((start.y - minY).toFixed(2));
+    }
+    // yards each defender came up toward the LOS before its claim / the throw
+    for (const v of Object.values(report)) expect(v).toBeLessThanOrEqual(0.1);
+  });
 });

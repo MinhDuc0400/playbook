@@ -50,6 +50,11 @@ export function createZoneDefender(opts: {
   carry?: () => ID | null;
   /** Match-rule `passOff`: receivers released (never a threat). Read every tick. */
   ignore?: () => ReadonlySet<ID>;
+  /**
+   * D-40 area match: never aim shallower than this depth (yd past the LOS). The defender keeps its alignment
+   * depth and mirrors threats sideways instead of coming up to press them; a deeper receiver still pulls it back.
+   */
+  holdDepth?: number;
 }): DefenderAgent {
   const { id, polygon, dropPoint, deep, info, anticipation: model } = opts;
   const buffer = info.tuning.zoneBuffer;
@@ -121,6 +126,7 @@ export function createZoneDefender(opts: {
       if (eye) aim.x += (eye.pos.x - aim.x) * self.stats.iq * info.tuning.eyeDriftFactor;
 
       if (!carried && distanceToPolygon(aim, polygon) > buffer) aim = closestBoundaryPoint(aim, polygon);
+      if (opts.holdDepth !== undefined && aim.y < opts.holdDepth) aim = { x: aim.x, y: opts.holdDepth };
       lastAim = aim;
 
       return { ...seek(self.pos, aim, maxSpeed, ARRIVE), state: 'zone' };

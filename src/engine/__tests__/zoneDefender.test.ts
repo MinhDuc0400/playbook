@@ -171,3 +171,36 @@ describe('zone defender', () => {
     expect(s.intent?.speed).toBe(0);
   });
 });
+
+describe('D-40 holdDepth (area match: no press)', () => {
+  const triangle: Point[] = [
+    { x: -0.6, y: 0 },
+    { x: 4.8, y: 0 },
+    { x: 4.8, y: 6 },
+  ];
+  const mkHold = () =>
+    createZoneDefender({
+      id: 'z1',
+      polygon: triangle,
+      dropPoint: { x: 4, y: 3.5 },
+      deep: false,
+      info,
+      holdDepth: 3.5,
+    });
+
+  it('a receiver at the LOS in the zone: the aim keeps the hold depth and mirrors him sideways', () => {
+    const agent = mkHold();
+    const s: Sim = { pos: { x: 4, y: 3.5 }, vel: { x: 0, y: 0 } };
+    tick(agent, s, perc([wr('y', 3, 0.2)]), 0.1);
+    const aim = (agent as unknown as { lastAim: Point }).lastAim;
+    expect(aim.y).toBeGreaterThanOrEqual(3.5);
+    expect(aim.x).toBeLessThan(4);
+  });
+
+  it('a receiver past the hold depth pulls the aim deeper', () => {
+    const agent = mkHold();
+    const s: Sim = { pos: { x: 4, y: 3.5 }, vel: { x: 0, y: 0 } };
+    tick(agent, s, perc([wr('y', 3.5, 5.5, 0, 6)]), 0.6);
+    expect((agent as unknown as { lastAim: Point }).lastAim.y).toBeGreaterThan(3.5);
+  });
+});

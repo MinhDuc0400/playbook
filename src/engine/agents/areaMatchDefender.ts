@@ -1,6 +1,6 @@
 /**
- * Area-match defender (D-40, "Bunch Killer"). Wraps the zone and man agents like ruleDefender: plays its
- * base zone (ignoring receivers its teammates claimed, as inferred by its own claim tracker) until the
+ * Area-match defender (D-40, "Bunch Killer"). Wraps the zone and man agents like ruleDefender: holds its
+ * alignment spot and depth (mirrors sideways, never comes up to press) inside its base zone (ignoring receivers its teammates claimed, as inferred by its own claim tracker) until the
  * tracker gives it a man, then plays man (trail) on him. A corner that squeezes without a man moves its
  * zone onto the inner lane boundary. Emits `areaClaim` once per claim.
  */
@@ -42,6 +42,7 @@ export function createAreaMatchDefender(opts: {
       info,
       ...(anticipation ? { anticipation } : {}),
       ignore: () => ignore,
+      holdDepth: binding.hold.y,
     });
 
   /** Base zone shifted so its centre sits on the boundary with the inner lane. */
@@ -51,11 +52,12 @@ export function createAreaMatchDefender(opts: {
     const dx = boundary - centroid(base.polygon).x;
     return makeZone(
       base.polygon.map((p) => ({ x: p.x + dx, y: p.y })),
-      { x: base.dropPoint.x + dx, y: base.dropPoint.y },
+      { x: binding.hold.x + dx, y: binding.hold.y },
     );
   };
 
-  let current: DefenderAgent = makeZone(base.polygon, base.dropPoint);
+  // Waits on its alignment spot (not the zone's drop point) and reacts from there: no press (D-40).
+  let current: DefenderAgent = makeZone(base.polygon, binding.hold);
 
   return {
     id,

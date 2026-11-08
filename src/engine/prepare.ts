@@ -239,7 +239,7 @@ function bindArea(
       deep: false,
     };
   }
-  return { kind: 'areaMatch', index, lanes, squeezeAfter, base };
+  return { kind: 'areaMatch', index, lanes, squeezeAfter, base, hold: { x: slot.start.x, y: slot.start.y } };
 }
 
 function resolveStats(slotId: ID, byId: Record<ID, Stats>, input: SimInput): Stats {

@@ -361,7 +361,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   sticky. Each defender infers teammates' claims from its own delayed Perception with the same rules: no
   communication, no opponent Play (NFR-ARC-06). Editor (user request 2026-11-08): area match is an option of the
   "Luật pattern match" section ("Kiểu": Luật tự đặt / Bunch Killer (Bangkok): Corner / Inside), not a separate
-  control; choosing it hides (keeps) the custom rules. The slot's zone action is the base coverage; without one, a rectangle
+  control; choosing it hides (keeps) the custom rules. No press (user request 2026-11-08): until it has a man, an
+  area defender holds its alignment spot and depth (zone agent `holdDepth`), mirrors threats sideways and only drops
+  deeper for a receiver past it; it never comes up to the LOS. The slot's zone action is the base coverage; without one, a rectangle
   over its lane. `areaMatch` on a rusher / man / spy slot is ignored with a warning; it overrides `matchRules`.
 - Spec: `docs/superpowers/specs/2026-11-08-bangkok-bunch-killer-design.md`.
 

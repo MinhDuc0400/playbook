@@ -121,4 +121,6 @@ export interface AreaMatchBinding {
   /** Per lane index (corners use it). */
   squeezeAfter: number[];
   base: { polygon: Point[]; dropPoint: Point; deep: boolean };
+  /** Alignment spot held (depth kept, mirrors sideways) until the defender has a man; no press. */
+  hold: Point;
 }

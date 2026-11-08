@@ -692,6 +692,8 @@ Luật khớp đầu tiên theo `priority` được áp dụng, ghi event `ruleF
 4. Inside (LB/S) bỏ qua receiver đầu tiên vào làn corner bên ngoài, nhận người thứ hai (khi corner đã có người).
 5. Inside chưa có người: đá zone gốc, bỏ qua receiver đồng đội đã nhận ("người còn lại").
 
+Khi chưa nhận người, defender không lên press: đứng ở vị trí và độ sâu ban đầu, chỉ trượt ngang theo receiver, lùi sâu hơn khi receiver vượt qua.
+
 Đã nhận thì giữ đến khi bóng được ném. Mỗi lần nhận ghi event `areaClaim`. Zone action của slot là zone gốc; không có thì dùng hình chữ nhật của làn.
 
 **Khi bóng được ném:** defender thấy `throwStarted` (sau reaction) thì chuyển sang lao về điểm bóng rơi.

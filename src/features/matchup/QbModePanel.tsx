@@ -1,13 +1,10 @@
 /** Feedback panel of the "QB tự ném" mode (D-23): key legend, press-time read, best alternative, tally. */
-import type { OutcomeKind } from '@/domain/types';
 import { t } from '@/i18n/vi';
 import type { QbFeedback, QbKey, QbTally } from './useQbMode';
 
 export interface QbModePanelProps {
   keyMap: readonly QbKey[];
   feedback: QbFeedback | null;
-  /** Outcome once the ball has landed (playhead ≥ outcome.t); null while it is in flight. */
-  outcome: OutcomeKind | null;
   tally: QbTally;
   /** "Ném lúc open nhất" result of the last pick (shown with the feedback). */
   bestTime: { t: number; separation: number } | null;
@@ -23,7 +20,6 @@ const s = t.matchup.qb;
 export function QbModePanel({
   keyMap,
   feedback,
-  outcome,
   tally,
   bestTime,
   bestNone,
@@ -65,22 +61,10 @@ export function QbModePanel({
           {bestTime && (
             <div data-testid="qb-feedback-best-time">{s.bestTime(bestTime.t, bestTime.separation)}</div>
           )}
-          <div data-testid="qb-feedback-best">
-            {feedback.isBest || feedback.best === undefined
-              ? s.bestChosen
-              : s.best(feedback.best.label, feedback.best.score)}
-          </div>
-          <div>
-            {s.outcome}:{' '}
-            <span data-testid="qb-feedback-outcome">
-              {outcome === null ? s.inFlight : t.result.outcome[outcome]}
-            </span>
-          </div>
         </dl>
       )}
       <div>
-        <h3 className="font-medium">{s.bestHeading}</h3>
-        <div className="mt-1 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={s.bestHelp}>
           {keyMap.map((k) => (
             <button
               key={k.id}

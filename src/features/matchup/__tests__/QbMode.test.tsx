@@ -164,12 +164,9 @@ describe('QB mode (D-23)', () => {
     expect(screen.getByTestId('qb-feedback-time')).toHaveTextContent('1.4');
     expect(screen.getByTestId('qb-feedback-score')).toHaveTextContent('70');
     expect(screen.getByTestId('qb-feedback-sep')).toHaveTextContent('2.0');
-    const first = fieldProps[fieldProps.length - 1]!.qbKeys![0]!;
-    expect(screen.getByTestId('qb-feedback-best')).toHaveTextContent(t.matchup.qb.best(first.label, 90));
-    // Ball not landed yet at t = 1.4 (outcome t = 2.5).
-    expect(screen.getByTestId('qb-feedback-outcome')).toHaveTextContent(t.matchup.qb.inFlight);
-    act(() => setT(3));
-    expect(screen.getByTestId('qb-feedback-outcome')).toHaveTextContent(t.result.outcome.complete);
+    // D-38: no verdict on the throw (best receiver, outcome) in the panel.
+    expect(screen.queryByTestId('qb-feedback-best')).toBeNull();
+    expect(screen.queryByTestId('qb-feedback-outcome')).toBeNull();
   });
 
   it('D-35 after a throw, seeking back and picking another receiver replaces the throw without Thử lại', async () => {
@@ -216,7 +213,6 @@ describe('QB mode (D-23)', () => {
       screen.getByTestId('mock-token-' + fieldProps[fieldProps.length - 1]!.qbKeys![0]!.label),
     );
     expect(lastOverride()?.manualThrow?.targetId).toBe(fieldProps[fieldProps.length - 1]!.qbKeys![0]!.id);
-    expect(screen.getByTestId('qb-feedback-best')).toHaveTextContent(t.matchup.qb.bestChosen);
   });
 
   it('tally counts attempts, completions and best-choice throws across retries; retry clears the throw', async () => {

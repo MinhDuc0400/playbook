@@ -187,7 +187,6 @@ export function TrialView({
     <QbModePanel
       keyMap={keyMap}
       feedback={feedback}
-      outcome={result && feedback && playback.t >= result.outcome.t ? result.outcome.kind : null}
       tally={qb.tally}
       bestTime={bestTime}
       bestNone={bestNone}

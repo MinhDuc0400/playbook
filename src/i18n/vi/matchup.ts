@@ -31,16 +31,11 @@ export const matchup = {
     time: 'Thời điểm ném',
     score: 'Điểm đọc lúc ném',
     separation: 'Separation lúc ném',
-    best: (label: string, score: number): string => `Tốt nhất lúc đó: ${label} (${Math.round(score)})`,
-    bestChosen: 'Bạn chọn đúng người tốt nhất',
-    outcome: 'Kết quả',
-    inFlight: 'Bóng đang bay…',
     retry: 'Thử lại',
     exit: 'Thoát',
     tally: (attempts: number, completions: number, best: number): string =>
       `Đã ném ${attempts} lần · bắt được ${completions} · ${best}/${attempts} ném đúng người tốt nhất`,
     tallyEmpty: 'Chưa ném lần nào',
-    bestHeading: 'Chọn người nhận, QB ném khi người đó open nhất',
     bestHelp:
       'QB chờ và ném đúng lúc người này open nhất (separation lớn nhất khi bóng tới, còn trong tầm ném và phía trước LOS), rồi chạy lại từ đầu.',
     bestNone: 'Không có thời điểm ném hợp lệ cho người này',

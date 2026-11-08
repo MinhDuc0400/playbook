@@ -16,12 +16,12 @@ test('15 QB mode: a key press throws to that read at the playhead time', async (
   const panel = page.getByTestId('qb-mode-panel');
   await expect(panel).toContainText('1.50 s');
   await expect(page.getByTestId('qb-feedback-score')).toBeVisible();
-  await expect(page.getByTestId('qb-feedback-best')).toBeVisible();
+  await expect(page.getByTestId('qb-feedback-best')).toHaveCount(0);
   await expect(page.getByTestId('timeline-time')).toHaveText('1.5 s');
 
   // After the ball lands the outcome is shown and the tally counts the attempt.
   await seekTo(page, 4);
-  await expect(page.getByTestId('qb-feedback-outcome')).not.toContainText('…');
+  await expect(page.getByTestId('qb-feedback-outcome')).toHaveCount(0);
   await expect(page.getByTestId('qb-tally')).toContainText('1');
 
   // D-35: no need for Thử lại: scrub back, pick another receiver, the throw is replaced at the playhead.

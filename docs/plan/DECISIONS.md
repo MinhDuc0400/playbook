@@ -339,3 +339,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   it off and draw the animated ball instead (`components/field/Ball.tsx`). `displayBallPos` (engine/frames) puts a held
   ball on the LOS until the snap and flies it to the QB over 0.25 s; thrown or loose it is the engine position. Drawing
   only: sim frames are unchanged. The Editor and the Freestyle board keep the static marker.
+
+## D-38 QB tự ném shows no verdict (user request 2026-11-08)
+- Decision: the QB mode panel no longer says whether the pick was the best receiver ("Bạn chọn đúng người tốt nhất" /
+  "Tốt nhất lúc đó…"), no longer shows the outcome ("Kết quả: …") and no longer has the heading above the "open nhất"
+  buttons (the group keeps its tooltip and aria-label). The panel still shows target, throw time, read score and
+  separation. The tally keeps counting best picks internally.

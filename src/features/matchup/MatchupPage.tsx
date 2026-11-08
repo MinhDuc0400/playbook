@@ -139,7 +139,7 @@ function MatchupEditor({
   const { throwTo, record } = qb;
   const playbackT = playback.t;
   const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
-  useQbKeys(qb.enabled && !qbThrown, keyMap, pickReceiver);
+  useQbKeys(qb.enabled, keyMap, pickReceiver);
   useEffect(() => record(result, keyMap), [record, result, keyMap]);
   const { seek, play } = playback;
   const minTRef = useRef(minT);
@@ -281,7 +281,7 @@ function MatchupEditor({
           hideDefenseOverlays={hidden}
           hideReadInfo={hideReadInfo}
           qbKeys={qb.enabled ? keyMap : undefined}
-          onQbPick={qb.enabled && !qbThrown ? pickReceiver : undefined}
+          onQbPick={qb.enabled ? pickReceiver : undefined}
         />
       </div>
     ) : null;

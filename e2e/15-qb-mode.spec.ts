@@ -24,6 +24,16 @@ test('15 QB mode: a key press throws to that read at the playhead time', async (
   await expect(page.getByTestId('qb-feedback-outcome')).not.toContainText('…');
   await expect(page.getByTestId('qb-tally')).toContainText('1');
 
+  // D-35: no need for Thử lại: scrub back, pick another receiver, the throw is replaced at the playhead.
+  const firstTarget = await page.getByTestId('qb-feedback-target').textContent();
+  await seekTo(page, 1);
+  await page.keyboard.press('q');
+  await expect(page.getByTestId('qb-feedback-time')).toHaveText('1.00 s');
+  await expect(page.getByTestId('qb-feedback-target')).toHaveText('Y');
+  expect(await page.getByTestId('qb-feedback-target').textContent()).not.toBe(firstTarget);
+  await expect(page.getByTestId('timeline-time')).toHaveText('1.0 s');
+  await expect(page.getByTestId('qb-tally')).toContainText('2');
+
   // Retry clears the throw; leaving the mode restores the auto QB decision.
   await page.getByTestId('qb-retry').click();
   await page.getByTestId('qb-exit').click();

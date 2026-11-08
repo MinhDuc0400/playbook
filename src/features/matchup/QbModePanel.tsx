@@ -34,42 +34,15 @@ export function QbModePanel({
   return (
     <section data-testid="qb-mode-panel" className="space-y-2 rounded border p-3 text-sm">
       <h2 className="font-semibold">{s.title}</h2>
-      {feedback === null ? (
-        <>
-          <p data-testid="qb-hint">
-            {s.hint} {s.clickHint}
-          </p>
-          <ul data-testid="qb-key-legend" className="flex flex-wrap gap-2">
-            {keyMap.map((k) => (
-              <li key={k.key} className="rounded bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
-                <kbd className="font-semibold">{k.key}</kbd> = {k.label}
-              </li>
-            ))}
-          </ul>
-          <div>
-            <h3 className="font-medium">{s.bestHeading}</h3>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {keyMap.map((k) => (
-                <button
-                  key={k.id}
-                  type="button"
-                  data-testid={`qb-best-${k.label}`}
-                  title={s.bestHelp}
-                  onClick={() => onPickBest(k.id)}
-                  className="rounded border px-2 py-1"
-                >
-                  {k.label} · {k.key}
-                </button>
-              ))}
-            </div>
-            {bestNone && (
-              <p data-testid="qb-best-none" className="mt-1 text-amber-800 dark:text-amber-200">
-                {s.bestNone}
-              </p>
-            )}
-          </div>
-        </>
-      ) : (
+      <p data-testid="qb-hint">{feedback === null ? `${s.hint} ${s.clickHint}` : s.rethrowHint}</p>
+      <ul data-testid="qb-key-legend" className="flex flex-wrap gap-2">
+        {keyMap.map((k) => (
+          <li key={k.key} className="rounded bg-slate-100 px-2 py-0.5 dark:bg-slate-800">
+            <kbd className="font-semibold">{k.key}</kbd> = {k.label}
+          </li>
+        ))}
+      </ul>
+      {feedback !== null && (
         <dl className="space-y-1">
           <div>
             {s.target}: <span data-testid="qb-feedback-target">{feedback.label}</span>
@@ -105,6 +78,28 @@ export function QbModePanel({
           </div>
         </dl>
       )}
+      <div>
+        <h3 className="font-medium">{s.bestHeading}</h3>
+        <div className="mt-1 flex flex-wrap gap-2">
+          {keyMap.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              data-testid={`qb-best-${k.label}`}
+              title={s.bestHelp}
+              onClick={() => onPickBest(k.id)}
+              className="rounded border px-2 py-1"
+            >
+              {k.label} · {k.key}
+            </button>
+          ))}
+        </div>
+        {bestNone && (
+          <p data-testid="qb-best-none" className="mt-1 text-amber-800 dark:text-amber-200">
+            {s.bestNone}
+          </p>
+        )}
+      </div>
       <p data-testid="qb-tally">
         {tally.attempts === 0 ? s.tallyEmpty : s.tally(tally.attempts, tally.completions, tally.best)}
       </p>

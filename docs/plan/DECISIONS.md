@@ -317,3 +317,10 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   grab. Event markers are 16 px wide hit targets, focusable, with an instant tooltip: event name, the player's label
   (the target for throw/catch) and the time. Touch: tap shows it. Texts in `i18n/vi/playback.ts`, marker labels built
   by `components/field/markers.ts`. Engine unchanged.
+
+## D-35 QB tự ném: pick again without "Thử lại" (user request 2026-11-08)
+- Decision: a throw no longer locks the mode. After a throw the user can pause or scrub the timeline, press a key or
+  click another receiver, and the throw is replaced at the playhead time; the re-run keeps the playhead, so playing or
+  dragging shows the change at once. Same target at the same time is ignored. The panel keeps the key legend and the
+  "open nhất" buttons after a throw, with a hint. Each pick counts as an attempt in the tally. "Thử lại" still clears the
+  throw and restarts. Matchup and Freestyle; engine unchanged.

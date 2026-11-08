@@ -325,7 +325,7 @@ describe('T-FS-07 live re-run split view (FR-FS-06)', () => {
     expect(await screen.findByTestId('matchup-sim-error')).toHaveTextContent(`${t.matchup.simError}: boom`);
   });
 
-  it('QB keys only throw while QB mode is on; tool shortcuts work otherwise', async () => {
+  it('QB keys throw only while QB mode is on (also after a throw); tool shortcuts work otherwise', async () => {
     const { flood, cover1 } = seeds();
     await mount();
     loadSeeds(flood, cover1);
@@ -341,7 +341,11 @@ describe('T-FS-07 live re-run split view (FR-FS-06)', () => {
     fireEvent.keyDown(window, { key: 'r' });
     expect(store().tool).toBe('select');
     expect(await screen.findByTestId('qb-feedback-target')).toBeInTheDocument();
-    // After the throw the keys go back to the tools.
+    // D-35: after the throw the keys still pick receivers while the mode is on...
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(store().tool).toBe('select');
+    // ...and go back to the tools once the mode is left.
+    fireEvent.click(screen.getByTestId('qb-exit'));
     fireEvent.keyDown(window, { key: 'r' });
     expect(store().tool).toBe('route');
   });

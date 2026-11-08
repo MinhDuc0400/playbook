@@ -148,7 +148,7 @@ describe('QB mode (D-23)', () => {
     expect(screen.getByTestId('result-panel')).toBeInTheDocument();
   });
 
-  it('pressing W throws to read #2 at the playhead, keeps t, shows feedback and ignores a second key', async () => {
+  it('pressing W throws to read #2 at the playhead, keeps t, shows feedback', async () => {
     const user = await enter();
     await user.keyboard(' '); // pause (playback restarts and plays on entering the mode)
     act(() => setT(1.4));
@@ -170,10 +170,41 @@ describe('QB mode (D-23)', () => {
     expect(screen.getByTestId('qb-feedback-outcome')).toHaveTextContent(t.matchup.qb.inFlight);
     act(() => setT(3));
     expect(screen.getByTestId('qb-feedback-outcome')).toHaveTextContent(t.result.outcome.complete);
+  });
 
-    const calls = simCalls.length;
-    await user.keyboard('q');
+  it('D-35 after a throw, seeking back and picking another receiver replaces the throw without Thử lại', async () => {
+    const user = await enter();
+    await user.keyboard(' ');
+    act(() => setT(1.4));
+    await user.keyboard('w');
+    const second = fieldProps[fieldProps.length - 1]!.qbKeys![1]!;
+    const first = fieldProps[fieldProps.length - 1]!.qbKeys![0]!;
     expect(lastOverride()?.manualThrow?.targetId).toBe(second.id);
+    expect(screen.getByTestId('qb-hint')).toHaveTextContent(t.matchup.qb.rethrowHint);
+    expect(screen.getByTestId('qb-key-legend')).toBeInTheDocument();
+
+    act(() => setT(0.8));
+    await user.keyboard('q');
+    expect(lastOverride()?.manualThrow?.targetId).toBe(first.id);
+    expect(lastOverride()?.manualThrow?.t).toBeCloseTo(0.8, 1);
+    expect(screen.getByTestId('qb-feedback-target')).toHaveTextContent(first.label);
+    expect(screen.getByTestId('qb-feedback-time')).toHaveTextContent('0.8');
+
+    // Clicking a token on the field re-throws too.
+    act(() => setT(1.1));
+    await user.click(screen.getByTestId('mock-token-' + second.label));
+    expect(lastOverride()?.manualThrow?.targetId).toBe(second.id);
+    expect(lastOverride()?.manualThrow?.t).toBeCloseTo(1.1, 1);
+    expect(screen.getByTestId('qb-tally')).toHaveTextContent(t.matchup.qb.tally(3, 3, 0).split(' ·')[0]!);
+  });
+
+  it('D-35 pressing the same receiver at the same time again does not re-run the sim', async () => {
+    const user = await enter();
+    await user.keyboard(' ');
+    act(() => setT(1.4));
+    await user.keyboard('w');
+    const calls = simCalls.length;
+    await user.keyboard('w');
     expect(simCalls.length).toBe(calls);
   });
 

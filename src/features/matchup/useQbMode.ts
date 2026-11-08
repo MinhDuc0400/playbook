@@ -102,7 +102,7 @@ export interface QbModeState {
   tally: QbTally;
   enable(): void;
   disable(): void;
-  /** Records the throw (ignored when already thrown / disabled). */
+  /** Records the throw at `t`; a new throw replaces the previous one (D-35). Ignored when disabled. */
   throwTo(targetId: ID, t: number): void;
   retry(): void;
   /** Called by the page with the re-run result so the tally counts each throw once. */
@@ -115,7 +115,7 @@ export function useQbModeState(): QbModeState {
   const [seq, setSeq] = useState(0);
   const [tally, setTally] = useState<QbTally>({ attempts: 0, completions: 0, best: 0 });
   const counted = useRef(0);
-  const thrown = useRef(false);
+  const last = useRef<{ targetId: ID; t: number } | null>(null);
 
   const override = useMemo<QbOverride | undefined>(
     () => (enabled ? { qbControl: 'manual', ...(manualThrow ? { manualThrow } : {}) } : undefined),
@@ -123,23 +123,24 @@ export function useQbModeState(): QbModeState {
   );
 
   const enable = useCallback(() => {
-    thrown.current = false;
+    last.current = null;
     setManualThrow(null);
     setEnabled(true);
   }, []);
   const disable = useCallback(() => {
-    thrown.current = false;
+    last.current = null;
     setManualThrow(null);
     setEnabled(false);
   }, []);
   const throwTo = useCallback((targetId: ID, t: number) => {
-    if (thrown.current) return;
-    thrown.current = true;
+    const prev = last.current;
+    if (prev && prev.targetId === targetId && Math.abs(prev.t - t) < 1e-3) return;
+    last.current = { targetId, t };
     setManualThrow({ targetId, t });
     setSeq((n) => n + 1);
   }, []);
   const retry = useCallback(() => {
-    thrown.current = false;
+    last.current = null;
     setManualThrow(null);
   }, []);
 

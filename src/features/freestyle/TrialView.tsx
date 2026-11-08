@@ -87,8 +87,8 @@ export function TrialView({
   const { throwTo, record } = qb;
   const playbackT = playback.t;
   const pickReceiver = useCallback((id: string) => throwTo(id, playbackT), [throwTo, playbackT]);
-  useQbKeys(qb.enabled && !qbThrown && !embedded, keyMap, pickReceiver);
-  useQbKeysExclusive(qb.enabled && !qbThrown && embedded, keyMap, pickReceiver);
+  useQbKeys(qb.enabled && !embedded, keyMap, pickReceiver);
+  useQbKeysExclusive(qb.enabled && embedded, keyMap, pickReceiver);
   useEffect(() => record(result, keyMap), [record, result, keyMap]);
   const { seek, play } = playback;
   const minTRef = useRef(minT);
@@ -155,7 +155,7 @@ export function TrialView({
         levels={NO_LEVELS}
         hideReadInfo={hideReadInfo}
         qbKeys={qb.enabled ? keyMap : undefined}
-        onQbPick={qb.enabled && !qbThrown ? pickReceiver : undefined}
+        onQbPick={qb.enabled ? pickReceiver : undefined}
       />
     ) : null;
 

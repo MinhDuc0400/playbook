@@ -25,6 +25,8 @@ export const matchup = {
     hint: 'Bấm Q/W/E/R/T để ném',
     clickHint: 'hoặc bấm vào receiver',
     keyLegend: 'Phím',
+    rethrowHint:
+      'Muốn đổi? Tua thanh thời gian, rồi bấm phím hoặc receiver khác: bóng được ném lại tại thời điểm đó.',
     target: 'Receiver',
     time: 'Thời điểm ném',
     score: 'Điểm đọc lúc ném',

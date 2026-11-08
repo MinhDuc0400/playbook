@@ -230,13 +230,7 @@ export function removePlayers(slotIds: readonly ID[]): Recipe {
 }
 
 /** A copy of `src` moved `dx` yd right, with new slot and rule ids and the next default label. */
-function copySlot(
-  src: PlayerSlot,
-  labels: string[],
-  dx: number,
-  id: ID,
-  idGen: () => ID,
-): PlayerSlot {
+function copySlot(src: PlayerSlot, labels: string[], dx: number, id: ID, idGen: () => ID): PlayerSlot {
   const copy = clone(src);
   copy.id = id;
   copy.label = nextDefaultLabel(src.role, labels);

@@ -404,3 +404,12 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   spacing; routes, motion, options, zones and drop points move with their players (`movePlayers`); one drag = one
   undo step. A click without movement on one player of a group selects just that one. Freestyle edits one side at
   a time, so the box and Ctrl+A never pick the faded side. Same tool in the play editor and Freestyle.
+
+## D-46 Area match: no squeeze while a receiver is breaking out to the corner (user report 2026-11-08)
+- Problem: B, Z, C, X bunch vs CB1 / FS / SS / CB2. X ran vertical in SS's lane while C ran out toward CB2. At the
+  squeeze time nobody was in CB2's lane yet, so CB2 squeezed onto X as soon as X was 3 yd deep; C crossed into
+  CB2's lane 0.3 s later and SS took him as "second". The user expects CB2 on C: C is the first one coming to him.
+- Decision: a corner past `squeezeAfter` does not squeeze while an unclaimed receiver in the adjacent inside lane
+  is breaking toward the corner's lane: sideways speed toward the corner ≥ 1 yd/s and ≥ its downfield speed
+  (`headsOut`). A vertical stem that drifts outward does not count. The corner holds (no inward zone shift) and
+  takes that receiver as first-in when he arrives; if the receiver stops or turns, the squeeze goes ahead.

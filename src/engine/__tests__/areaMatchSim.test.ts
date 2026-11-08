@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { flipPlay } from '@/domain/flip';
-import type { SimEvent, SimInput } from '@/domain/types';
+import type { Action, PlayerSlot, SimEvent, SimInput } from '@/domain/types';
 import { prepareSim } from '../prepare';
 import { simulate } from '../simulate';
-import { bangkokPlay, bunchTightPlay, floodPlay, makeInput, slot } from './fixtures';
+import { bangkokPlay, bunchTightPlay, floodPlay, makeInput, makePlay, slot } from './fixtures';
 
 const RED_ZONE = { x: 0, yardLine: 45 };
 const input = (o: SimInput['offense'], d: SimInput['defense'] = bangkokPlay()) =>
@@ -158,5 +158,59 @@ describe('T-AM area match in the sim (D-40)', () => {
     }
     // yards each defender came up toward the LOS before its claim / the throw
     for (const v of Object.values(report)) expect(v).toBeLessThanOrEqual(0.1);
+  });
+
+  it('T-AM-07 user board: C runs out into CB2 lane while X goes vertical → CB2 on C, SS not on C', () => {
+    const route = (path: { x: number; y: number }[]): Action => ({
+      type: 'route',
+      path,
+      endBehavior: 'stop',
+    });
+    const area = (
+      id: string,
+      role: PlayerSlot['role'],
+      label: string,
+      x: number,
+      am: 'corner' | 'inside',
+    ) => ({
+      ...slot(id, role, label, { x, y: 5 }),
+      areaMatch: { role: am },
+    });
+    const off = makePlay(
+      'offense',
+      [
+        slot('q', 'QB', 'Q', { x: -1, y: -3 }, [{ type: 'qbDrop', depth: 2, style: 'shotgun' }]),
+        slot('b', 'RB', 'B', { x: -4.5, y: 0 }, [
+          route([
+            { x: -4.5, y: 6 },
+            { x: 5.5, y: 6 },
+          ]),
+        ]),
+        slot('z', 'WR', 'Z', { x: -2, y: 0 }, [route([{ x: -2, y: 6 }])]),
+        slot('c', 'C', 'C', { x: 0, y: 0 }, [
+          route([
+            { x: 1.4, y: 2 },
+            { x: 14.5, y: 5 },
+          ]),
+        ]),
+        slot('x', 'WR', 'X', { x: 2, y: 0 }, [
+          route([
+            { x: 2, y: 10 },
+            { x: -8, y: 10 },
+          ]),
+        ]),
+      ],
+      ['c', 'x', 'b', 'z'],
+    );
+    const def = makePlay('defense', [
+      slot('r1', 'R', 'R1', { x: -10.6, y: 7 }, [{ type: 'rush', path: [{ x: -1, y: -5 }], delay: 0 }]),
+      area('cb1', 'CB', 'CB1', -7.6, 'corner'),
+      area('fs', 'S', 'FS', -2, 'inside'),
+      area('ss', 'S', 'SS', 2.5, 'inside'),
+      area('cb2', 'CB', 'CB2', 7, 'corner'),
+    ]);
+    const c = claims(simulate(makeInput(off, def, { ballSpot: RED_ZONE })).events);
+    expect(c['cb2']).toMatchObject({ receiverId: 'c', reason: 'first' });
+    expect(c['ss']?.receiverId).not.toBe('c');
   });
 });

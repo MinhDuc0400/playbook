@@ -8,7 +8,9 @@
  *    lane's entry list; same-tick entries ordered nearer-the-sideline first.
  * 2. Corner first-in: an unclaimed corner takes the first unclaimed receiver in its lane's entry list.
  * 3. Corner squeeze: an unclaimed corner at t ≥ squeezeAfter takes the deepest unclaimed receiver now in the
- *    adjacent inside lane that runs vertical and is ≥ SQUEEZE_MIN_DEPTH deep; none → `squeezed`.
+ *    adjacent inside lane that runs vertical and is ≥ SQUEEZE_MIN_DEPTH deep; none → `squeezed`. While an
+ *    unclaimed receiver in that inside lane is breaking out toward the corner's lane (`headsOut`), the corner
+ *    does not squeeze yet: that receiver is coming to him and becomes his first-in (D-46).
  * 4. Inside second-out: an unclaimed inside defender whose outside (corner) lane's corner has a man takes the
  *    first unclaimed receiver in that lane's entry list other than the corner's man.
  * Claims are sticky. The view of "self" lists every receiver claimed by someone else in `ignore`.
@@ -20,6 +22,8 @@ import type { PerceivedPlayer } from './types';
 
 /** Minimum depth (yd past the LOS) of a vertical receiver a squeezing corner picks up. */
 export const SQUEEZE_MIN_DEPTH = 3;
+/** Minimum sideways speed (yd/s) toward the corner's lane for a receiver to count as breaking out to him. */
+export const HEADS_OUT_MIN_SPEED = 1;
 
 export type ClaimReason = 'first' | 'second' | 'squeeze';
 
@@ -55,6 +59,11 @@ export function createClaimTracker(opts: {
     const i = c === 0 ? 1 : c - 1;
     return i >= 0 && i < n && i !== c ? i : null;
   };
+  /** Breaking toward the corner's side (dir = ±1): mostly sideways, not a vertical stem drifting out. */
+  const headsOut = (p: PerceivedPlayer, dir: number): boolean => {
+    const out = dir * p.vel.x;
+    return out >= HEADS_OUT_MIN_SPEED && out >= p.vel.y;
+  };
   const isVertical = (p: PerceivedPlayer): boolean => {
     const speed = Math.hypot(p.vel.x, p.vel.y);
     return speed > 0 && p.vel.y > 0 && p.vel.y / speed >= VERTICAL_RATIO;
@@ -78,8 +87,12 @@ export function createClaimTracker(opts: {
           continue;
         }
         if (t < (squeezeAfter[c] ?? Infinity)) continue;
-        squeezed[c] = true;
         const inner = innerLane(c);
+        const dir = inner !== null && inner < c ? 1 : -1;
+        const coming = (p: PerceivedPlayer): boolean =>
+          !claimed(p.id) && laneOf(lanes, p.pos.x) === inner && headsOut(p, dir);
+        if (inner !== null && seen.some(coming)) continue;
+        squeezed[c] = true;
         if (inner === null) continue;
         let best: PerceivedPlayer | undefined;
         for (const p of seen) {

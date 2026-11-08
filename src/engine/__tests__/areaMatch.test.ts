@@ -71,6 +71,43 @@ describe('T-AM claim tracker (D-40)', () => {
     expect(view.ignore.has('Z')).toBe(false);
   });
 
+  it('T-AM-07 no squeeze while a receiver in the inner lane runs out toward the corner; he is the first-in', () => {
+    const { cb1, s } = trackers();
+    // Y seam 3.5 yd deep in S's lane; C breaking out fast toward CB1's lane (x ≥ 6.5).
+    const before = [
+      rec('Y', { x: 3, y: 3.5 }, { x: 0, y: 6 }),
+      rec('C', { x: 3.3, y: 2.3 }, { x: 6.5, y: 1.8 }),
+    ];
+    expect(cb1.update(0.9, before)).toMatchObject({ manId: null });
+    s.update(0.9, before);
+    const after = [
+      rec('Y', { x: 3, y: 4.7 }, { x: 0, y: 6 }),
+      rec('C', { x: 6.8, y: 2.6 }, { x: 6.5, y: 1.8 }),
+    ];
+    expect(cb1.update(1.1, after)).toMatchObject({ manId: 'C', reason: 'first' });
+    const view = s.update(1.1, after);
+    expect(view.manId).toBeNull();
+    expect(view.ignore.has('C')).toBe(true);
+    expect(view.ignore.has('Y')).toBe(false);
+  });
+
+  it('T-AM-07b the corner squeezes once that receiver stops heading out', () => {
+    const { cb1 } = trackers();
+    const out = [
+      rec('Y', { x: 3, y: 3.5 }, { x: 0, y: 6 }),
+      rec('C', { x: 3.3, y: 2.3 }, { x: 6.5, y: 1.8 }),
+    ];
+    expect(cb1.update(0.9, out).manId).toBeNull();
+    const sits = [rec('Y', { x: 3, y: 4.5 }, { x: 0, y: 6 }), rec('C', { x: 4.5, y: 2.5 }, { x: 0, y: 0 })];
+    expect(cb1.update(1.1, sits)).toMatchObject({ manId: 'Y', reason: 'squeeze' });
+  });
+
+  it('a receiver drifting outward on a vertical stem does not hold the squeeze', () => {
+    const { cb1 } = trackers();
+    const seams = [rec('Y', { x: 3, y: 3.5 }, { x: 1.5, y: 6 })];
+    expect(cb1.update(0.6, seams)).toMatchObject({ manId: 'Y', reason: 'squeeze' });
+  });
+
   it('the squeeze waits for a vertical receiver at least SQUEEZE_MIN_DEPTH deep', () => {
     const { cb1 } = trackers();
     const shallow = [rec('Y', { x: 3, y: SQUEEZE_MIN_DEPTH - 1 }, { x: 0, y: 6 })];

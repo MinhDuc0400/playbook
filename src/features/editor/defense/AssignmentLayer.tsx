@@ -9,6 +9,7 @@ import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { toScreen } from '@/components/field/viewport';
 import { computeAreaLanes } from '@/domain/areaLanes';
+import { computeRuleLanes } from '@/domain/areaRules';
 import { fieldBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef, type AlignedPlayer } from '@/domain/numbering';
 import type { ManAction, Play, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
@@ -133,7 +134,8 @@ export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProp
     }
   }
 
-  const lanes = computeAreaLanes(play.players);
+  // D-40 (old areaMatch) or D-48 (area rules) lanes.
+  const lanes = computeAreaLanes(play.players) ?? computeRuleLanes(play.players);
   if (lanes) {
     const top = fieldBounds(field, ballSpot).maxY;
     lanes.boundaries.forEach((x, i) => {

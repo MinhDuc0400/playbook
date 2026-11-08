@@ -36,4 +36,14 @@ describe('eventMarkers (D-34)', () => {
       { t: 0.8, type: 'areaClaim', label: 'CB1 → X' },
     ]);
   });
+
+  it('D-48 a ruleFired with a target reads "defender → receiver"; without one, just the defender', () => {
+    const all = [...players, { id: 'cb', label: 'CB1' }] as PlayerSlot[];
+    const hit: SimEvent = { t: 0.8, type: 'ruleFired', playerId: 'cb', targetId: 'a' };
+    const plain: SimEvent = { t: 1.2, type: 'ruleFired', playerId: 'cb' };
+    expect(eventMarkers([hit, plain], new Set(['ruleFired']), all)).toEqual([
+      { t: 0.8, type: 'ruleFired', label: 'CB1 → X' },
+      { t: 1.2, type: 'ruleFired', label: 'CB1' },
+    ]);
+  });
 });

@@ -309,9 +309,9 @@ describe('D-40 area match lives in the pattern-match section', () => {
     act(() => store().load(null));
   });
 
-  it('there is no separate area-match control; the pattern-match section offers it', () => {
+  it('there is no separate area-match control; the pattern-match section offers the template (D-48)', () => {
     setup(['cb1']);
     expect(screen.queryByTestId('def-area-match')).toBeNull();
-    expect(screen.getByTestId('rule-mode')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-template')).toBeInTheDocument();
   });
 });

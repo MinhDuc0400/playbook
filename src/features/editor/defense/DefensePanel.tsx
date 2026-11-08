@@ -293,7 +293,7 @@ function SelectedDefender({
       >
         {s.defender.clear}
       </Button>
-      <MatchRulesForm slotId={slot.id} />
+      <MatchRulesForm slotId={slot.id} field={field} />
     </Section>
   );
 }

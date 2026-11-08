@@ -23,6 +23,12 @@ function withRules(play: Play, slotId: ID, build: (rules: MatchRule[]) => MatchR
   return { ...play, players };
 }
 
+/** D-48: replace the slot's rules (template). Priorities re-packed; same play when nothing changes. */
+export function setRules(slotId: ID, rules: MatchRule[]): Recipe {
+  return (play) =>
+    withRules(play, slotId, (cur) => (JSON.stringify(cur) === JSON.stringify(repack(rules)) ? null : rules));
+}
+
 /** Append a default rule: when strong #1 vertical, depth >= 8, then carry. Priority = max + 1. */
 export function addRule(slotId: ID, idGen: () => ID): Recipe {
   return (play) =>

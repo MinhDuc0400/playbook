@@ -76,6 +76,8 @@ export const editor = {
         '{slot}: rusher / man không dùng được Bunch Killer (Bangkok), lựa chọn này bị bỏ qua',
       'area-match-incomplete':
         '{slot}: area match thiếu: cần ít nhất 2 defender và mỗi inside phải cạnh một corner',
+      'area-rule-ignored': '{slot}: luật khu vực bị bỏ qua (defender này rush / man / spy)',
+      'area-rule-bad-target': '{slot}: luật khu vực trỏ tới đồng đội không hợp lệ',
     },
   },
 } as const;

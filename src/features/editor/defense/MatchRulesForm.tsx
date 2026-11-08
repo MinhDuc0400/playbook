@@ -9,27 +9,42 @@ import { Button, IconButton, Select } from '@/components/ui';
 import {
   ZONE_PRESET_IDS,
   type AreaMatch,
+  type FieldConfig,
   type ID,
   type PlayerSlot,
   type MatchEvent,
   type MatchRule,
   type ReceiverRef,
+  type RuleReceiver,
   type ZonePresetId,
 } from '@/domain/types';
-import { isReceiverRef } from '@/domain/areaRules';
+import {
+  canCover,
+  cornerRules,
+  insideRules,
+  insideTeammate,
+  isReceiverRef,
+  laneRectangle,
+  matchTemplate,
+} from '@/domain/areaRules';
+import { createDefaultFields } from '@/domain/field';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
 import { setAreaMatch } from './ops';
-import { addRule, moveRule, removeRule, updateRule } from './ruleOps';
+import { addRule, moveRule, removeRule, setRules, updateRule } from './ruleOps';
 
 export interface MatchRulesFormProps {
   slotId: ID;
+  /** Field for the Inside template's lane zone (D-48); default 5v5. */
+  field?: FieldConfig;
 }
+
+const DEFAULT_FIELD = createDefaultFields()['5v5'];
 
 const r = t.rules;
 
-const EVENTS: readonly MatchEvent[] = ['vertical', 'out', 'in', 'under', 'release', 'stop'];
-const REACTIONS = ['man', 'zone', 'carry', 'passOff'] as const;
+const EVENTS: readonly MatchEvent[] = ['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea'];
+const REACTIONS = ['man', 'manTrigger', 'zone', 'carry', 'passOff'] as const;
 type Reaction = (typeof REACTIONS)[number];
 
 /** Option value <-> ReceiverRef: "strong-1", "weak-3", "RB". */
@@ -45,6 +60,18 @@ const refKey = (ref: ReceiverRef): string => (ref.kind === 'role' ? ref.role : `
 const refText = (ref: ReceiverRef): string =>
   ref.kind === 'role' ? ref.role : `${ref.side === 'strong' ? r.strong : r.weak} #${ref.number}`;
 const parseRef = (key: string): ReceiverRef | undefined => REFS.find((x) => refKey(x) === key);
+
+/** D-48 receivers: "any", "nth-1", "nth-2" next to the ReceiverRef keys. */
+const receiverKey = (rcv: RuleReceiver): string =>
+  isReceiverRef(rcv) ? refKey(rcv) : rcv.kind === 'nth' ? `nth-${rcv.n}` : 'any';
+const parseReceiver = (key: string): RuleReceiver | undefined =>
+  key === 'any'
+    ? { kind: 'any' }
+    : key === 'nth-1'
+      ? { kind: 'nth', n: 1 }
+      : key === 'nth-2'
+        ? { kind: 'nth', n: 2 }
+        : parseRef(key);
 
 const isEvent = (v: string): v is MatchEvent => (EVENTS as readonly string[]).includes(v);
 const isReaction = (v: string): v is Reaction => (REACTIONS as readonly string[]).includes(v);
@@ -82,8 +109,10 @@ function RuleRow({
   count,
   dragId,
   setDragId,
+  teammates,
 }: {
   slotId: ID;
+  teammates: readonly { id: ID; label: string }[];
   rule: MatchRule;
   index: number;
   count: number;
@@ -95,9 +124,14 @@ function RuleRow({
   const patchWhen = (when: Partial<MatchRule['when']>): void =>
     apply('match rule', updateRule(slotId, id, { when }));
   const setThen = (then: MatchRule['then']): void => apply('match rule', updateRule(slotId, id, { then }));
+  const area = rule.when.event === 'entersArea';
+  const a = rule.when.area;
+  const areaKey =
+    a?.kind === 'teammate' ? (teammates.some((m) => m.id === a.slotId) ? a.slotId : '') : 'self';
 
   const onReaction = (v: Reaction): void => {
     if (v === 'man') setThen({ type: 'man', target: { kind: 'number', side: 'strong', number: 1 } });
+    else if (v === 'manTrigger') setThen({ type: 'manTrigger' });
     else if (v === 'zone') setThen({ type: 'zone', zone: DEFAULT_ZONE });
     else setThen({ type: v });
   };
@@ -126,12 +160,19 @@ function RuleRow({
       <Select
         label={r.receiver}
         data-testid={`rule-receiver-${id}`}
-        value={isReceiverRef(rule.when.receiver) ? refKey(rule.when.receiver) : rule.when.receiver.kind}
+        value={receiverKey(rule.when.receiver)}
         onChange={(e) => {
-          const ref = parseRef(e.target.value);
-          if (ref) patchWhen({ receiver: ref });
+          const rcv = parseReceiver(e.target.value);
+          if (rcv) patchWhen({ receiver: rcv });
         }}
       >
+        <option value="any">{r.any}</option>
+        {area ? (
+          <>
+            <option value="nth-1">{r.nth[1]}</option>
+            <option value="nth-2">{r.nth[2]}</option>
+          </>
+        ) : null}
         <ReceiverOptions />
       </Select>
       <Select
@@ -139,7 +180,15 @@ function RuleRow({
         data-testid={`rule-event-${id}`}
         value={rule.when.event}
         onChange={(e) => {
-          if (isEvent(e.target.value)) patchWhen({ event: e.target.value });
+          const ev = e.target.value;
+          if (!isEvent(ev)) return;
+          if (ev === 'entersArea') patchWhen({ event: ev, area: rule.when.area ?? { kind: 'self' } });
+          else
+            patchWhen({
+              event: ev,
+              area: undefined,
+              ...(rule.when.receiver.kind === 'nth' ? { receiver: { kind: 'any' } } : {}),
+            });
         }}
       >
         {EVENTS.map((ev) => (
@@ -148,6 +197,26 @@ function RuleRow({
           </option>
         ))}
       </Select>
+      {area ? (
+        <Select
+          label={r.areaOf}
+          data-testid={`rule-area-${id}`}
+          value={areaKey}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === 'self') patchWhen({ area: { kind: 'self' } });
+            else if (v) patchWhen({ area: { kind: 'teammate', slotId: v } });
+          }}
+        >
+          {areaKey === '' ? <option value="">{r.noTeammate}</option> : null}
+          <option value="self">{r.self}</option>
+          {teammates.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+        </Select>
+      ) : null}
       <label className="flex flex-col gap-1 font-medium">
         {r.depth}
         <input
@@ -273,10 +342,63 @@ function ModeControls({ slot }: { slot: PlayerSlot }): JSX.Element {
   );
 }
 
-export function MatchRulesForm({ slotId }: MatchRulesFormProps): JSX.Element | null {
+/** D-48: Bunch Killer template select. Picking a template replaces this slot's rules (one undo step). */
+function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfig }): JSX.Element {
+  const current = matchTemplate(slot.matchRules) ?? 'rules';
+  const onTemplate = (v: string): void => {
+    if (v !== 'corner' && v !== 'inside') return;
+    const ruleId = () => nanoid();
+    useEditorStore.getState().apply('rule template', (play) => {
+      if (v === 'corner') return setRules(slot.id, cornerRules(ruleId))(play);
+      const withRules = setRules(slot.id, insideRules(ruleId, insideTeammate(play.players, slot.id)))(play);
+      const s = withRules.players.find((p) => p.id === slot.id);
+      const covers = s?.actions.some(
+        (x) => x.type === 'zone' || x.type === 'man' || x.type === 'spy' || x.type === 'rush',
+      );
+      if (!s || covers) return withRules;
+      // A zone-less inside defender keeps zoning its lane (as the D-48 conversion does).
+      const polygon = laneRectangle(withRules.players, slot.id, field);
+      const xs = polygon.map((p) => p.x);
+      const dropPoint = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: 5 };
+      return {
+        ...withRules,
+        players: withRules.players.map((p) =>
+          p.id === slot.id
+            ? { ...p, actions: [...p.actions, { type: 'zone', zone: { polygon }, dropPoint }] }
+            : p,
+        ),
+      };
+    });
+  };
+  return (
+    <>
+      <Select
+        label={r.template}
+        data-testid="rule-template"
+        value={current}
+        onChange={(e) => onTemplate(e.target.value)}
+      >
+        <option value="rules">{r.areaMatch.rules}</option>
+        <option value="corner">{r.areaMatch.corner}</option>
+        <option value="inside">{r.areaMatch.inside}</option>
+      </Select>
+      {current !== 'rules' ? (
+        <p data-testid="rule-area-hint" className="text-xs text-slate-500 dark:text-slate-400">
+          {current === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+export function MatchRulesForm({ slotId, field = DEFAULT_FIELD }: MatchRulesFormProps): JSX.Element | null {
   const slot = useEditorStore((st) => st.play?.players.find((p) => p.id === slotId));
+  const players = useEditorStore((st) => st.play?.players);
   const [dragId, setDragId] = useState<ID | null>(null);
   if (!slot) return null;
+  const teammates = (players ?? [])
+    .filter((p) => p.id !== slotId && canCover(p))
+    .map((p) => ({ id: p.id, label: p.label }));
   const rules = (slot.matchRules ?? []).slice().sort((a, b) => a.priority - b.priority);
   const rusher = slot.actions.some((a) => a.type === 'rush');
   const area = !rusher && slot.areaMatch !== undefined;
@@ -284,7 +406,11 @@ export function MatchRulesForm({ slotId }: MatchRulesFormProps): JSX.Element | n
   return (
     <section aria-label={r.title} className="flex flex-col gap-2">
       <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{r.title}</h4>
-      {!rusher || slot.areaMatch ? <ModeControls slot={slot} /> : null}
+      {slot.areaMatch ? (
+        <ModeControls slot={slot} />
+      ) : !rusher ? (
+        <TemplateControls slot={slot} field={field} />
+      ) : null}
       {area ? null : (
         <>
           {rules.length === 0 ? (
@@ -300,6 +426,7 @@ export function MatchRulesForm({ slotId }: MatchRulesFormProps): JSX.Element | n
                 count={rules.length}
                 dragId={dragId}
                 setDragId={setDragId}
+                teammates={teammates}
               />
             ))}
           </ol>

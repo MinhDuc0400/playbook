@@ -129,61 +129,134 @@ describe('MatchRulesForm (FR-DEF-07)', () => {
   });
 });
 
-describe('D-40 Bunch Killer (Bangkok) as a pattern-match option', () => {
+describe('D-40 legacy mode select (slots still carrying areaMatch, removed in D-48)', () => {
   beforeEach(() => act(() => store().load(null)));
-  const slot0 = () => store().play?.players[0];
 
-  it('mode defaults to custom rules; corner hides the rules and has no squeeze time (D-47)', () => {
-    setup([rule('a', 0)]);
-    const mode = screen.getByTestId('rule-mode') as HTMLSelectElement;
-    expect(mode.value).toBe('rules');
-    expect(screen.getByTestId('rules-list')).toBeInTheDocument();
-    change('rule-mode', 'corner');
-    expect(slot0()?.areaMatch).toEqual({ role: 'corner' });
+  it('a slot with areaMatch shows the old Kiểu select and hides the rules', () => {
+    act(() => store().load({ ...mk(), players: [{ ...mk().players[0]!, areaMatch: { role: 'corner' } }] }));
+    render(<MatchRulesForm slotId="cb" />);
+    expect((screen.getByTestId('rule-mode') as HTMLSelectElement).value).toBe('corner');
     expect(screen.queryByTestId('rules-list')).toBeNull();
-    expect(screen.queryByTestId('rule-add')).toBeNull();
-    expect(screen.getByTestId('rule-area-hint')).toHaveTextContent(t.rules.areaMatch.cornerHint);
-    expect(screen.queryByTestId('rule-squeeze-after')).toBeNull();
+    expect(screen.queryByTestId('rule-template')).toBeNull();
   });
 
-  it('inside: back to custom rules keeps the old rules; undo restores', () => {
+  it('a plain slot shows the template select, not the old one; rules stay visible', () => {
     setup([rule('a', 0)]);
-    change('rule-mode', 'inside');
-    expect(slot0()?.areaMatch).toEqual({ role: 'inside' });
-    change('rule-mode', 'rules');
-    expect(slot0()?.areaMatch).toBeUndefined();
-    expect(rules().map((x) => x.id)).toEqual(['a']);
-    act(() => store().undo());
-    expect(slot0()?.areaMatch).toEqual({ role: 'inside' });
-  });
-
-  it('a rusher gets no Bangkok options', () => {
-    act(() =>
-      store().load({
-        ...mk(),
-        players: [{ ...mk().players[0]!, role: 'R', actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }] }],
-      }),
-    );
-    render(<MatchRulesForm slotId="cb" />);
     expect(screen.queryByTestId('rule-mode')).toBeNull();
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('rules');
+    expect(screen.getByTestId('rules-list')).toBeInTheDocument();
+  });
+});
+
+describe('D-48 Bunch Killer template and area options', () => {
+  const slot = (id: string, x: number, extra: Partial<Play['players'][number]> = {}) => ({
+    id,
+    role: 'CB' as const,
+    label: id.toUpperCase(),
+    start: { x, y: 3.5 },
+    actions: [],
+    ...extra,
+  });
+  function board(): Play {
+    return {
+      ...mk(),
+      players: [
+        slot('cb2', -8),
+        slot('s', 4),
+        slot('cb1', 9),
+        slot('r', 0, { role: 'R', actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }] }),
+      ],
+    };
+  }
+  const get = (id: string) => store().play!.players.find((p) => p.id === id)!;
+  function open(id: string): void {
+    act(() => store().load(board()));
+    render(<MatchRulesForm slotId={id} />);
+  }
+
+  it('template Corner writes the corner rule in one undo step and shows the hint', () => {
+    open('cb1');
+    const select = screen.getByTestId('rule-template') as HTMLSelectElement;
+    expect(select.value).toBe('rules');
+    change('rule-template', 'corner');
+    const rs = get('cb1').matchRules!;
+    expect(rs).toHaveLength(1);
+    expect(rs[0]).toMatchObject({
+      when: { receiver: { kind: 'nth', n: 1 }, event: 'entersArea', area: { kind: 'self' } },
+      then: { type: 'manTrigger' },
+    });
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('corner');
+    expect(screen.getByTestId('rule-area-hint')).toHaveTextContent(t.rules.areaMatch.cornerHint);
+    expect(screen.getByTestId('rules-list')).toBeInTheDocument();
+    expect(past()).toBe(1);
   });
 
-  it('a rusher that still carries an area-match role shows the select so it can be removed', () => {
+  it('template Inside picks the templated corner beside it and gives a zone-less slot its lane zone', () => {
+    act(() => store().load(board()));
     act(() =>
-      store().load({
-        ...mk(),
-        players: [
-          {
-            ...mk().players[0]!,
-            role: 'R',
-            areaMatch: { role: 'corner' },
-            actions: [{ type: 'rush', path: [{ x: 0, y: -5 }] }],
-          },
-        ],
-      }),
+      store().apply('t', (p) => ({
+        ...p,
+        players: p.players.map((s) =>
+          s.id === 'cb1'
+            ? {
+                ...s,
+                matchRules: [
+                  {
+                    id: 'k',
+                    priority: 0,
+                    when: { receiver: { kind: 'nth', n: 1 }, event: 'entersArea', area: { kind: 'self' } },
+                    then: { type: 'manTrigger' },
+                  },
+                ],
+              }
+            : s,
+        ),
+      })),
     );
-    render(<MatchRulesForm slotId="cb" />);
-    change('rule-mode', 'rules');
-    expect(store().play?.players[0]?.areaMatch).toBeUndefined();
+    render(<MatchRulesForm slotId="s" />);
+    change('rule-template', 'inside');
+    const s = get('s');
+    expect(s.matchRules![0]!.when.area).toEqual({ kind: 'teammate', slotId: 'cb1' });
+    const z = s.actions.find((a) => a.type === 'zone');
+    expect(z?.type).toBe('zone');
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('inside');
+  });
+
+  it('event "vào khu vực của" shows the area select (default tôi) and offers Người thứ 1/2', () => {
+    open('cb1');
+    fireEvent.click(screen.getByTestId('rule-add'));
+    const id = get('cb1').matchRules![0]!.id;
+    expect(screen.queryByTestId(`rule-area-${id}`)).toBeNull();
+    change(`rule-event-${id}`, 'entersArea');
+    expect(get('cb1').matchRules![0]!.when.area).toEqual({ kind: 'self' });
+    const area = screen.getByTestId(`rule-area-${id}`) as HTMLSelectElement;
+    expect(area.value).toBe('self');
+    const opts = [...area.options].map((o) => o.value);
+    expect(opts).toEqual(['self', 'cb2', 's']); // rusher excluded
+    change(`rule-area-${id}`, 'cb2');
+    expect(get('cb1').matchRules![0]!.when.area).toEqual({ kind: 'teammate', slotId: 'cb2' });
+    change(`rule-receiver-${id}`, 'nth-2');
+    expect(get('cb1').matchRules![0]!.when.receiver).toEqual({ kind: 'nth', n: 2 });
+    // back to a direction event: nth → any, area removed
+    change(`rule-event-${id}`, 'out');
+    const w = get('cb1').matchRules![0]!.when;
+    expect(w.receiver).toEqual({ kind: 'any' });
+    expect('area' in w).toBe(false);
+    const recv = screen.getByTestId(`rule-receiver-${id}`) as HTMLSelectElement;
+    expect([...recv.options].map((o) => o.value)).not.toContain('nth-1');
+    expect([...recv.options].map((o) => o.value)).toContain('any');
+  });
+
+  it('Phản ứng "Man người đó" is stored as manTrigger', () => {
+    open('cb1');
+    fireEvent.click(screen.getByTestId('rule-add'));
+    const id = get('cb1').matchRules![0]!.id;
+    change(`rule-then-${id}`, 'manTrigger');
+    expect(get('cb1').matchRules![0]!.then).toEqual({ type: 'manTrigger' });
+  });
+
+  it('a rusher gets no template select', () => {
+    open('r');
+    expect(screen.queryByTestId('rule-template')).toBeNull();
   });
 });

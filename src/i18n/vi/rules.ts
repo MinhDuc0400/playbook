@@ -2,6 +2,13 @@
 export const rules = {
   title: 'Luật pattern match',
   mode: 'Kiểu',
+  /** D-48 template select. */
+  template: 'Mẫu',
+  any: 'Bất kỳ',
+  nth: { 1: 'Người thứ 1', 2: 'Người thứ 2' },
+  areaOf: 'Khu vực của',
+  self: 'tôi',
+  noTeammate: '— chọn —',
   areaMatch: {
     rules: 'Luật tự đặt',
     corner: 'Bunch Killer (Bangkok): Corner',
@@ -43,5 +50,6 @@ export const rules = {
     zone: 'Zone',
     carry: 'Carry',
     passOff: 'Pass off',
+    manTrigger: 'Man người đó',
   },
 } as const;

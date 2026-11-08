@@ -1,6 +1,9 @@
 /** Matchup result panel strings. Owned by T3.12. */
 export const result = {
   title: 'Kết quả',
+  touchdown: 'Touchdown',
+  touchdownSummary: (label: string, sec: number, yards: number): string =>
+    `Touchdown: ${label} bắt được bóng trong end zone ở ${sec.toFixed(2)} s, cách LOS ${yards.toFixed(1)} yd`,
   outcome: {
     complete: 'Hoàn thành',
     incomplete: 'Không bắt được',

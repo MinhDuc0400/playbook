@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { t } from '@/i18n/vi';
 import type { Outcome, Play, SimResult } from '@/domain/types';
 import { mkPlay } from '@/features/editor/__tests__/fixtures';
-import { ResultPanel } from '../ResultPanel';
+import { ResultPanel, ResultSummary } from '../ResultPanel';
 
 const offense = mkPlay([
   { id: 'q', role: 'QB', label: 'Q', start: { x: 0, y: -5 }, actions: [] },
@@ -141,5 +141,26 @@ describe('FR-MU-07 ResultPanel', () => {
   it('omits the decision line without read metrics', () => {
     render(<ResultPanel result={mkResult({ kind: 'sack', t: 3 })} offense={offense} t={0} />);
     expect(screen.queryByTestId('result-decision')).toBeNull();
+  });
+
+  it('D-41 a touchdown reads "Touchdown"', () => {
+    render(
+      <ResultPanel
+        result={mkResult({ kind: 'complete', targetId: 'z', yards: 7, t: 2, touchdown: true })}
+        offense={offense}
+        t={0}
+      />,
+    );
+    expect(screen.getByTestId('result-outcome')).toHaveTextContent(t.result.touchdown);
+  });
+
+  it('D-41 the Simple-mode summary says Touchdown', () => {
+    render(
+      <ResultSummary
+        result={mkResult({ kind: 'complete', targetId: 'z', yards: 7, t: 2, touchdown: true })}
+        offense={offense}
+      />,
+    );
+    expect(screen.getByTestId('result-summary')).toHaveTextContent(t.result.touchdownSummary('Z', 2, 7));
   });
 });

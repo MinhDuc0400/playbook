@@ -503,7 +503,7 @@ export interface SimEvent {
 }
 
 export type Outcome =
-  | { kind: 'complete'; targetId: ID; yards: number; t: number }
+  | { kind: 'complete'; targetId: ID; yards: number; t: number; touchdown?: true } // D-41: caught at/past the goal line
   | { kind: 'incomplete' | 'deflected' | 'intercepted'; targetId: ID; t: number }
   | { kind: 'sack' | 'throwaway' | 'timeout'; t: number };
 

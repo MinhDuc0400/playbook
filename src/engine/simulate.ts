@@ -32,6 +32,7 @@ import { createQbAgent, type QbAgent } from './agents/qb';
 import { createReceiverAgent } from './agents/receiver';
 import type { DefenderAgent } from './agents/common';
 import { createRuleDefender } from './agents/ruleDefender';
+import { goalLineY } from '@/domain/field';
 import { createAreaMatchDefender } from './agents/areaMatchDefender';
 import { createRusherAgent } from './agents/rusher';
 import { createZoneDefender } from './agents/zoneDefender';
@@ -603,7 +604,16 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
       const res = resolveArrival({ receiver: rec, defender: def }, tuning, catchRng);
       if (res === 'complete' && rec) {
         events.push({ t: time, type: 'catch', playerId: rec.id, targetId });
-        finish({ kind: 'complete', targetId: rec.id, yards: landing.y, t: time }, landing);
+        finish(
+          {
+            kind: 'complete',
+            targetId: rec.id,
+            yards: landing.y,
+            t: time,
+            ...(landing.y >= goalLineY(info.field, info.ballSpot) ? { touchdown: true as const } : {}),
+          },
+          landing,
+        );
       } else if (res === 'intercepted' && def) {
         events.push({ t: time, type: 'int', playerId: def.id, targetId });
         finish({ kind: 'intercepted', targetId, t: time }, landing);

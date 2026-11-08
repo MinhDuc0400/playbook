@@ -44,7 +44,7 @@ export function ResultPanel({
       <h2 className="font-semibold">{s.title}</h2>
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <span data-testid="result-outcome" className="text-base font-semibold">
-          {s.outcome[outcome.kind]}
+          {outcome.kind === 'complete' && outcome.touchdown ? s.touchdown : s.outcome[outcome.kind]}
         </span>
         {hasTarget && (
           <span>
@@ -124,7 +124,9 @@ export function ResultSummary({ result, offense }: { result: SimResult; offense:
   let text: string;
   if (outcome.kind === 'complete') {
     const label = offense.players.find((p) => p.id === outcome.targetId)?.label ?? outcome.targetId;
-    text = s.summary.complete(label, outcome.t, outcome.yards);
+    text = outcome.touchdown
+      ? s.touchdownSummary(label, outcome.t, outcome.yards)
+      : s.summary.complete(label, outcome.t, outcome.yards);
   } else {
     text = s.summary[outcome.kind];
   }

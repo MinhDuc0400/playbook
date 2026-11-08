@@ -362,3 +362,8 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   communication, no opponent Play (NFR-ARC-06). The slot's zone action is the base coverage; without one, a rectangle
   over its lane. `areaMatch` on a rusher / man / spy slot is ignored with a warning; it overrides `matchRules`.
 - Spec: `docs/superpowers/specs/2026-11-08-bangkok-bunch-killer-design.md`.
+
+## D-41 Touchdown result (user request 2026-11-08)
+- Decision: `Outcome` `complete` gets `touchdown?: true` when the catch point is at or past the goal line
+  (`landing.y ≥ goalLineY(field, ballSpot)`). The result panel shows "Touchdown" instead of "Hoàn thành", and the
+  Simple-mode summary says the catch was in the end zone. Aggregates still count it as complete.

@@ -21,16 +21,8 @@ function makePlayback(): Playback {
   };
 }
 
-function Harness({
-  pb,
-  marks,
-  always = false,
-}: {
-  pb: Playback;
-  marks: number[];
-  always?: boolean;
-}): JSX.Element {
-  useMatchupShortcuts(pb, marks, always);
+function Harness({ pb, marks }: { pb: Playback; marks: number[] }): JSX.Element {
+  useMatchupShortcuts(pb, marks);
   return (
     <div>
       <input type="range" data-testid="rng" />
@@ -87,9 +79,9 @@ describe('useMatchupShortcuts (FR-MU-03, §12.3)', () => {
     expect(b.toggle).not.toHaveBeenCalled();
   });
 
-  it('D-36 spaceAlways: Space toggles from a range, button or checkbox and is prevented; text fields keep it', () => {
+  it('D-36 Space toggles from a range, button or checkbox and is prevented; text fields keep it', () => {
     const pb = makePlayback();
-    const { getByTestId } = render(<Harness pb={pb} marks={[1]} always />);
+    const { getByTestId } = render(<Harness pb={pb} marks={[1]} />);
     for (const id of ['rng', 'btn', 'chk']) {
       const ev = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
       getByTestId(id).dispatchEvent(ev);
@@ -101,14 +93,5 @@ describe('useMatchupShortcuts (FR-MU-03, §12.3)', () => {
     expect(pb.toggle).toHaveBeenCalledTimes(3);
     for (const id of ['inp', 'ta', 'sel']) fireEvent.keyDown(getByTestId(id), { key: ' ' });
     expect(pb.toggle).toHaveBeenCalledTimes(3);
-  });
-
-  it('without spaceAlways a focused range or checkbox still ignores Space, a button keeps its native click', () => {
-    const pb = makePlayback();
-    const { getByTestId } = render(<Harness pb={pb} marks={[1]} />);
-    fireEvent.keyDown(getByTestId('rng'), { key: ' ' });
-    fireEvent.keyDown(getByTestId('chk'), { key: ' ' });
-    fireEvent.keyDown(getByTestId('btn'), { key: ' ' });
-    expect(pb.toggle).not.toHaveBeenCalled();
   });
 });

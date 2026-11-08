@@ -18,37 +18,27 @@ function isTextEntry(target: EventTarget | null): boolean {
 }
 
 /**
- * `markers` are event times used by ← / →. Ignored while typing in a field. With `spaceAlways` (QB tự ném, D-36)
- * Space toggles play/pause whatever control kept the focus (scrubber, a button just clicked, a checkbox) and
- * never activates that control; only real text entry keeps its Space.
+ * `markers` are event times used by ← / →. Space toggles play/pause in every mode, whatever control kept the focus
+ * (scrubber, a button just clicked, a checkbox) and never activates that control (D-36); only real text entry
+ * keeps its Space. The other keys are ignored while typing in a field.
  */
-export function useMatchupShortcuts(
-  playback: Playback,
-  markers: readonly number[],
-  spaceAlways = false,
-): void {
-  const ref = useRef({ playback, markers, spaceAlways });
+export function useMatchupShortcuts(playback: Playback, markers: readonly number[]): void {
+  const ref = useRef({ playback, markers });
   useEffect(() => {
-    ref.current = { playback, markers, spaceAlways };
+    ref.current = { playback, markers };
   });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const { playback: pb, markers: marks, spaceAlways: always } = ref.current;
-      if (always && e.key === ' ' && !isTextEntry(e.target)) {
+      const { playback: pb, markers: marks } = ref.current;
+      if (e.key === ' ' && !isTextEntry(e.target)) {
         e.preventDefault();
         if (!e.repeat) pb.toggle();
         return;
       }
       if (isTypingTarget(e.target)) return;
       switch (e.key) {
-        case ' ':
-          // A focused button handles Space natively (click); do not toggle twice.
-          if (e.target instanceof HTMLButtonElement) return;
-          e.preventDefault();
-          pb.toggle();
-          break;
         case 'ArrowRight':
           e.preventDefault();
           pb.stepToMark(1, marks);
@@ -69,7 +59,7 @@ export function useMatchupShortcuts(
     };
     // A button is clicked by Space on keyup; swallow it too so the focused control is not activated.
     const onKeyUp = (e: KeyboardEvent): void => {
-      if (ref.current.spaceAlways && e.key === ' ' && !isTextEntry(e.target)) e.preventDefault();
+      if (e.key === ' ' && !isTextEntry(e.target)) e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);

@@ -325,9 +325,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   "open nhất" buttons after a throw, with a hint. Each pick counts as an attempt in the tally. "Thử lại" still clears the
   throw and restarts. Matchup and Freestyle; engine unchanged.
 
-## D-36 Space is always play/pause in QB tự ném (user request 2026-11-08)
+## D-36 Space is always play/pause on Matchup and Freestyle (user request 2026-11-08)
 - Context: after scrubbing or clicking a receiver, focus stayed on the scrubber or a button, so Space did not toggle
   playback (or activated that button).
-- Decision: with QB mode on, Space toggles play/pause whatever control has the focus (range, button, checkbox) and
-  its default action is prevented on keydown and keyup; only text fields and selects keep Space. Outside QB mode the
-  behaviour is unchanged. Matchup and Freestyle live view.
+- Decision: in every mode (not only QB tự ném) Space toggles play/pause whatever control has the focus (range,
+  button, checkbox); its default action is prevented on keydown and keyup. Only text fields and selects keep Space.
+  Matchup and the Freestyle trial.

@@ -8,7 +8,11 @@ describe('T-TD-01 touchdown (D-41)', () => {
     let tds = 0;
     for (const yardLine of [45, 25]) {
       for (let seed = 1; seed <= 20; seed++) {
-        const input = makeInput(floodPlay(), cover3Play(), { ballSpot: { x: 0, yardLine }, noise: true, seed });
+        const input = makeInput(floodPlay(), cover3Play(), {
+          ballSpot: { x: 0, yardLine },
+          noise: true,
+          seed,
+        });
         const r = simulate(input);
         if (r.outcome.kind !== 'complete') continue;
         const goal = goalLineY(input.field, input.ballSpot);

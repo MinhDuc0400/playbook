@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FieldSvg } from '@/components/field/FieldSvg';
 import { defaultViewport, toScreen } from '@/components/field/viewport';
@@ -163,5 +163,33 @@ describe('AssignmentLayer (FR-DEF-02..04, §12.2)', () => {
     renderLayer();
     expect(screen.queryByTestId('rush-R1')).toBeNull();
     expect(screen.getByTestId('rush-LB')).toBeInTheDocument();
+  });
+});
+
+describe('D-40 lane boundaries', () => {
+  it('draws one dashed line per boundary between area-match defenders', () => {
+    const play = newDefense('5v5-def-cover-2');
+    const roles: Record<string, 'corner' | 'inside'> = {
+      CB2: 'corner',
+      S2: 'inside',
+      S1: 'inside',
+      CB1: 'corner',
+    };
+    act(() =>
+      store().load({
+        ...play,
+        players: play.players.map((p) =>
+          roles[p.label] ? { ...p, areaMatch: { role: roles[p.label]! } } : p,
+        ),
+      }),
+    );
+    renderLayer();
+    expect(screen.getAllByTestId('area-lane-boundary')).toHaveLength(3);
+  });
+
+  it('draws no lane lines without area-match defenders', () => {
+    act(() => store().load(newDefense('5v5-def-cover-2')));
+    renderLayer();
+    expect(screen.queryAllByTestId('area-lane-boundary')).toHaveLength(0);
   });
 });

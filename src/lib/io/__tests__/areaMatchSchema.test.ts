@@ -1,0 +1,29 @@
+import { describe, expect, it } from 'vitest';
+import { SCHEMA_VERSION, type AreaMatch, type Play, type PlayerSlot } from '@/domain/types';
+import { PlaySchema } from '../schemas';
+
+function def(label: string, x: number, areaMatch?: AreaMatch): PlayerSlot {
+  const s: PlayerSlot = { id: label, role: 'CB', label, start: { x, y: 3.5 }, actions: [] };
+  if (areaMatch) s.areaMatch = areaMatch;
+  return s;
+}
+
+describe('D-40 schema', () => {
+  it('the schema accepts areaMatch and plays without it', () => {
+    const play: Play = {
+      id: 'p',
+      schemaVersion: SCHEMA_VERSION,
+      name: 'Bangkok',
+      side: 'defense',
+      format: '5v5',
+      formation: 'Bunch Killer',
+      strength: 'right',
+      players: [def('CB1', 9, { role: 'corner', squeezeAfter: 0.8 }), def('LB', 0)],
+      tags: [],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    expect(PlaySchema.parse(play).players[0]!.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
+    expect(PlaySchema.parse(play).players[1]!.areaMatch).toBeUndefined();
+  });
+});

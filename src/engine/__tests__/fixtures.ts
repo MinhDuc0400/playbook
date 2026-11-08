@@ -139,7 +139,14 @@ export function makeInput(
 
 /** Bunch Killer (Bangkok), spec §7 (D-40): 4 area-match defenders + R rushing, or R in a middle zone. */
 export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
-  const area = (id: ID, role: Role, label: string, x: number, am: 'corner' | 'inside', actions: Action[] = []) => ({
+  const area = (
+    id: ID,
+    role: Role,
+    label: string,
+    x: number,
+    am: 'corner' | 'inside',
+    actions: Action[] = [],
+  ) => ({
     ...slot(id, role, label, { x, y: 3.5 }, actions, am === 'corner' ? 'outside' : 'inside'),
     areaMatch: { role: am },
   });
@@ -149,7 +156,14 @@ export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
       : slot('b-r', 'R', 'R', { x: 0.5, y: 7 }, [
           {
             type: 'zone',
-            zone: { polygon: [{ x: -6, y: 1.5 }, { x: 7, y: 1.5 }, { x: 7, y: 10 }, { x: -6, y: 10 }] },
+            zone: {
+              polygon: [
+                { x: -6, y: 1.5 },
+                { x: 7, y: 1.5 },
+                { x: 7, y: 10 },
+                { x: -6, y: 10 },
+              ],
+            },
             dropPoint: { x: 0.5, y: 5 },
           },
         ]);
@@ -158,14 +172,26 @@ export function bangkokPlay(variant: 'rush' | 'spy' = 'rush'): Play {
     area('b-lb', 'LB', 'LB', -1.5, 'inside', [
       {
         type: 'zone',
-        zone: { polygon: [{ x: -4.8, y: 0 }, { x: 1.4, y: 0 }, { x: -1.3, y: 6.5 }] },
+        zone: {
+          polygon: [
+            { x: -4.8, y: 0 },
+            { x: 1.4, y: 0 },
+            { x: -1.3, y: 6.5 },
+          ],
+        },
         dropPoint: { x: -1.3, y: 3 },
       },
     ]),
     area('b-s', 'S', 'S', 4, 'inside', [
       {
         type: 'zone',
-        zone: { polygon: [{ x: -0.6, y: 0 }, { x: 4.8, y: 0 }, { x: 4.8, y: 6 }] },
+        zone: {
+          polygon: [
+            { x: -0.6, y: 0 },
+            { x: 4.8, y: 0 },
+            { x: 4.8, y: 6 },
+          ],
+        },
         dropPoint: { x: 3.5, y: 3 },
       },
     ]),

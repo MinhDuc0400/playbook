@@ -72,7 +72,9 @@ export function createAreaMatchDefender(opts: {
       let events: NonNullable<AgentIntent['events']> | undefined;
       if (manId === null && view.manId !== null) {
         manId = view.manId;
-        events = [{ type: 'areaClaim', targetId: manId, data: { receiverId: manId, reason: view.reason ?? 'first' } }];
+        events = [
+          { type: 'areaClaim', targetId: manId, data: { receiverId: manId, reason: view.reason ?? 'first' } },
+        ];
         current = createManDefender({
           id,
           targetId: manId,

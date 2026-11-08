@@ -72,6 +72,8 @@ export const editor = {
       'catch-behind-los': '{slot}: route có điểm bắt ở sau LOS',
       'too-many-motions': 'Quá nhiều người motion: {count} (nên chỉ 1)',
       'man-target-missing': '{slot}: man target không tồn tại',
+      'area-match-incomplete':
+        '{slot}: area match thiếu: cần ít nhất 2 defender và mỗi inside phải cạnh một corner',
     },
   },
 } as const;

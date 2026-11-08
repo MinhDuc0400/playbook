@@ -12,6 +12,7 @@ import {
   setMan,
   setManTechnique,
   setRush,
+  setAreaMatch,
   setRushPath,
   setZone,
 } from '../ops';
@@ -339,5 +340,17 @@ describe('purity', () => {
       setAlignTo('strength')(d);
       setDesignStrength('left')(d);
     }).not.toThrow();
+  });
+});
+
+describe('setAreaMatch (D-40)', () => {
+  it('sets, updates and removes the area-match role without touching actions', () => {
+    const p1 = setAreaMatch('cb', { role: 'corner' })(defense());
+    expect(get(p1, 'cb').areaMatch).toEqual({ role: 'corner' });
+    const p2 = setAreaMatch('cb', { role: 'corner', squeezeAfter: 0.8 })(p1);
+    expect(get(p2, 'cb').areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
+    const p3 = setAreaMatch('cb', undefined)(p2);
+    expect('areaMatch' in get(p3, 'cb')).toBe(false);
+    expect(get(p3, 'fs')).toEqual(get(defense(), 'fs'));
   });
 });

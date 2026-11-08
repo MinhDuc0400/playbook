@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PlaySchema } from '@/lib/io/schemas';
 import { computeAreaLanes, laneOf, laneSpan } from '../areaLanes';
-import { SCHEMA_VERSION, type AreaMatch, type Play, type PlayerSlot } from '../types';
+import type { AreaMatch, PlayerSlot } from '../types';
 
 function def(label: string, x: number, areaMatch?: AreaMatch): PlayerSlot {
   const s: PlayerSlot = { id: label, role: 'CB', label, start: { x, y: 3.5 }, actions: [] };
@@ -49,23 +48,5 @@ describe('T-AM lanes (D-40)', () => {
   it('inside with no corner neighbour has outside null', () => {
     const lanes = computeAreaLanes([def('A', -2, { role: 'inside' }), def('B', 2, { role: 'inside' })])!;
     expect(lanes.outside).toEqual([null, null]);
-  });
-
-  it('the schema accepts areaMatch and plays without it', () => {
-    const play: Play = {
-      id: 'p',
-      schemaVersion: SCHEMA_VERSION,
-      name: 'Bangkok',
-      side: 'defense',
-      format: '5v5',
-      formation: 'Bunch Killer',
-      strength: 'right',
-      players: [def('CB1', 9, { role: 'corner', squeezeAfter: 0.8 }), def('LB', 0)],
-      tags: [],
-      createdAt: 1,
-      updatedAt: 1,
-    };
-    expect(PlaySchema.parse(play).players[0]!.areaMatch).toEqual({ role: 'corner', squeezeAfter: 0.8 });
-    expect(PlaySchema.parse(play).players[1]!.areaMatch).toBeUndefined();
   });
 });

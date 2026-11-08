@@ -8,6 +8,8 @@ import { useFieldContext } from '@/components/field/FieldContext';
 import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { toScreen } from '@/components/field/viewport';
+import { computeAreaLanes } from '@/domain/areaLanes';
+import { fieldBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef, type AlignedPlayer } from '@/domain/numbering';
 import type { ManAction, Play, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
 import { zoneKind, zonePolygon } from '@/domain/zones';
@@ -58,7 +60,7 @@ export interface AssignmentLayerProps {
 }
 
 export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProps = {}): JSX.Element | null {
-  const { field } = useFieldContext();
+  const { field, viewport, ballSpot } = useFieldContext();
   const storePlay = useEditorStore((s) => s.play);
   const play = playProp ?? storePlay;
   const passive = playProp !== undefined;
@@ -129,6 +131,29 @@ export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProp
         />,
       );
     }
+  }
+
+  const lanes = computeAreaLanes(play.players);
+  if (lanes) {
+    const top = fieldBounds(field, ballSpot).maxY;
+    lanes.boundaries.forEach((x, i) => {
+      const a = toScreen({ x, y: 0 }, viewport);
+      const b = toScreen({ x, y: top }, viewport);
+      zones.push(
+        <line
+          key={`lane-${i}`}
+          data-testid="area-lane-boundary"
+          x1={a.x}
+          y1={a.y}
+          x2={b.x}
+          y2={b.y}
+          pointerEvents="none"
+          className="stroke-teal-600/60 dark:stroke-teal-300/60"
+          strokeWidth={1.5}
+          strokeDasharray="4 6"
+        />,
+      );
+    });
   }
 
   return (

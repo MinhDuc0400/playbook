@@ -38,7 +38,10 @@ function trackers() {
 describe('T-AM claim tracker (D-40)', () => {
   it('T-AM-01 Z out first goes to the corner, Y out second goes to S', () => {
     const { cb1, s } = trackers();
-    const frame = (_t: number, z: Point, y: Point) => [rec('Z', z, { x: 6, y: 0 }), rec('Y', y, { x: 6, y: 0 })];
+    const frame = (_t: number, z: Point, y: Point) => [
+      rec('Z', z, { x: 6, y: 0 }),
+      rec('Y', y, { x: 6, y: 0 }),
+    ];
     for (const tr of [cb1, s]) {
       tr.update(0.1, frame(0.1, { x: 6, y: 1 }, { x: 3, y: 1 }));
       tr.update(0.3, frame(0.3, { x: 7, y: 1 }, { x: 4, y: 1 }));

@@ -323,7 +323,11 @@ export function simulate(input: SimInput, opts: { debug?: boolean } = {}): SimRe
     }
     const de = makeEntity(slot, 'defense', agent);
     if (coverage) de.coverage = coverage;
-    if (anticipation.readingEnabled && b && (b.kind === 'man' || b.kind === 'zone' || b.kind === 'areaMatch')) {
+    if (
+      anticipation.readingEnabled &&
+      b &&
+      (b.kind === 'man' || b.kind === 'zone' || b.kind === 'areaMatch')
+    ) {
       const tells = new Map<ID, { state: TellState; ema: number | null }>();
       de.tells = tells;
       de.tellRng = forkRng(seed, 'tell:' + slot.id);

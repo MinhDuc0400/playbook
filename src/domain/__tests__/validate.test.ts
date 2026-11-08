@@ -447,3 +447,30 @@ describe('too-many-motions (D-01)', () => {
     expect(w?.params).toEqual({ count: 2 });
   });
 });
+
+describe('D-40 area-match-incomplete', () => {
+  const withArea = (play: Play, roles: Record<string, 'corner' | 'inside'>): Play => ({
+    ...play,
+    players: play.players.map((p) => (roles[p.label] ? { ...p, areaMatch: { role: roles[p.label]! } } : p)),
+  });
+
+  it('one area defender is incomplete', () => {
+    const play = withArea(defense('5v5-def-cover-1'), { LB: 'inside' });
+    expect(codes(validatePlay(play, field5))).toContain('area-match-incomplete');
+  });
+
+  it('an inside defender with no corner beside it is incomplete', () => {
+    const play = withArea(defense('5v5-def-cover-1'), { LB: 'inside', FS: 'inside' });
+    expect(codes(validatePlay(play, field5))).toContain('area-match-incomplete');
+  });
+
+  it('corner | inside | inside | corner is complete', () => {
+    const play = withArea(defense('5v5-def-cover-2'), {
+      CB2: 'corner',
+      S2: 'inside',
+      S1: 'inside',
+      CB1: 'corner',
+    });
+    expect(codes(validatePlay(play, field5))).not.toContain('area-match-incomplete');
+  });
+});

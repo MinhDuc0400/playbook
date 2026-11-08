@@ -22,7 +22,9 @@ const throwTime = (events: SimEvent[]) => events.find((e) => e.type === 'throwSt
 
 describe('T-AM area match in the sim (D-40)', () => {
   it('T-AM-01 Z out first → CB1 on Z, Y out second → S on Y', () => {
-    const r = simulate(input(bunchTightPlay({ x: 'slant', c: 'hitch', y: 'flat', z: 'out', depths: { z: 2 } })));
+    const r = simulate(
+      input(bunchTightPlay({ x: 'slant', c: 'hitch', y: 'flat', z: 'out', depths: { z: 2 } })),
+    );
     const c = claims(r.events);
     expect(c['b-cb1']).toMatchObject({ receiverId: 'bt-z', reason: 'first' });
     expect(c['b-s']).toMatchObject({ receiverId: 'bt-y', reason: 'second' });
@@ -68,7 +70,10 @@ describe('T-AM area match in the sim (D-40)', () => {
   it('T-AM-06 moving S moves the lanes', () => {
     const d = bangkokPlay();
     const before = prepareSim(input(floodPlay(), d)).bindings['b-s'];
-    const moved = { ...d, players: d.players.map((p) => (p.id === 'b-s' ? { ...p, start: { x: 7, y: 3.5 } } : p)) };
+    const moved = {
+      ...d,
+      players: d.players.map((p) => (p.id === 'b-s' ? { ...p, start: { x: 7, y: 3.5 } } : p)),
+    };
     const after = prepareSim(input(floodPlay(), moved)).bindings['b-s'];
     expect(before?.kind).toBe('areaMatch');
     expect(after?.kind).toBe('areaMatch');

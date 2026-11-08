@@ -84,7 +84,7 @@ export function PreviewOverlay({
         </Button>
       </div>
       <div className="min-h-0 flex-1" aria-label={t.offense.preview.stage}>
-        <FieldStage field={field} ballSpot={ballSpot}>
+        <FieldStage field={field} ballSpot={ballSpot} ballMarker={false}>
           <g data-testid="preview-routes" opacity={ROUTE_OPACITY}>
             {offensePlay.players.map((slot) => {
               const route = slot.actions.find((a) => a.type === 'route');

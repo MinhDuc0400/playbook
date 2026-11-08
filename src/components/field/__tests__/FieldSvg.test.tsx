@@ -143,6 +143,12 @@ describe('FieldSvg labels (D-30)', () => {
     expect(Number(ball.getAttribute('cy'))).toBeCloseTo(c.y);
   });
 
+  it('D-37 ballMarker={false} keeps the labels but not the static ball', () => {
+    renderField(15, { labels: true, ballMarker: false });
+    expect(screen.getByTestId('label-los')).toBeInTheDocument();
+    expect(screen.queryByTestId('ball-marker')).toBeNull();
+  });
+
   it('numbers the 10-yard lines from the nearest goal line', () => {
     renderField(15, { labels: true });
     expect(screen.getByTestId('yard-number-10')).toHaveTextContent('10');

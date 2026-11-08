@@ -158,6 +158,7 @@ export function MatchupField({ field, ballSpot, theme, ...rest }: MatchupFieldPr
         field={field}
         ballSpot={ballSpot}
         theme={theme}
+        ballMarker={false}
         minimapContent={() => <MinimapDots built={rest.built} result={rest.result} t={rest.t} />}
       >
         <FieldContent {...rest} />

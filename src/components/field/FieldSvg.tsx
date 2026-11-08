@@ -19,6 +19,8 @@ export interface FieldSvgProps {
   showGrid?: boolean;
   /** Line labels (LOS, 1st down, Rush), yard numbers on the right sideline and the ball (D-30). */
   labels?: boolean;
+  /** The static ball on the LOS; off wherever the ball is animated or the snap is over (D-37). Needs `labels`. */
+  ballMarker?: boolean;
   /** Prefix for every data-testid (the mini-map uses one so ids stay unique). */
   testIdPrefix?: string;
   className?: string;
@@ -136,6 +138,7 @@ export function FieldSvg({
   theme = 'normal',
   showGrid = false,
   labels = false,
+  ballMarker = true,
   testIdPrefix = '',
   className,
   children,
@@ -358,17 +361,19 @@ export function FieldSvg({
                 bg={contrast ? 'fill-sky-300' : 'fill-blue-600'}
                 fg={contrast ? 'fill-black' : 'fill-white'}
               />
-              <g data-testid={`${tp}ball-marker`}>
-                <title>{t.field.ball}</title>
-                <ellipse
-                  className={pal.ball}
-                  strokeWidth={1.5}
-                  cx={ballC.x}
-                  cy={ballC.y}
-                  rx={yardsToPx(BALL_RX_YD, viewport)}
-                  ry={yardsToPx(BALL_RY_YD, viewport)}
-                />
-              </g>
+              {ballMarker && (
+                <g data-testid={`${tp}ball-marker`}>
+                  <title>{t.field.ball}</title>
+                  <ellipse
+                    className={pal.ball}
+                    strokeWidth={1.5}
+                    cx={ballC.x}
+                    cy={ballC.y}
+                    rx={yardsToPx(BALL_RX_YD, viewport)}
+                    ry={yardsToPx(BALL_RY_YD, viewport)}
+                  />
+                </g>
+              )}
             </>
           )}
 

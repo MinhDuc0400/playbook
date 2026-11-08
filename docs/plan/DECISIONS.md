@@ -331,3 +331,9 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Decision: in every mode (not only QB tự ném) Space toggles play/pause whatever control has the focus (range,
   button, checkbox); its default action is prevented on keydown and keyup. Only text fields and selects keep Space.
   Matchup and the Freestyle trial.
+
+## D-37 No static ball while the play animates (user request 2026-11-08)
+- Context: the ball marker on the LOS (D-30) stayed there during playback, next to the animated ball.
+- Decision: `FieldSvg` gets `ballMarker` (default on). `MatchupField` (Matchup, Freestyle trial, Present) and the
+  route preview turn it off; the animated ball is the only ball there. The Editor and the Freestyle board keep the
+  marker, and line labels and yard numbers stay everywhere.

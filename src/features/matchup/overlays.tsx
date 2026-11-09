@@ -10,7 +10,8 @@ import { useFieldContext } from '@/components/field/FieldContext';
 import { toScreen, yardsToPx } from '@/components/field/viewport';
 import { alignedPlayers, numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Frame, ManAction, Point, RouteAction, SimResult, ZoneAction } from '@/domain/types';
-import { zoneKind, zonePolygon } from '@/domain/zones';
+import { zoneShapeOf } from '@/domain/areaRules';
+import { zoneKind } from '@/domain/zones';
 import { frameAt } from '@/engine/frames';
 import { useMatchupStore } from '@/store/matchupStore';
 import type { BuiltSim } from './buildSimInput';
@@ -89,12 +90,13 @@ export function ZonesOverlay({ built, hideDefenseOverlays }: OverlayProps): JSX.
       {built.defense.players.map((slot) => {
         const zone = slot.actions.find((a): a is ZoneAction => a.type === 'zone');
         if (!zone) return null;
+        const shape = zoneShapeOf(zone, slot.id, built.defense.players, field);
         return (
           <ZoneShape
             key={slot.id}
-            polygon={zonePolygon(zone.zone, field, zone.offset)}
+            polygon={shape.polygon}
             kind={zoneKind(zone.zone)}
-            dropPoint={zone.dropPoint}
+            dropPoint={shape.dropPoint}
             testId={`overlay-zone-${slot.label}`}
           />
         );

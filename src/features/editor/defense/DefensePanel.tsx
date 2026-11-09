@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from 'react';
 import { Button, Select, TextInput } from '@/components/ui';
 import { useSettings } from '@/db/hooks';
+import { laneMemberIds } from '@/domain/areaRules';
 import { createDefaultFields } from '@/domain/field';
 import { formationsFor } from '@/domain/formations';
 import { computeStrength } from '@/domain/numbering';
@@ -184,6 +185,10 @@ function ZoneControls({
 }): JSX.Element {
   const apply = useEditorStore.getState().apply;
   const custom = typeof zone !== 'string';
+  // D-51: the live lane zone is offered to area-rule lane members.
+  const laneMember = useEditorStore(
+    (st) => zone === 'lane' || (st.play ? laneMemberIds(st.play.players).includes(slot.id) : false),
+  );
   return (
     <Select
       label={s.zone.preset}
@@ -191,9 +196,10 @@ function ZoneControls({
       value={custom ? 'custom' : zone}
       onChange={(e) => {
         const v = e.target.value;
-        if (isZonePreset(v)) apply('zone preset', setZone(slot.id, v, field));
+        if (isZonePreset(v) || v === 'lane') apply('zone preset', setZone(slot.id, v, field));
       }}
     >
+      {laneMember ? <option value="lane">{s.zone.lane}</option> : null}
       {ZONE_PRESET_IDS.map((id) => (
         <option key={id} value={id}>
           {id}

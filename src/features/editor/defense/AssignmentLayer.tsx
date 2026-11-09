@@ -8,11 +8,11 @@ import { useFieldContext } from '@/components/field/FieldContext';
 import { RoutePath } from '@/components/field/RoutePath';
 import { ZoneShape } from '@/components/field/ZoneShape';
 import { toScreen } from '@/components/field/viewport';
-import { computeRuleLanes } from '@/domain/areaRules';
+import { computeRuleLanes, zoneArea, zoneShapeOf } from '@/domain/areaRules';
 import { fieldBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef, type AlignedPlayer } from '@/domain/numbering';
 import type { ManAction, Play, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
-import { zoneKind, zonePolygon } from '@/domain/zones';
+import { zoneKind } from '@/domain/zones';
 import { useEditorStore } from '@/store/editorStore';
 import { ghostNumbering, ghostPlayers } from './ghost';
 
@@ -89,14 +89,16 @@ export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProp
     const isSel = selected.has(slot.id);
     const zone = findAction(slot, 'zone');
     if (zone) {
+      // D-51: a lane zone is worked out from the lanes; its drop point is the defender, so no handle.
+      const shape = zoneShapeOf(zone, slot.id, play.players, field);
       zones.push(
         <ZoneShape
           key={`zone-${slot.id}`}
-          polygon={zonePolygon(zone.zone, field, zone.offset)}
+          polygon={shape.polygon}
           kind={zoneKind(zone.zone)}
-          dropPoint={zone.dropPoint}
+          dropPoint={shape.dropPoint}
           slotId={slot.id}
-          showDropHandle={isSel || tool === 'zone'}
+          showDropHandle={zone.zone !== 'lane' && (isSel || tool === 'zone')}
           testId={`zone-${slot.label}`}
         />,
       );
@@ -133,11 +135,18 @@ export function AssignmentLayer({ play: playProp, targets }: AssignmentLayerProp
     }
   }
 
-  // D-48 area rule lanes (Bunch Killer).
+  // D-48 area rule lanes (Bunch Killer). D-51: a defender with a zone uses its outline as his area, so a line is
+  // drawn only where it bounds the lane of a defender without one (or with the live lane zone).
   const lanes = computeRuleLanes(play.players);
   if (lanes) {
     const top = fieldBounds(field, ballSpot).maxY;
+    const byId = new Map(play.players.map((p) => [p.id, p]));
+    const onLane = (id: string | undefined): boolean => {
+      const slot = id === undefined ? undefined : byId.get(id);
+      return slot !== undefined && zoneArea(slot, play.players, field) === null;
+    };
     lanes.boundaries.forEach((x, i) => {
+      if (!onLane(lanes.order[i]) && !onLane(lanes.order[i + 1])) return;
       const a = toScreen({ x, y: 0 }, viewport);
       const b = toScreen({ x, y: top }, viewport);
       zones.push(

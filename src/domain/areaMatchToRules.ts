@@ -3,14 +3,14 @@
  * `areaMatch` key, so it also works on records stored before the field was removed.
  * - corner → the corner rule; its zone action is removed (the old corner ignored everyone whatever its zone).
  * - inside → the inside rule on its old outside corner (left neighbour corner first, else right, else none);
- *   with no zone action it gets its lane rectangle (y 0..10) as a polygon zone, dropped at the lane centre.
+ *   with no zone action it gets the live lane zone (D-51).
  * - old custom rules on an area slot (the engine ignored them) are dropped; `areaMatch` (and `squeezeAfter`)
  *   is removed from every slot; one note line is appended.
  * Returns the same object when no slot has `areaMatch`.
  */
 import { computeLanes } from './areaLanes';
-import { canCover, cornerRules, insideRules, laneRectangle } from './areaRules';
-import type { FieldConfig, ID, Play, PlayerSlot } from './types';
+import { canCover, cornerRules, insideRules } from './areaRules';
+import type { ID, Play, PlayerSlot } from './types';
 
 export const CONVERTED_NOTE = 'Đã chuyển Bunch Killer sang luật pattern match (D-48).';
 
@@ -31,7 +31,7 @@ function withoutAreaKey(slot: PlayerSlot): PlayerSlot {
   return copy;
 }
 
-export function areaMatchToRules(play: Play, field: FieldConfig): Play {
+export function areaMatchToRules(play: Play): Play {
   if (!play.players.some(hasAreaKey)) return play;
   const active = new Set(play.players.filter((s) => oldRole(s) !== null && canCover(s)).map((s) => s.id));
   const lanes = computeLanes(play.players, (s) => active.has(s.id));
@@ -65,10 +65,8 @@ export function areaMatchToRules(play: Play, field: FieldConfig): Play {
     ) {
       return slot;
     }
-    const polygon = laneRectangle(ruled, slot.id, field);
-    const xs = polygon.map((p) => p.x);
-    const dropPoint = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: 5 };
-    return { ...slot, actions: [...slot.actions, { type: 'zone', zone: { polygon }, dropPoint }] };
+    const dropPoint = { x: slot.start.x, y: slot.start.y };
+    return { ...slot, actions: [...slot.actions, { type: 'zone', zone: 'lane', dropPoint }] };
   });
 
   return {

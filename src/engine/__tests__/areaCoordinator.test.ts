@@ -172,4 +172,68 @@ describe('D-48 area coordinator (ports T-AM claim tracker)', () => {
     expect(a.update(0.2, seen).manId).toBe('X');
     expect(b.update(0.2, seen).manId).toBe('Y');
   });
+
+  describe('D-51 a defender with a zone: the zone outline is his area', () => {
+    // The user's board: CB1 −11.5, FS −4 (moved 1.5 right of his quarter), SS 3.5, CB2 12; quarters as areas.
+    const quarter = (x0: number, x1: number) => [
+      { x: x0, y: 0 },
+      { x: x1, y: 0 },
+      { x: x1, y: 30 },
+      { x: x0, y: 30 },
+    ];
+    const any = (id: string): MatchRule => ({
+      id,
+      priority: 0,
+      when: { receiver: { kind: 'any' }, event: 'entersArea', area: { kind: 'self' } },
+      then: { type: 'manTrigger' },
+    });
+    const board = [
+      def('CB1', -11.5, [any('a')]),
+      def('FS', -2.5, [any('b')]),
+      def('SS', 3.5, []),
+      def('CB2', 12, []),
+    ];
+    const lanesQ = computeRuleLanes(board)!;
+    const m: LaneMember[] = [
+      { id: 'CB1', rules: [any('a')], area: quarter(-15, -7.75) },
+      { id: 'FS', rules: [any('b')], area: quarter(-6.25, 1.25) },
+      { id: 'SS', rules: [], area: quarter(-0.25, 7.25) },
+      { id: 'CB2', rules: [], area: quarter(7.25, 15) },
+    ];
+    const make = (selfId: string) =>
+      createAreaCoordinator({ lanes: lanesQ, members: m, selfId, minX: -15, maxX: 15 });
+
+    it("the gap between two zones is nobody's area, even though a midline lane covers it", () => {
+      // Midline CB1 | FS is −7; CB1's zone ends at −7.75, FS's starts at −6.25.
+      for (const x of [-7.5, -6.6]) {
+        const seen = [rec('X', { x, y: 1 }, { x: 0, y: 5 })];
+        expect(make('CB1').update(0.2, seen).manId).toBeNull();
+        expect(make('FS').update(0.2, seen).manId).toBeNull();
+      }
+      expect(make('FS').update(0.2, [rec('X', { x: -6, y: 1 }, { x: 0, y: 5 })]).manId).toBe('X');
+    });
+
+    it('a receiver behind the LOS counts once he is level with a zone that starts at the LOS', () => {
+      const seen = [rec('X', { x: -12, y: -1 }, { x: 0, y: 5 })];
+      expect(make('CB1').update(0.2, seen).manId).toBe('X');
+    });
+
+    it('a zone that starts deep is not entered by a shallow receiver', () => {
+      const deep: LaneMember[] = [
+        {
+          id: 'CB1',
+          rules: [any('a')],
+          area: [
+            { x: -15, y: 10 },
+            { x: -5, y: 10 },
+            { x: -5, y: 30 },
+            { x: -15, y: 30 },
+          ],
+        },
+      ];
+      const c = createAreaCoordinator({ lanes: lanesQ, members: deep, selfId: 'CB1', minX: -15, maxX: 15 });
+      expect(c.update(0.2, [rec('X', { x: -12, y: 3 }, { x: 0, y: 5 })]).manId).toBeNull();
+      expect(c.update(0.6, [rec('X', { x: -12, y: 11 }, { x: 0, y: 5 })]).manId).toBe('X');
+    });
+  });
 });

@@ -123,9 +123,11 @@ export function setZone(slotId: ID, zone: ZoneAction['zone'], field: FieldConfig
       const placed =
         typeof zone !== 'string'
           ? { dropPoint: copyPoint(dropPoint ?? polygonCentroid(zone.polygon)) }
-          : dropPoint
-            ? { dropPoint: copyPoint(dropPoint) }
-            : zoneAt(zone, slot.start, field);
+          : zone === 'lane'
+            ? { dropPoint: copyPoint(dropPoint ?? slot.start) }
+            : dropPoint
+              ? { dropPoint: copyPoint(dropPoint) }
+              : zoneAt(zone, slot.start, field);
       const action: ZoneAction = { type: 'zone', zone: stored, ...placed };
       return withAssignment(slot, action, coverageRole(slot));
     });

@@ -172,6 +172,14 @@ describe('movePlayers (D-45)', () => {
     expect(slotOf(p, 'r').start).toEqual({ x: 3, y: 8 });
   });
 
+  it('D-51 a lane zone stays the live lane when its defender moves (no offset, no frozen polygon)', () => {
+    const lane = { type: 'zone' as const, zone: 'lane' as const, dropPoint: { x: -8, y: 5 } };
+    const base = defense();
+    base.players[0] = { ...base.players[0]!, actions: [lane] };
+    const p = run(base, movePlayers(['cb'], { x: 1, y: 0 }));
+    expect(slotOf(p, 'cb').actions).toEqual([{ ...lane, dropPoint: { x: -7, y: 5 } }]);
+  });
+
   it('a zero delta or no ids returns the same play', () => {
     const base = deepFreeze(offense());
     expect(movePlayers(['x'], { x: 0, y: 0 })(base)).toBe(base);

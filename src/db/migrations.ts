@@ -4,12 +4,14 @@
  *   on athletes/lineups (D-07). Must keep all existing data.
  * - upgradeToV3 (D-48): Dexie v2 → v3; converts Bunch Killer `areaMatch` plays to area rules and sets
  *   schemaVersion 2 on every record.
+ * - upgradeToV4 (D-51): Dexie v3 → v4; lane rectangles frozen into polygon zones become the live 'lane' zone
+ *   and every record gets schemaVersion 3.
  * - migrateRecord: per-record migration used by JSON import (FR-IO-02) for files with an older
  *   schemaVersion (0 = records written before schemaVersion existed).
  */
 import type { Transaction } from 'dexie';
 import { areaMatchToRules } from '@/domain/areaMatchToRules';
-import { createDefaultFields } from '@/domain/field';
+import { liveLaneZones } from '@/domain/areaRules';
 import { SCHEMA_VERSION, type Play } from '@/domain/types';
 
 export type TableName = 'plays' | 'athletes' | 'lineups' | 'matchups' | 'installs' | 'settings';
@@ -41,25 +43,35 @@ export async function upgradeToV2(tx: Transaction): Promise<void> {
   }
 }
 
-/** Field used to freeze converted lane rectangles (a Play stores no ball spot; ball centred). */
-const CONVERT_FIELD = createDefaultFields()['5v5'];
-
 /** schemaVersion 1 → 2 for one record (D-48): plays get their `areaMatch` converted. */
 function toV2(table: TableName, rec: Raw): Raw {
-  const out =
-    table === 'plays' ? (areaMatchToRules(rec as unknown as Play, CONVERT_FIELD) as unknown as Raw) : rec;
+  const out = table === 'plays' ? (areaMatchToRules(rec as unknown as Play) as unknown as Raw) : rec;
   return { ...out, schemaVersion: 2 };
 }
 
-export async function upgradeToV3(tx: Transaction): Promise<void> {
+/** schemaVersion 2 → 3 for one record (D-51): frozen lane rectangles become the live 'lane' zone. */
+function toV3(table: TableName, rec: Raw): Raw {
+  const out = table === 'plays' ? (liveLaneZones(rec as unknown as Play) as unknown as Raw) : rec;
+  return { ...out, schemaVersion: 3 };
+}
+
+async function upgradeEach(tx: Transaction, step: (table: TableName, rec: Raw) => Raw): Promise<void> {
   for (const name of TABLES) {
     await tx
       .table(name)
       .toCollection()
       .modify((rec: Raw, ref: { value: Raw }) => {
-        ref.value = toV2(name, rec);
+        ref.value = step(name, rec);
       });
   }
+}
+
+export async function upgradeToV3(tx: Transaction): Promise<void> {
+  await upgradeEach(tx, toV2);
+}
+
+export async function upgradeToV4(tx: Transaction): Promise<void> {
+  await upgradeEach(tx, toV3);
 }
 
 /**
@@ -81,5 +93,6 @@ export function migrateRecord(table: TableName, record: unknown, fromVersion: nu
     copy.schemaVersion = 1;
   }
   if (fromVersion < 2) copy = toV2(table, copy);
+  if (fromVersion < 3) copy = toV3(table, copy);
   return copy;
 }

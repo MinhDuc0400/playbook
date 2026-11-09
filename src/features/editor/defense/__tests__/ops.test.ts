@@ -194,6 +194,14 @@ describe('setZone (FR-DEF-03)', () => {
     expect(a?.type === 'zone' && typeof a.zone !== 'string' && a.zone.polygon).not.toBe(polygon);
   });
 
+  it('D-51 lane: stored as the live lane, dropped on the defender, no offset', () => {
+    const before = defense();
+    const next = setZone('cb', 'lane', FIELD)(before);
+    expect(get(next, 'cb').actions).toEqual([
+      { type: 'zone', zone: 'lane', dropPoint: get(before, 'cb').start },
+    ]);
+  });
+
   it('explicit drop point wins', () => {
     const next = setZone('cb', 'hook-L', FIELD, { x: -5, y: 8 })(defense());
     expect(get(next, 'cb').actions).toEqual([{ type: 'zone', zone: 'hook-L', dropPoint: { x: -5, y: 8 } }]);

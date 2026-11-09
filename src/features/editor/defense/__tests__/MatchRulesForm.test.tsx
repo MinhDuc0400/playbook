@@ -210,7 +210,8 @@ describe('D-48 Bunch Killer template and area options', () => {
     const s = get('s');
     expect(s.matchRules![0]!.when.area).toEqual({ kind: 'teammate', slotId: 'cb1' });
     const z = s.actions.find((a) => a.type === 'zone');
-    expect(z?.type).toBe('zone');
+    // D-51: the live lane zone, not a frozen copy of today's lane.
+    expect(z).toMatchObject({ type: 'zone', zone: 'lane' });
     expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('inside');
   });
 

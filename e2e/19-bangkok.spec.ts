@@ -23,7 +23,8 @@ test('19 Bunch Killer install is seeded, its matchup runs, the editor shows the 
   await page.goto('/play/seed-def-bangkok-rush');
   await expect(page.getByTestId('editor-page')).toBeVisible();
   await expect(page.getByTestId('play-name')).toHaveValue('Zone: Bunch Killer (Bangkok) Rush');
-  await expect(page.getByTestId('area-lane-boundary')).toHaveCount(3);
+  // D-51: LB and S have zones (their areas), so only the two lines beside the zone-less corners are drawn.
+  await expect(page.getByTestId('area-lane-boundary')).toHaveCount(2);
   const cb1 = await tokenCenter(page, 'CB1');
   await page.mouse.click(cb1.x, cb1.y);
   await expect(page.getByTestId('rule-template')).toHaveValue('corner');

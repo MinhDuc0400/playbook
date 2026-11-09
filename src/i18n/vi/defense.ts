@@ -44,6 +44,8 @@ export const defense = {
   zone: {
     preset: 'Zone mẫu',
     custom: 'Polygon tự vẽ',
+    /** D-51: the area-rule lane, worked out from the lane lines. */
+    lane: 'Làn của tôi (theo vạch đứt)',
     makeZone: 'Chuyển sang zone',
   },
   rush: {

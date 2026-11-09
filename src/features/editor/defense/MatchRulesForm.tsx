@@ -23,12 +23,12 @@ import {
   insideRules,
   insideTeammate,
   isReceiverRef,
-  laneRectangle,
   matchTemplate,
 } from '@/domain/areaRules';
 import { createDefaultFields } from '@/domain/field';
 import { t } from '@/i18n/vi';
 import { useEditorStore } from '@/store/editorStore';
+import { setZone } from './ops';
 import { addRule, moveRule, removeRule, setRules, updateRule } from './ruleOps';
 
 export interface MatchRulesFormProps {
@@ -325,18 +325,8 @@ function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfi
         (x) => x.type === 'zone' || x.type === 'man' || x.type === 'spy' || x.type === 'rush',
       );
       if (!s || covers) return withRules;
-      // A zone-less inside defender keeps zoning its lane (as the D-48 conversion does).
-      const polygon = laneRectangle(withRules.players, slot.id, field);
-      const xs = polygon.map((p) => p.x);
-      const dropPoint = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: 5 };
-      return {
-        ...withRules,
-        players: withRules.players.map((p) =>
-          p.id === slot.id
-            ? { ...p, actions: [...p.actions, { type: 'zone', zone: { polygon }, dropPoint }] }
-            : p,
-        ),
-      };
+      // A zone-less inside defender keeps zoning its lane: the live lane zone (D-51).
+      return setZone(slot.id, 'lane', field)(withRules);
     });
   };
   return (

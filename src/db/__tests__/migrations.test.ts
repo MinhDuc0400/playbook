@@ -147,11 +147,102 @@ describe('D-48 Dexie v2 → v3 upgrade', () => {
     opened.push(db);
     await db.open();
     const p = (await db.plays.get('bk'))!;
-    expect(p.schemaVersion).toBe(2);
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION);
     const cb1 = p.players.find((s) => s.id === 'CB1')!;
     expect(cb1.matchRules?.[0]?.then).toEqual({ type: 'manTrigger' });
     expect('areaMatch' in cb1).toBe(false);
-    expect((await db.matchups.get('m1'))?.schemaVersion).toBe(2);
+    expect((await db.matchups.get('m1'))?.schemaVersion).toBe(SCHEMA_VERSION);
+  });
+});
+
+/** The user's board (D-51): FS / SS insides with lane rectangles frozen by D-48, FS dragged since. */
+function frozenLanePlay(id: string, schemaVersion: number) {
+  const rule = (n: 1 | 2, area: object) => [
+    {
+      id: `r${n}`,
+      priority: 0,
+      when: { receiver: { kind: 'nth', n }, event: 'entersArea', area },
+      then: { type: 'manTrigger' },
+    },
+  ];
+  const rect = (x0: number, x1: number) => ({
+    polygon: [
+      { x: x0, y: 0 },
+      { x: x1, y: 0 },
+      { x: x1, y: 10 },
+      { x: x0, y: 10 },
+    ],
+  });
+  const tri = {
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 2, y: 6 },
+    ],
+  };
+  return makePlay(id, {
+    side: 'defense',
+    schemaVersion,
+    players: [
+      {
+        id: 'CB1',
+        role: 'CB',
+        label: 'CB1',
+        start: { x: -10, y: 7 },
+        actions: [],
+        matchRules: rule(1, { kind: 'self' }),
+      },
+      {
+        id: 'FS',
+        role: 'S',
+        label: 'FS',
+        start: { x: -1, y: 7 },
+        actions: [{ type: 'zone', zone: rect(-5, 1.25), dropPoint: { x: -1.9, y: 5 } }],
+        matchRules: rule(2, { kind: 'teammate', slotId: 'CB1' }),
+      },
+      {
+        id: 'SS',
+        role: 'S',
+        label: 'SS',
+        start: { x: 2.5, y: 7 },
+        actions: [{ type: 'zone', zone: tri, dropPoint: { x: 2, y: 3 } }],
+        matchRules: rule(2, { kind: 'teammate', slotId: 'CB2' }),
+      },
+      {
+        id: 'CB2',
+        role: 'CB',
+        label: 'CB2',
+        start: { x: 7.5, y: 7 },
+        actions: [],
+        matchRules: rule(1, { kind: 'self' }),
+      },
+    ],
+  } as never);
+}
+
+describe('D-51 Dexie v3 → v4 upgrade', () => {
+  it('a frozen lane rectangle on an area-rule defender becomes the live lane; drawn zones stay', async () => {
+    const name = uniqueName();
+    const v3 = new Dexie(name);
+    v3.version(1).stores(STORES_V1);
+    v3.version(2).stores(STORES_V2);
+    v3.version(3).stores(STORES_V2);
+    await v3.table('plays').put(frozenLanePlay('fl', 2));
+    await v3.table('matchups').put({ ...makeMatchup('m1', 'fl', 'p2'), schemaVersion: 2 });
+    v3.close();
+
+    const db = new FlagDB(name);
+    opened.push(db);
+    await db.open();
+    const p = (await db.plays.get('fl'))!;
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(p.players.find((s) => s.id === 'FS')!.actions).toEqual([
+      { type: 'zone', zone: 'lane', dropPoint: { x: -1, y: 7 } },
+    ]);
+    expect(p.players.find((s) => s.id === 'SS')!.actions[0]).toMatchObject({
+      zone: { polygon: expect.any(Array) },
+    });
+    expect((await db.matchups.get('m1'))?.schemaVersion).toBe(SCHEMA_VERSION);
   });
 });
 
@@ -181,6 +272,15 @@ describe('migrateRecord', () => {
   it('0 → 1 backfills settings', () => {
     const out = migrateRecord('settings', { key: 'app' }, 0) as Loose;
     expect(out).toEqual({ key: 'app', schemaVersion: SCHEMA_VERSION });
+  });
+
+  it('D-51 2 → 3 turns a frozen lane rectangle into the live lane', () => {
+    const out = migrateRecord('plays', frozenLanePlay('fl', 2), 2) as {
+      schemaVersion: number;
+      players: { id: string; actions: { zone: unknown }[] }[];
+    };
+    expect(out.schemaVersion).toBe(3);
+    expect(out.players.find((s) => s.id === 'FS')!.actions[0]!.zone).toBe('lane');
   });
 
   it('same version → shallow copy', () => {

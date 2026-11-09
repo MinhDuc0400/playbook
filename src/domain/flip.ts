@@ -52,9 +52,11 @@ export function flipAction(a: Action): Action {
       return {
         ...a,
         zone:
-          typeof a.zone === 'string'
-            ? flipZonePreset(a.zone)
-            : { ...a.zone, polygon: mirrorPoints(a.zone.polygon) },
+          a.zone === 'lane'
+            ? 'lane'
+            : typeof a.zone === 'string'
+              ? flipZonePreset(a.zone)
+              : { ...a.zone, polygon: mirrorPoints(a.zone.polygon) },
         dropPoint: mirrorX(a.dropPoint),
         ...(a.offset ? { offset: mirrorX(a.offset) } : {}),
       };

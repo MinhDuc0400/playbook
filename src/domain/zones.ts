@@ -82,7 +82,11 @@ export function zonePreset(id: ZonePresetId, field: FieldConfig): ZoneShape {
  * Polygon of a ZoneAction zone (preset → zonePreset polygon; custom → its polygon copy). A preset `offset`
  * shifts it (D-29), cut at the sidelines and the LOS. Custom polygons store their real position and ignore it.
  */
-export function zonePolygon(zone: ZoneAction['zone'], field: FieldConfig, offset?: Point): Point[] {
+export function zonePolygon(
+  zone: Exclude<ZoneAction['zone'], 'lane'>,
+  field: FieldConfig,
+  offset?: Point,
+): Point[] {
   if (typeof zone !== 'string') return zone.polygon.map((p) => ({ x: p.x, y: p.y }));
   const { polygon } = zonePreset(zone, field);
   if (!offset) return polygon;
@@ -107,6 +111,8 @@ export function zoneAt(
 
 /** deep-*, flat-*, hook-*, curl-flat-* → kind; custom polygon → 'deep' when its min y ≥ 8, else 'custom'. */
 export function zoneKind(zone: ZoneAction['zone']): ZoneKind {
+  // D-51: a lane zone runs from the LOS 10 yd deep, like the lane rectangle it replaced.
+  if (zone === 'lane') return 'custom';
   if (typeof zone === 'string') {
     if (zone.startsWith('deep-')) return 'deep';
     if (zone.startsWith('flat-')) return 'flat';

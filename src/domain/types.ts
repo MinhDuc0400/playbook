@@ -25,7 +25,7 @@ export type ReceiverRef =
 
 /** Record schema version written on every record (FR-DAT-01, D-07). */
 /** 2 = Bunch Killer `areaMatch` converted to area rules (D-48). */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 // ---------- §4.2 field ----------
 
@@ -156,7 +156,8 @@ export interface ManAction {
 
 export interface ZoneAction {
   type: 'zone';
-  zone: ZonePresetId | { polygon: Point[] }; // ball-relative
+  /** Ball-relative. 'lane' (D-51) = the slot's live area-rule lane, resolved by `zoneShapeOf`. */
+  zone: ZonePresetId | 'lane' | { polygon: Point[] };
   dropPoint: Point;
   /** Shift of a preset from its standard spot, so it follows the defender (D-29). Absent = standard spot. */
   offset?: Point;

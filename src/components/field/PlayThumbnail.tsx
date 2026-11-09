@@ -9,7 +9,8 @@ import { DEFAULT_BALL_SPOT, sidelineBounds } from '@/domain/field';
 import { flipPlay } from '@/domain/flip';
 import { resolveReceiverRef } from '@/domain/numbering';
 import type { FieldConfig, ManAction, Play, PlayerSlot, RushAction, ZoneAction } from '@/domain/types';
-import { zoneKind, zonePolygon } from '@/domain/zones';
+import { zoneShapeOf } from '@/domain/areaRules';
+import { zoneKind } from '@/domain/zones';
 import { ghostNumbering, ghostPlayers } from '@/features/editor/defense/ghost';
 import { FieldSvg } from './FieldSvg';
 import { PlayerToken } from './PlayerToken';
@@ -86,12 +87,13 @@ function PlayThumbnailImpl({
     }
     const zone = findAction(slot, 'zone');
     if (zone) {
+      const shape = zoneShapeOf(zone, slot.id, shown.players, field);
       zones.push(
         <ZoneShape
           key={`z-${slot.id}`}
-          polygon={zonePolygon(zone.zone, field, zone.offset)}
+          polygon={shape.polygon}
           kind={zoneKind(zone.zone)}
-          dropPoint={zone.dropPoint}
+          dropPoint={shape.dropPoint}
         />,
       );
     }

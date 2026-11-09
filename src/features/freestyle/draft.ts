@@ -1,13 +1,13 @@
 /** Freestyle draft persistence in localStorage (FR-FS-09, D-27). Every access is guarded. */
 import { areaMatchToRules } from '@/domain/areaMatchToRules';
-import { createDefaultFields } from '@/domain/field';
+import { liveLaneZones } from '@/domain/areaRules';
 import type { BallSpot, Play, Side } from '@/domain/types';
 import { PlaySchema } from '@/lib/io/schemas';
 
-/** D-48: drafts saved before area rules carry `areaMatch`; convert before validating. */
+/** D-48: drafts saved before area rules carry `areaMatch`; D-51: frozen lane rectangles. Convert before validating. */
 function converted(raw: unknown): unknown {
   if (typeof raw !== 'object' || raw === null || !Array.isArray((raw as Play).players)) return raw;
-  return areaMatchToRules(raw as Play, createDefaultFields()['5v5']);
+  return liveLaneZones(areaMatchToRules(raw as Play));
 }
 
 export const DRAFT_KEY = 'flagbook.freestyle.v1';

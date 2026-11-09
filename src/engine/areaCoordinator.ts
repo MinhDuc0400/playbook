@@ -5,8 +5,10 @@
  * (`event: 'entersArea'`) of ALL lane members with the same rules, so it knows what its teammates took
  * without communication (NFR-ARC-06: the defense's own play, never the opponent's). Per update (perception
  * time t, offense non-QB players seen):
- * 1. Entry log: after the snap (t > 0), a receiver seen in a lane where he has not been logged is appended to
- *    that lane's entry list; same tick, nearer the sideline first (then id).
+ * 1. Entry log: after the snap (t > 0), a receiver seen in a member's area where he has not been logged is
+ *    appended to that area's entry list; same tick, nearer the sideline first (then id). D-51: a member's area is
+ *    his zone outline when he has one (`area`; a receiver behind the LOS counts as level with a zone that starts
+ *    at the LOS), else his lane between the midlines.
  * 2. Rules, in a fixed order: `nth` n = 1, then n = 2, then `any`; within a group by lane, left to right.
  *    A member with a man is skipped; each rule fires once. Area A = own lane or the teammate's lane (a
  *    teammate that is not a lane member makes the rule inert).
@@ -17,13 +19,22 @@
  * The view lists receivers taken by other members in `ignore`.
  */
 import { laneOf, type Lanes } from '@/domain/areaLanes';
-import type { ID, MatchRule } from '@/domain/types';
+import { pointInPolygon } from '@/domain/geometry';
+import type { ID, MatchRule, Point } from '@/domain/types';
 import type { PerceivedPlayer } from './types';
 
 /** A lane member and its (valid) area rules. */
 export interface LaneMember {
   id: ID;
   rules: readonly MatchRule[];
+  /** D-51: his zone outline, which is his area; absent = his lane between the midlines. */
+  area?: readonly Point[];
+}
+
+/** In `area`; a point behind the LOS is taken level with a zone whose bottom is at or behind the LOS. */
+export function inZoneArea(p: Point, area: readonly Point[]): boolean {
+  const minY = Math.min(...area.map((q) => q.y));
+  return pointInPolygon(minY <= 0 && p.y < minY ? { x: p.x, y: minY } : p, area);
 }
 
 export interface AreaView {
@@ -50,9 +61,11 @@ export function createAreaCoordinator(opts: {
   maxX: number;
 }): AreaCoordinator {
   const { lanes, members, selfId, minX, maxX } = opts;
-  const n = lanes.order.length;
   const laneIndex = new Map(lanes.order.map((id, i) => [id, i]));
-  const entries: ID[][] = Array.from({ length: n }, () => []);
+  /** Owner member id → receivers who entered his area, in order. */
+  const entries = new Map<ID, ID[]>(members.map((m) => [m.id, []]));
+  const inside = (m: LaneMember, p: Point): boolean =>
+    m.area ? inZoneArea(p, m.area) : laneOf(lanes, p.x) === laneIndex.get(m.id);
   /** member id → receiver it took. */
   const taken = new Map<ID, ID>();
   /** `${member}\u0000${rule.id}`: rule ids are only unique per slot (a Ctrl+D copy keeps them). */
@@ -83,11 +96,14 @@ export function createAreaCoordinator(opts: {
   return {
     update(t, seen) {
       if (t > 0) {
-        const fresh = seen
-          .map((p) => ({ p, lane: laneOf(lanes, p.pos.x) }))
-          .filter(({ p, lane }) => !entries[lane]!.includes(p.id))
-          .sort((a, b) => sidelineDist(a.p.pos.x) - sidelineDist(b.p.pos.x) || (a.p.id < b.p.id ? -1 : 1));
-        for (const { p, lane } of fresh) entries[lane]!.push(p.id);
+        const fresh = [...seen].sort(
+          (a, b) => sidelineDist(a.pos.x) - sidelineDist(b.pos.x) || (a.id < b.id ? -1 : 1),
+        );
+        for (const m of members) {
+          if (!laneIndex.has(m.id)) continue;
+          const log = entries.get(m.id)!;
+          for (const p of fresh) if (!log.includes(p.id) && inside(m, p.pos)) log.push(p.id);
+        }
       }
 
       let mine: AreaView['fired'] = null;
@@ -96,9 +112,9 @@ export function createAreaCoordinator(opts: {
         const { when } = rule;
         if (when.beforeTime !== undefined && t >= when.beforeTime) continue;
         const owner = when.area?.kind === 'teammate' ? when.area.slotId : member;
-        const a = laneIndex.get(owner);
-        if (a === undefined || (when.area?.kind === 'teammate' && owner === member)) continue;
-        const candidates = entries[a]!.filter((id) => {
+        const log = laneIndex.has(owner) ? entries.get(owner) : undefined;
+        if (log === undefined || (when.area?.kind === 'teammate' && owner === member)) continue;
+        const candidates = log.filter((id) => {
           const by = takenBy(id);
           return by === undefined || by === owner;
         });

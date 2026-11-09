@@ -452,3 +452,20 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   stops extra copies. Ctrl+D keeps working as a one-step duplicate.
 - Fix (2026-11-09): a copy (Ctrl+V or Ctrl+D) moves its routes AND its zone / drop point with it, on both sides
   (D-29). Before, only offense actions moved, so a pasted defender's zone stayed on the original.
+
+## D-51 A defender's zone is his area; live lane zone (user request 2026-11-09)
+- Context: after dragging FS a little, his quarter zone and the dashed lane lines no longer lined up. A zone moves
+  the full drag with its defender (D-29), but a lane line sits halfway between two area-rule defenders, so it moves
+  half. They only matched while every defender stood at his zone's centre. The Inside template's automatic zone (a
+  frozen copy of the lane rectangle) drifted the same way.
+- Decision (user: "Zone is his area"): for "vào khu vực của" rules, a lane member with a zone (preset or drawn)
+  uses that zone outline as his area; a receiver behind the LOS counts as level with a zone that starts at the
+  LOS. A member with no zone keeps his lane between the midlines. Dashed lines are drawn only where they bound
+  such a lane. New zone value `'lane'` ("Làn của tôi (theo vạch đứt)"): the member's live lane rectangle, worked
+  out from the lanes every time, dropped on the defender; the Inside template and the D-48 conversion now write it.
+  Lanes are still computed from all members' spots (midpoints), for zone-less members, `'lane'` zones and the
+  Inside template's teammate.
+- Data: SCHEMA_VERSION 3, Dexie v4. Frozen lane rectangles (an axis-aligned 4-point rectangle 10 yd tall on a lane
+  member) become `'lane'` on DB upgrade, import of older files and Freestyle draft load.
+- Cost: a gap between two zones is nobody's area, and overlapping zones can both log the same receiver (claims
+  still stop a double pick-up). A zone that starts deep is not entered by a shallow receiver.

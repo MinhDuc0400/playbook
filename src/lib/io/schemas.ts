@@ -92,7 +92,7 @@ export const ActionSchema: z.ZodType<Action> = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('zone'),
-    zone: z.union([ZonePresetSchema, z.object({ polygon: z.array(PointSchema) })]),
+    zone: z.union([ZonePresetSchema, z.literal('lane'), z.object({ polygon: z.array(PointSchema) })]),
     dropPoint: PointSchema,
     offset: PointSchema.optional(),
   }),

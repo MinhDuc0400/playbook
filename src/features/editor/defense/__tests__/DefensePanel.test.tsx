@@ -201,6 +201,32 @@ describe('DefensePanel (T2.4)', () => {
     expect(custom).toHaveTextContent(t.defense.zone.custom);
   });
 
+  it('D-51 an area-rule defender can pick the live lane zone, shown as the "lane" option', () => {
+    setup(['lb']);
+    expect(screen.queryByRole('option', { name: t.defense.zone.lane })).toBeNull();
+    const rule = {
+      id: 'k',
+      priority: 0,
+      when: {
+        receiver: { kind: 'nth' as const, n: 1 as const },
+        event: 'entersArea' as const,
+        area: { kind: 'self' as const },
+      },
+      then: { type: 'manTrigger' as const },
+    };
+    act(() =>
+      store().apply('rule', (p) => ({
+        ...p,
+        players: p.players.map((x) => (x.id === 'lb' ? { ...x, matchRules: [rule] } : x)),
+      })),
+    );
+    const sel = screen.getByTestId('def-zone-preset') as HTMLSelectElement;
+    fireEvent.change(sel, { target: { value: 'lane' } });
+    expect(slotOf('lb').actions[0]).toMatchObject({ type: 'zone', zone: 'lane' });
+    expect(sel.value).toBe('lane');
+    expect(screen.getByRole('option', { name: t.defense.zone.lane })).not.toBeDisabled();
+  });
+
   it('"Chuyển sang zone" turns a man defender into the hook zone of its side', () => {
     setup(['cb2']);
     fireEvent.click(screen.getByTestId('def-make-zone'));

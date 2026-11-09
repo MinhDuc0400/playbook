@@ -50,6 +50,8 @@ function translateActions(actions: readonly Action[], dx: number, dy: number): A
         };
       case 'zone': {
         const dropPoint = { x: a.dropPoint.x + dx, y: a.dropPoint.y + dy };
+        // D-51: a lane zone is worked out from the lanes, so only its (unused) drop point moves.
+        if (a.zone === 'lane') return { ...a, dropPoint };
         if (typeof a.zone !== 'string') {
           return { ...a, zone: { polygon: translate(a.zone.polygon, dx, dy) }, dropPoint };
         }

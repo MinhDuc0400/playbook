@@ -7,6 +7,7 @@ import { cornerRules, insideRules } from '@/domain/areaRules';
 import { createPlay } from '@/domain/formations';
 import type { Play } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
+import { movePlayers } from '../../ops';
 import { offenseFixture } from '../../__tests__/fixtures';
 import { ghostId, ghostPlayers } from '../ghost';
 import { clearAssignment, setMan, setRush, setZone } from '../ops';
@@ -192,6 +193,80 @@ describe('D-40/D-48 lane boundaries', () => {
     );
     renderLayer();
     expect(screen.getAllByTestId('area-lane-boundary')).toHaveLength(3);
+  });
+
+  it('D-51 a lane zone sits on the dashed lines, also after its defender moves', () => {
+    const play = newDefense('5v5-def-cover-2');
+    const roles: Record<string, 'corner' | 'inside'> = {
+      CB2: 'corner',
+      S2: 'inside',
+      S1: 'inside',
+      CB1: 'corner',
+    };
+    act(() =>
+      store().load({
+        ...play,
+        players: play.players.map((p) =>
+          roles[p.label]
+            ? {
+                ...p,
+                matchRules:
+                  roles[p.label] === 'corner' ? cornerRules(() => 'c') : insideRules(() => 'i', null),
+              }
+            : p,
+        ),
+      }),
+    );
+    const s1 = slotId(play, 'S1');
+    act(() => store().apply('lane', setZone(s1, 'lane', field)));
+    act(() => store().apply('drag', movePlayers([s1], { x: 1.5, y: 0 })));
+    renderLayer();
+    const lines = screen
+      .getAllByTestId('area-lane-boundary')
+      .map((l) => Number(l.getAttribute('x1')))
+      .sort((a, b) => a - b);
+    const xs = screen
+      .getByTestId('zone-S1')
+      .querySelector('polygon')!
+      .getAttribute('points')!
+      .split(' ')
+      .map((pt) => Number(pt.split(',')[0]));
+    expect([Math.min(...xs), Math.max(...xs)]).toEqual([lines[1], lines[2]]);
+  });
+
+  it('D-51 no dashed line between two defenders whose zones are their areas; one beside a zone-less corner', () => {
+    const play = newDefense('5v5-def-cover-2');
+    const roles: Record<string, 'corner' | 'inside'> = {
+      CB2: 'corner',
+      S2: 'inside',
+      S1: 'inside',
+      CB1: 'corner',
+    };
+    act(() =>
+      store().load({
+        ...play,
+        players: play.players.map((p) =>
+          roles[p.label]
+            ? {
+                ...p,
+                actions: [],
+                matchRules:
+                  roles[p.label] === 'corner' ? cornerRules(() => 'c') : insideRules(() => 'i', null),
+              }
+            : p,
+        ),
+      }),
+    );
+    act(() => store().apply('s1', setZone(slotId(play, 'S1'), 'quarter-mid-R', field)));
+    act(() => store().apply('s2', setZone(slotId(play, 'S2'), 'quarter-mid-L', field)));
+    renderLayer();
+    // CB2 | S2 and S1 | CB1 bound a zone-less corner's lane; S2 | S1 is between two zones.
+    expect(screen.getAllByTestId('area-lane-boundary')).toHaveLength(2);
+    cleanup();
+    act(() => store().apply('cb1', setZone(slotId(play, 'CB1'), 'quarter-out-R', field)));
+    act(() => store().apply('cb2', setZone(slotId(play, 'CB2'), 'quarter-out-L', field)));
+    renderLayer();
+    expect(screen.queryAllByTestId('area-lane-boundary')).toHaveLength(0);
   });
 
   it('draws no lane lines without area-rule defenders', () => {

@@ -96,6 +96,10 @@ Live tracker. Status: todo / in progress / review / done.
   (`laneDefender.ts`). Old `areaMatch` mode removed; data converted (`areaMatchToRules`, Dexie v3, schemaVersion 2,
   Freestyle draft). Plan: `docs/superpowers/plans/2026-11-09-area-rules.md`.
 
+## 2026-11-09 Zone is the defender's area (D-51)
+- A lane member with a zone uses its outline as his area; dashed lines only bound zone-less lanes. New live
+  `'lane'` zone for the Inside template. schemaVersion 3, Dexie v4 converts frozen lane rectangles. 1662 unit tests.
+
 ## Open questions / blockers
 
 None.

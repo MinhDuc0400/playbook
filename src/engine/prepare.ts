@@ -1,6 +1,6 @@
 /** Pre-snap preparation (SRS §8.2 steps 2–4, FR-ENG-02, D-10). Pure. */
 import type { Lanes } from '@/domain/areaLanes';
-import { computeRuleLanes, isAreaRule } from '@/domain/areaRules';
+import { computeRuleLanes, isAreaRule, zoneArea, zoneShapeOf } from '@/domain/areaRules';
 import { fieldBounds, sidelineBounds } from '@/domain/field';
 import { numberReceivers, resolveReceiverRef } from '@/domain/numbering';
 import type { Numbering } from '@/domain/numbering';
@@ -8,6 +8,7 @@ import { DEFAULT_PRESETS } from '@/domain/presets';
 import { STAT_KEYS } from '@/domain/types';
 import type {
   Action,
+  FieldConfig,
   ID,
   OptionRouteAction,
   Play,
@@ -18,7 +19,7 @@ import type {
   SimInput,
   Stats,
 } from '@/domain/types';
-import { hookZoneForX, isDeepZone, zonePolygon, zonePreset } from '@/domain/zones';
+import { hookZoneForX, isDeepZone, zonePreset } from '@/domain/zones';
 import { forkRng, uniform } from './rng';
 import { planMotion, planOption, planRoute } from './routeFollower';
 import type { MotionPlan, OptionPlan, RoutePlan } from './routeFollower';
@@ -58,7 +59,7 @@ export const UNIT_STATS = ['cutLoss', 'iq', 'hands', 'ballSkills', 'accuracy', '
  * - numbering = numberReceivers(alignment at the snap = motion end) (computed strength, not Play.strength);
  *   defenders therefore bind to post-motion numbers ("đánh số lại", §8.2.5).
  * - bindings per defense slot from its first coverage/rush action: man → resolveReceiverRef (missing →
- *   fallback zone + warning); zone → polygon via zonePolygon(zone, field), dropPoint, deep = isDeepZone;
+ *   fallback zone + warning); zone → polygon + dropPoint via zoneShapeOf (D-51 lane), deep = isDeepZone;
  *   rush → path + delay (default 0); spy → QB id; none → { kind: 'none' }.
  * - stats: input stats by slot id (missing → DEFAULT_PRESETS.avg). If input.noise: every stat × uniform
  *   [0.9, 1.1) from forkRng(seed, 'noise:' + slotId) in STAT_KEYS order; UNIT_STATS clamped to [0, 1].
@@ -91,7 +92,12 @@ export function prepareSim(input: SimInput): PreparedSim {
   // D-48: lanes from area rules (Bunch Killer and custom area rules).
   const ruleLanes = computeRuleLanes(defense.players);
   // Runs even with no lanes, so an area rule on a rusher still gets its warning.
-  const laneMembers = bindLaneMembers(defense.players, ruleLanes ?? { order: [], boundaries: [] }, warnings);
+  const laneMembers = bindLaneMembers(
+    defense.players,
+    ruleLanes ?? { order: [], boundaries: [] },
+    field,
+    warnings,
+  );
   const bindings: Record<ID, DefenderBinding> = {};
   for (const slot of defense.players) {
     const plain = bindDefender(slot, numbering, input, warnings);
@@ -191,14 +197,17 @@ function bindDefender(
         fallback: true,
       };
     }
-    case 'zone':
+    case 'zone': {
+      // D-51: a 'lane' zone is the slot's live lane rectangle.
+      const shape = zoneShapeOf(action, slot.id, input.defense.players, input.field);
       return {
         kind: 'zone',
-        polygon: zonePolygon(action.zone, input.field, action.offset),
-        dropPoint: { x: action.dropPoint.x, y: action.dropPoint.y },
+        polygon: shape.polygon,
+        dropPoint: shape.dropPoint,
         deep: isDeepZone(action.zone),
         fallback: false,
       };
+    }
     case 'rush':
       return { kind: 'rush', path: action.path.map((p) => ({ x: p.x, y: p.y })), delay: action.delay ?? 0 };
     case 'spy':
@@ -211,7 +220,12 @@ function bindDefender(
  * when its slot is not a lane member (rush / man / spy), when it names a teammate that is not a lane member
  * (missing, rusher…) or itself, or when an `nth` receiver is used with a non-area event.
  */
-function bindLaneMembers(slots: readonly PlayerSlot[], lanes: Lanes, warnings: string[]): LaneMember[] {
+function bindLaneMembers(
+  slots: readonly PlayerSlot[],
+  lanes: Lanes,
+  field: FieldConfig,
+  warnings: string[],
+): LaneMember[] {
   const members = new Set(lanes.order);
   const out: LaneMember[] = [];
   for (const slot of slots) {
@@ -226,7 +240,10 @@ function bindLaneMembers(slots: readonly PlayerSlot[], lanes: Lanes, warnings: s
     if (bad || (area.length > 0 && (!members.has(slot.id) || valid.length < area.length))) {
       warnings.push(`${slot.label}: area rule ignored`);
     }
-    if (members.has(slot.id)) out.push({ id: slot.id, rules: valid });
+    if (!members.has(slot.id)) continue;
+    // D-51: a defender with a zone uses its outline as his area.
+    const zone = zoneArea(slot, slots, field);
+    out.push(zone ? { id: slot.id, rules: valid, area: zone } : { id: slot.id, rules: valid });
   }
   return out;
 }

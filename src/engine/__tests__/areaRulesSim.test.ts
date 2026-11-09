@@ -86,6 +86,37 @@ describe('D-48 Bunch Killer on rules in the sim (ports T-AM)', () => {
     expect(after.lanes.boundaries).toEqual([-4.75, 2.75, 8]);
   });
 
+  it('D-51 a lane zone is the live lane: moving S moves its base zone with the lane lines', () => {
+    const d = bangkokRulesPlay();
+    const lane: Action = { type: 'zone', zone: 'lane', dropPoint: { x: 0, y: 0 } };
+    const moved = {
+      ...d,
+      players: d.players.map((p) =>
+        p.id === 'b-s' ? { ...p, start: { x: 7, y: 3.5 }, actions: [lane] } : p,
+      ),
+    };
+    const b = prepareSim(input(floodPlay(), moved)).bindings['b-s'];
+    if (b?.kind !== 'lane') throw new Error('expected a lane binding');
+    const xs = b.base!.polygon.map((p) => p.x);
+    expect([Math.min(...xs), Math.max(...xs)]).toEqual([2.75, 8]);
+    expect(b.base!.deep).toBe(false);
+  });
+
+  it('D-51 a lane member with a zone gets its outline as his area; zone-less or lane-zone members get none', () => {
+    const d = bangkokRulesPlay();
+    const lane: Action = { type: 'zone', zone: 'lane', dropPoint: { x: 0, y: 0 } };
+    const withLane = {
+      ...d,
+      players: d.players.map((p) => (p.id === 'b-lb' ? { ...p, actions: [lane] } : p)),
+    };
+    const b = prepareSim(input(floodPlay(), withLane)).bindings['b-s'];
+    if (b?.kind !== 'lane') throw new Error('expected a lane binding');
+    const area = (id: string) => b.members.find((m) => m.id === id)?.area;
+    expect(area('b-s')).toEqual(b.base!.polygon);
+    expect(area('b-cb1')).toBeUndefined();
+    expect(area('b-lb')).toBeUndefined();
+  });
+
   it('a corner with no zone stands (base null); an inside with a zone keeps it as base', () => {
     const b = prepareSim(input(floodPlay())).bindings;
     if (b['b-cb1']?.kind !== 'lane' || b['b-s']?.kind !== 'lane') throw new Error('expected lane bindings');

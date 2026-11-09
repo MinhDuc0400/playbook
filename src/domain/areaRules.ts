@@ -4,7 +4,18 @@
  */
 import { computeLanes, laneSpan, type Lanes } from './areaLanes';
 import { sidelineBounds } from './field';
-import type { FieldConfig, ID, MatchRule, PlayerSlot, Point, ReceiverRef, RuleReceiver } from './types';
+import type {
+  FieldConfig,
+  ID,
+  MatchRule,
+  Play,
+  PlayerSlot,
+  Point,
+  ReceiverRef,
+  RuleReceiver,
+  ZoneAction,
+} from './types';
+import { zonePolygon } from './zones';
 
 /** Lane rectangle depth (yd past the LOS), as the D-40 base zone. */
 export const LANE_ZONE_DEPTH = 10;
@@ -121,4 +132,70 @@ export function laneRectangle(slots: readonly PlayerSlot[], slotId: ID, field: F
     { x: right, y: LANE_ZONE_DEPTH },
     { x: left, y: LANE_ZONE_DEPTH },
   ];
+}
+
+/** What a zone action covers: its polygon and drop point. */
+export interface ZoneShape {
+  polygon: Point[];
+  dropPoint: Point;
+}
+
+/**
+ * D-51: polygon and drop point of a slot's zone action. 'lane' is the slot's live lane rectangle (its edges are
+ * the dashed lane lines, so it follows any lane member that moves), dropped on the defender, who holds his spot
+ * (D-47). Presets and drawn polygons keep their own shape.
+ */
+export function zoneShapeOf(
+  action: ZoneAction,
+  slotId: ID,
+  slots: readonly PlayerSlot[],
+  field: FieldConfig,
+): ZoneShape {
+  if (action.zone === 'lane') {
+    const start = slots.find((s) => s.id === slotId)?.start ?? action.dropPoint;
+    return { polygon: laneRectangle(slots, slotId, field), dropPoint: { x: start.x, y: start.y } };
+  }
+  return {
+    polygon: zonePolygon(action.zone, field, action.offset),
+    dropPoint: { x: action.dropPoint.x, y: action.dropPoint.y },
+  };
+}
+
+/**
+ * D-51: a lane member's area for "vào khu vực của" rules when it is his zone outline (a preset or drawn zone),
+ * else null: no zone, or the live 'lane' zone, means his lane between the midlines.
+ */
+export function zoneArea(slot: PlayerSlot, slots: readonly PlayerSlot[], field: FieldConfig): Point[] | null {
+  const zone = slot.actions.find((a): a is ZoneAction => a.type === 'zone');
+  if (!zone || zone.zone === 'lane') return null;
+  return zoneShapeOf(zone, slot.id, slots, field).polygon;
+}
+
+const EPS = 1e-6;
+
+/** An axis-aligned 4-point rectangle LANE_ZONE_DEPTH tall: a lane rectangle frozen by D-48 (maybe dragged since). */
+function isFrozenLane(zone: ZoneAction['zone']): boolean {
+  if (typeof zone === 'string' || zone.polygon.length !== 4) return false;
+  const xs = [...new Set(zone.polygon.map((p) => p.x))];
+  const ys = [...new Set(zone.polygon.map((p) => p.y))];
+  return xs.length === 2 && ys.length === 2 && Math.abs(Math.abs(ys[0]! - ys[1]!) - LANE_ZONE_DEPTH) < EPS;
+}
+
+/**
+ * D-51 conversion: a lane member whose zone is a frozen lane rectangle gets the live 'lane' zone. Returns the
+ * same object when nothing changes.
+ */
+export function liveLaneZones(play: Play): Play {
+  const members = new Set(laneMemberIds(play.players));
+  let changed = false;
+  const players = play.players.map((slot) => {
+    if (!members.has(slot.id)) return slot;
+    const i = slot.actions.findIndex((a) => a.type === 'zone' && isFrozenLane(a.zone));
+    if (i < 0) return slot;
+    changed = true;
+    const actions = [...slot.actions];
+    actions[i] = { type: 'zone', zone: 'lane', dropPoint: { x: slot.start.x, y: slot.start.y } };
+    return { ...slot, actions };
+  });
+  return changed ? { ...play, players } : play;
 }

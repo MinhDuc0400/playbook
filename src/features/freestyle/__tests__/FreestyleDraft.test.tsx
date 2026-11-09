@@ -258,3 +258,59 @@ describe('Freestyle ball spot (LOS drag)', () => {
     expect(m.ballSpot).toEqual({ x: 0, yardLine: 45 });
   });
 });
+
+describe('D-51 loadDraft gives a frozen lane rectangle the live lane zone', () => {
+  it("the user's FS / SS board loads with lane zones", () => {
+    const rule = (n: 1 | 2, area: object) => [
+      {
+        id: `r${n}`,
+        priority: 0,
+        when: { receiver: { kind: 'nth', n }, event: 'entersArea', area },
+        then: { type: 'manTrigger' },
+      },
+    ];
+    const rect = (x0: number, x1: number) => ({
+      polygon: [
+        { x: x0, y: 0 },
+        { x: x1, y: 0 },
+        { x: x1, y: 10 },
+        { x: x0, y: 10 },
+      ],
+    });
+    const board = {
+      ...def(),
+      players: [
+        {
+          id: 'cb1',
+          role: 'CB',
+          label: 'CB1',
+          start: { x: -10, y: 7 },
+          actions: [],
+          matchRules: rule(1, { kind: 'self' }),
+        },
+        {
+          id: 'fs',
+          role: 'S',
+          label: 'FS',
+          start: { x: -2, y: 7 },
+          actions: [{ type: 'zone', zone: rect(-6, 0.25), dropPoint: { x: -2.875, y: 5 } }],
+          matchRules: rule(2, { kind: 'teammate', slotId: 'cb1' }),
+        },
+        {
+          id: 'cb2',
+          role: 'CB',
+          label: 'CB2',
+          start: { x: 7.5, y: 7 },
+          actions: [],
+          matchRules: rule(1, { kind: 'self' }),
+        },
+      ],
+    };
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ v: 1, offense: off(), defense: board, activeSide: 'defense' }),
+    );
+    const fs = loadDraft()!.defense.players.find((p) => p.id === 'fs')!;
+    expect(fs.actions).toEqual([{ type: 'zone', zone: 'lane', dropPoint: { x: -2, y: 7 } }]);
+  });
+});

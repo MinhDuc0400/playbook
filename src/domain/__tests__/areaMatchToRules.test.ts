@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { areaMatchToRules, CONVERTED_NOTE } from '../areaMatchToRules';
-import { matchTemplate } from '../areaRules';
+import { matchTemplate, zoneShapeOf } from '../areaRules';
 import { createDefaultFields } from '../field';
 import { SCHEMA_VERSION, type Play, type PlayerSlot } from '../types';
 
@@ -57,7 +57,7 @@ const teammate = (s: PlayerSlot) => {
 
 describe('D-48 areaMatchToRules', () => {
   it('Bangkok: corners get the corner rule, insides the inside rule on their outside corner', () => {
-    const p = areaMatchToRules(oldBangkok(), field);
+    const p = areaMatchToRules(oldBangkok());
     expect(matchTemplate(slotOf(p, 'CB1').matchRules)).toBe('corner');
     expect(matchTemplate(slotOf(p, 'CB2').matchRules)).toBe('corner');
     expect(matchTemplate(slotOf(p, 'S').matchRules)).toBe('inside');
@@ -71,15 +71,16 @@ describe('D-48 areaMatchToRules', () => {
     expect(slotOf(p, 'S').actions).toEqual([zone(4)]);
   });
 
-  it('an inside slot with no zone gets its lane rectangle as a zone', () => {
+  it('an inside slot with no zone gets the live lane zone (D-51)', () => {
     const old = oldBangkok();
     old.players = old.players.map((s) => (s.id === 'S' ? { ...s, actions: [] } : s));
-    const z = slotOf(areaMatchToRules(old, field), 'S').actions[0];
-    if (z?.type !== 'zone' || typeof z.zone === 'string') throw new Error('expected a polygon zone');
-    const xs = z.zone.polygon.map((q) => q.x);
+    const p = areaMatchToRules(old);
+    const z = slotOf(p, 'S').actions[0];
+    expect(z).toEqual({ type: 'zone', zone: 'lane', dropPoint: slotOf(p, 'S').start });
+    if (z?.type !== 'zone') throw new Error('expected a zone');
+    const xs = zoneShapeOf(z, slotOf(p, 'S').id, p.players, field).polygon.map((q) => q.x);
     expect(Math.min(...xs)).toBeCloseTo(1.25);
     expect(Math.max(...xs)).toBeCloseTo(6.5);
-    expect(z.dropPoint).toEqual({ x: (1.25 + 6.5) / 2, y: 5 });
   });
 
   it('a corner loses its zone action; old custom rules on an area slot are dropped', () => {
@@ -100,7 +101,7 @@ describe('D-48 areaMatchToRules', () => {
           }
         : s,
     );
-    const cb1 = slotOf(areaMatchToRules(old, field), 'CB1');
+    const cb1 = slotOf(areaMatchToRules(old), 'CB1');
     expect(cb1.actions).toEqual([]);
     expect(matchTemplate(cb1.matchRules)).toBe('corner');
   });
@@ -110,10 +111,10 @@ describe('D-48 areaMatchToRules', () => {
     old.players = old.players.map((s) =>
       s.id === 'R' ? ({ ...s, areaMatch: { role: 'corner' } } as PlayerSlot) : s,
     );
-    const p = areaMatchToRules(old, field);
+    const p = areaMatchToRules(old);
     expect('areaMatch' in slotOf(p, 'R')).toBe(false);
     expect(slotOf(p, 'R').matchRules).toBeUndefined();
     const plain = { ...oldBangkok(), players: [] };
-    expect(areaMatchToRules(plain, field)).toBe(plain);
+    expect(areaMatchToRules(plain)).toBe(plain);
   });
 });

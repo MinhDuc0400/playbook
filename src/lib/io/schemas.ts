@@ -116,7 +116,7 @@ export const MatchRuleSchema: z.ZodType<MatchRule> = z.object({
   priority: num,
   when: z.object({
     receiver: RuleReceiverSchema,
-    event: z.enum(['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea']),
+    event: z.enum(['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea', 'snap']),
     area: AreaRefSchema.optional(),
     minDepth: num.optional(),
     beforeTime: num.optional(),
@@ -127,6 +127,7 @@ export const MatchRuleSchema: z.ZodType<MatchRule> = z.object({
     z.object({ type: z.literal('zone'), zone: ZonePresetSchema }),
     z.object({ type: z.literal('carry') }),
     z.object({ type: z.literal('passOff') }),
+    z.object({ type: z.literal('backpedal'), yards: num }),
   ]),
 });
 

@@ -323,7 +323,7 @@ interface MatchRule {
   priority: number;                  // nhỏ chạy trước
   when: {
     receiver: ReceiverRef | { kind: 'any' } | { kind: 'nth'; n: 1 | 2 }; // D-48: Bất kỳ / Người thứ N
-    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea';
+    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap'; // D-52 snap: bóng được snap
     area?: { kind: 'self' } | { kind: 'teammate'; slotId: ID }; // D-48: "vào khu vực của" tôi / đồng đội
     minDepth?: number;               // yd tính từ LOS
     beforeTime?: number;             // giây
@@ -333,7 +333,8 @@ interface MatchRule {
     | { type: 'manTrigger' }                  // D-48 "Man người đó": kèm receiver làm luật kích hoạt
     | { type: 'zone'; zone: ZonePresetId }   // chuyển về zone khác
     | { type: 'carry' }                       // tiếp tục bám receiver đang trong zone
-    | { type: 'passOff' };                    // thả receiver cho zone kế bên
+    | { type: 'passOff' }                     // thả receiver cho zone kế bên
+    | { type: 'backpedal'; yards: number };   // D-52 "Lùi": lùi thẳng về sau `yards` yd rồi giữ độ sâu đó
 }
 ```
 
@@ -683,6 +684,7 @@ interface Agent {
 | `in` | Vận tốc ngang hướng vào bóng chiếm ≥ 60%, độ sâu > 6 yd |
 | `under` | Cắt ngang vào trong, độ sâu ≤ 6 yd |
 | `stop` | Tốc độ < 1 yd/s |
+| `snap` | Bóng được snap (D-52): không theo dõi receiver nào; hết hiệu lực khi defender đã có luật khác kích hoạt. Chỉ đi với Man (receiver chỉ định), Zone hoặc Lùi |
 
 Luật khớp đầu tiên theo `priority` được áp dụng, ghi event `ruleFired`. Defender iq thấp nhận ra sự kiện trễ thêm `(1 − iq) × 0.3` giây.
 
@@ -697,6 +699,8 @@ Khu vực của một defender (D-51): có zone (preset hoặc tự vẽ) thì k
 5. Chưa có luật nào kích hoạt: không lên press. Có zone action thì đá zone đó (giữ độ sâu ban đầu, bỏ qua receiver đồng đội đã nhận); không có thì đứng yên ở vị trí, chỉ phản ứng khi bóng bay.
 
 **Mẫu Bunch Killer (Bangkok):** Corner = [Người thứ 1 · vào khu vực của · tôi → Man người đó]; Inside (LB/S) = [Người thứ 2 · vào khu vực của · corner cạnh bên → Man người đó], còn lại đá zone (không có zone thì nhận zone "Làn của tôi", luôn khớp vạch đứt). Play cũ có `areaMatch` được chuyển sang luật khi mở DB, khi import file schemaVersion 1 và khi đọc nháp Freestyle.
+
+**Lùi khi bóng snap (D-52):** ô "Lùi khi bóng snap" dưới "Mẫu" đặt luật [bóng được snap → Lùi 3 yd] lên đầu danh sách (chọn mẫu Bunch Killer vẫn giữ luật này). Defender lùi thẳng về sau từ chỗ đang đứng với 0.8 × speed, vừa lùi vừa đọc các luật bên dưới; luật đổi coverage hoặc bóng bay thì dừng lùi. Lùi xong, độ sâu mới thay cho độ sâu ban đầu (zone gốc hoặc đứng yên); defender man thì quay lại kèm người của mình.
 
 **Khi bóng được ném:** defender thấy `throwStarted` (sau reaction) thì chuyển sang lao về điểm bóng rơi.
 

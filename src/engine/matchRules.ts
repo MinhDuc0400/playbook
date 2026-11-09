@@ -50,7 +50,8 @@ export type RuleOutcome =
   | { type: 'manTrigger'; targetId: ID }
   | { type: 'zone'; zone: ZonePresetId }
   | { type: 'carry'; receiverId: ID }
-  | { type: 'passOff'; receiverId: ID };
+  | { type: 'passOff'; receiverId: ID }
+  | { type: 'backpedal'; yards: number };
 
 /**
  * First rule (by ascending priority, ties by array order) whose `when` holds for its resolved receiver:
@@ -58,6 +59,8 @@ export type RuleOutcome =
  * iq < 1 only "recognises" an event once it has held continuously for (1 − iq) × 0.3 s (`heldSince`
  * map, keyed by rule id, maintained by the caller via the returned `held`). Already-fired rule ids are
  * skipped. Returns the rule + outcome or null, and the updated held map.
+ * D-52: a `snap` rule watches no receiver; it holds from the snap until any rule of this defender has fired,
+ * and only with a reaction that needs no receiver (man on a ref, zone, backpedal).
  */
 export function evaluateRules(opts: {
   rules: readonly MatchRule[];
@@ -84,7 +87,20 @@ export function evaluateRules(opts: {
     const holdsFor = (p: PerceivedPlayer): boolean =>
       eventHolds(when.event as MatchEvent, p, { minDepth: when.minDepth, strongSign: opts.strongSign });
     let seen: PerceivedPlayer | undefined;
-    if (isReceiverRef(when.receiver)) {
+    if (when.event === 'snap') {
+      const needsReceiver =
+        rule.then.type === 'manTrigger' || rule.then.type === 'carry' || rule.then.type === 'passOff';
+      if (!inTime || needsReceiver || opts.fired.size > 0) {
+        delete held[rule.id];
+        continue;
+      }
+      const since = held[rule.id] ?? opts.t;
+      held[rule.id] = since;
+      if (opts.t - since + EPS < delay) continue;
+      const outcome = noReceiverOutcome(rule.then, opts.resolveThenRef);
+      if (!outcome) continue;
+      return { fired: { rule, outcome }, heldSince: held };
+    } else if (isReceiverRef(when.receiver)) {
       const id = opts.resolveRef(when.receiver);
       seen = id === null ? undefined : opts.perceived.find((p) => p.id === id);
       if (seen && !holdsFor(seen)) seen = undefined;
@@ -100,21 +116,29 @@ export function evaluateRules(opts: {
     held[rule.id] = since;
     if (opts.t - since + EPS < delay) continue;
     const then = rule.then;
-    let outcome: RuleOutcome;
-    if (then.type === 'man') {
-      const targetId = opts.resolveThenRef(then.target);
-      if (targetId === null) continue;
-      outcome = { type: 'man', targetId };
-    } else if (then.type === 'manTrigger') {
-      outcome = { type: 'manTrigger', targetId: seen.id };
-    } else if (then.type === 'zone') {
-      outcome = { type: 'zone', zone: then.zone };
-    } else {
+    let outcome: RuleOutcome | null;
+    if (then.type === 'manTrigger') outcome = { type: 'manTrigger', targetId: seen.id };
+    else if (then.type === 'carry' || then.type === 'passOff')
       outcome = { type: then.type, receiverId: seen.id };
-    }
+    else outcome = noReceiverOutcome(then, opts.resolveThenRef);
+    if (!outcome) continue;
     return { fired: { rule, outcome }, heldSince: held };
   }
   return { fired: null, heldSince: held };
+}
+
+/** Outcome of a reaction that needs no trigger receiver; null when a man target does not resolve. */
+function noReceiverOutcome(
+  then: MatchRule['then'],
+  resolveThenRef: (ref: ReceiverRef) => ID | null,
+): RuleOutcome | null {
+  if (then.type === 'man') {
+    const targetId = resolveThenRef(then.target);
+    return targetId === null ? null : { type: 'man', targetId };
+  }
+  if (then.type === 'zone') return { type: 'zone', zone: then.zone };
+  if (then.type === 'backpedal') return { type: 'backpedal', yards: then.yards };
+  return null;
 }
 
 /** `any` receiver: the candidate nearer the sideline, then by id. */

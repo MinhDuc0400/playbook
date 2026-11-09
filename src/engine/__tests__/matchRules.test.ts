@@ -207,3 +207,39 @@ describe('D-48 evaluateRules: any receiver, manTrigger, area rules skipped', () 
     expect(ev({ rules: [area, nth] }).fired).toBeNull();
   });
 });
+
+describe('D-52 evaluateRules: snap event, backpedal reaction', () => {
+  const snap = (over: Partial<MatchRule> = {}): MatchRule =>
+    rule('bp', 0, {
+      when: { receiver: { kind: 'any' }, event: 'snap' },
+      then: { type: 'backpedal', yards: 3 },
+      ...over,
+    });
+
+  it('fires once the ball is snapped, with nobody to watch', () => {
+    const r = ev({ rules: [snap()], perceived: [], t: 0 });
+    expect(r.fired?.outcome).toEqual({ type: 'backpedal', yards: 3 });
+  });
+
+  it('a backpedal reaction on a receiver event carries its yards too', () => {
+    const r = ev({ rules: [rule('a', 1, { then: { type: 'backpedal', yards: 2 } })] });
+    expect(r.fired?.outcome).toEqual({ type: 'backpedal', yards: 2 });
+  });
+
+  it('the snap is over once another rule has fired', () => {
+    expect(ev({ rules: [snap()], fired: new Set(['other']) }).fired).toBeNull();
+  });
+
+  it('a snap rule needing a receiver (man that one, carry, pass off) never fires', () => {
+    for (const then of [{ type: 'manTrigger' }, { type: 'carry' }, { type: 'passOff' }] as const) {
+      expect(ev({ rules: [snap({ then })] }).fired).toBeNull();
+    }
+  });
+
+  it('a slow reader reacts to the snap after the iq delay', () => {
+    const first = ev({ rules: [snap()], t: 0, iq: 0 });
+    expect(first.fired).toBeNull();
+    const later = ev({ rules: [snap()], t: 0.3, iq: 0, heldSince: first.heldSince });
+    expect(later.fired?.outcome).toEqual({ type: 'backpedal', yards: 3 });
+  });
+});

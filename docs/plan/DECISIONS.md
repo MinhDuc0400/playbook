@@ -469,3 +469,19 @@ Editor ≥ 1024 px limit of NFR-UX-01)
   member) become `'lane'` on DB upgrade, import of older files and Freestyle draft load.
 - Cost: a gap between two zones is nobody's area, and overlapping zones can both log the same receiver (claims
   still stop a double pick-up). A zone that starts deep is not entered by a shallow receiver.
+
+## D-52 Backpedal at the snap (user request 2026-11-09)
+- Context: a defender with pattern-match rules stood at his alignment depth until a rule fired. The user wanted a
+  template to backpedal on his own at the snap, then read how receivers come in, with the rules still run top to
+  bottom.
+- Decision (user approved the playback): new event "bóng được snap" (`snap`, watches no receiver) and new reaction
+  "Lùi" (`{ type: 'backpedal', yards }`). The checkbox "Lùi khi bóng snap" under "Mẫu" puts
+  "Khi bóng snap thì Lùi 3 yd" on top of the rules; picking a Bunch Killer template keeps it, and the template
+  select still shows the template. The defender goes straight back from where he stands at 0.8 × speed (the man
+  cushion backpedal), still reading his rules; a rule that changes his coverage, or the ball, cuts it short. Once
+  there, that depth is his new hold depth (base zone, or standing corner); a man defender goes back to his man.
+- Rules: a snap rule fires after the usual iq delay, only while no other rule of that defender has fired, and only
+  with a reaction that needs no receiver (Man on a receiver, Zone, Lùi). "Lùi" may also follow a receiver event.
+- Data: no schema bump (new union members only); older app versions reject files that use them.
+- Cost: the backpedal is straight back only, with no sideways mirroring while he drops. This may replace the
+  "no press under x yards" option asked earlier; that one is not built.

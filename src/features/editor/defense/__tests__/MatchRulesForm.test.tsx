@@ -253,3 +253,59 @@ describe('D-48 Bunch Killer template and area options', () => {
     expect(screen.queryByTestId('rule-template')).toBeNull();
   });
 });
+
+describe('D-52 backpedal at the snap', () => {
+  beforeEach(() => act(() => store().load(null)));
+  const box = () => screen.getByTestId('rule-snap-backpedal') as HTMLInputElement;
+
+  it('the checkbox puts "Khi bóng snap thì Lùi 3 yd" on top in one undo step; unticking removes it', () => {
+    setup([rule('a', 0)]);
+    expect(box().checked).toBe(false);
+    fireEvent.click(box());
+    expect(past()).toBe(1);
+    expect(rules().map((x) => x.when.event)).toEqual(['snap', 'out']);
+    expect(rules()[0]).toMatchObject({
+      priority: 0,
+      when: { receiver: { kind: 'any' }, event: 'snap' },
+      then: { type: 'backpedal', yards: 3 },
+    });
+    expect(box().checked).toBe(true);
+    fireEvent.click(box());
+    expect(rules().map((x) => x.id)).toEqual(['a']);
+  });
+
+  it('the snap row edits the yards and hides receiver, depth and time', () => {
+    setup();
+    fireEvent.click(box());
+    const id = rules()[0]!.id;
+    expect(screen.queryByTestId(`rule-receiver-${id}`)).toBeNull();
+    expect(screen.queryByTestId(`rule-depth-${id}`)).toBeNull();
+    expect(screen.queryByTestId(`rule-before-${id}`)).toBeNull();
+    change(`rule-yards-${id}`, '4.5');
+    expect(rules()[0]!.then).toEqual({ type: 'backpedal', yards: 4.5 });
+    change(`rule-yards-${id}`, '');
+    expect(rules()[0]!.then).toEqual({ type: 'backpedal', yards: 4.5 });
+    const then = screen.getByTestId(`rule-then-${id}`) as HTMLSelectElement;
+    expect([...then.options].map((o) => o.value)).toEqual(['man', 'zone', 'backpedal']);
+  });
+
+  it('switching a rule to the snap event drops what needs a receiver', () => {
+    setup([rule('a', 0)]);
+    change('rule-event-a', 'snap');
+    expect(rules()[0]).toEqual({
+      id: 'a',
+      priority: 0,
+      when: { receiver: { kind: 'any' }, event: 'snap' },
+      then: { type: 'backpedal', yards: 3 },
+    });
+  });
+
+  it('picking a template keeps the backpedal on top and still shows the template', () => {
+    setup();
+    fireEvent.click(box());
+    change('rule-template', 'corner');
+    expect(rules().map((x) => x.when.event)).toEqual(['snap', 'entersArea']);
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('corner');
+    expect(box().checked).toBe(true);
+  });
+});

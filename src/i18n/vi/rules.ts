@@ -17,6 +17,10 @@ export const rules = {
     insideHint:
       'Bỏ qua receiver đầu tiên ra làn corner, nhận người thứ hai. Không ai ra ngoài thì đá zone với người còn lại.',
   },
+  /** D-52. */
+  snapBackpedal: 'Lùi khi bóng snap',
+  snapBackpedalHint: 'Lùi thẳng về sau ngay khi snap, vừa lùi vừa đọc các luật bên dưới.',
+  yards: 'yard',
   empty: 'Chưa có luật nào.',
   add: 'Thêm luật',
   when: 'Khi',
@@ -44,6 +48,7 @@ export const rules = {
     release: 'release',
     stop: 'dừng (stop)',
     entersArea: 'vào khu vực của',
+    snap: 'bóng được snap',
   },
   reactions: {
     man: 'Man',
@@ -51,5 +56,6 @@ export const rules = {
     carry: 'Carry',
     passOff: 'Pass off',
     manTrigger: 'Man người đó',
+    backpedal: 'Lùi',
   },
 } as const;

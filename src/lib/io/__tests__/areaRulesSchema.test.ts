@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cornerRules, insideRules } from '@/domain/areaRules';
+import { cornerRules, insideRules, withSnapBackpedal } from '@/domain/areaRules';
 import { SCHEMA_VERSION, type Play, type PlayerSlot } from '@/domain/types';
 import { PlaySchema } from '../schemas';
 
@@ -51,6 +51,16 @@ describe('D-48 area rule schema', () => {
       players: { matchRules: { when: { receiver: unknown } }[] }[];
     };
     bad.players[0]!.matchRules[0]!.when.receiver = { kind: 'nth', n: 3 };
+    expect(PlaySchema.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe('D-52 snap backpedal schema', () => {
+  it('a corner with the snap backpedal on top parses unchanged; a backpedal without yards is rejected', () => {
+    const rules = withSnapBackpedal(cornerRules(idGen), true, idGen);
+    const p = play([def('CB1', 9, rules)]);
+    expect(PlaySchema.parse(p)).toEqual(p);
+    const bad = play([def('CB1', 9, [{ ...rules[0]!, then: { type: 'backpedal' } as never }])]);
     expect(PlaySchema.safeParse(bad).success).toBe(false);
   });
 });

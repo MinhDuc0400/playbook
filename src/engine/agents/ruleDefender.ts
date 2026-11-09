@@ -4,6 +4,9 @@
  * D-48: a lane member also gets `lane`: its area rules come from the area coordinator (no iq delay); until a
  * rule changes its coverage it holds its alignment depth (no press) in its base zone, ignoring receivers
  * teammates took, or stands on its spot (`stand`) reacting only to the ball.
+ * D-52 backpedal: straight back `yards` from where the rule fired at 0.8 × speed, still reading its rules; a
+ * rule that changes its coverage (or the ball) cuts it short. Once there, that depth is the new hold depth of
+ * its base zone (or it stands there); a man defender just goes back to its man.
  */
 import type { ID, Leverage, MatchRule, Point, ReceiverRef, ZonePresetId } from '@/domain/types';
 import { hookZoneForX, isDeepZone, zonePreset } from '@/domain/zones';
@@ -11,9 +14,15 @@ import type { AnticipationModel } from '../anticipation';
 import type { AreaCoordinator } from '../areaCoordinator';
 import { evaluateRules, type RuleOutcome } from '../matchRules';
 import type { AgentIntent, FieldInfo } from '../types';
-import type { DefenderAgent } from './common';
+import { ballResponse, seek, type DefenderAgent } from './common';
 import { createManDefender } from './manDefender';
 import { createZoneDefender } from './zoneDefender';
+
+/** D-52: backpedal speed as a fraction of max speed (as the man cushion backpedal). */
+const BACKPEDAL_FACTOR = 0.8;
+/** D-52: backpedal done within this distance (yd). */
+const BACKPEDAL_DONE = 0.15;
+const BACKPEDAL_ARRIVE = 0.5;
 
 export type InitialCoverage =
   | { kind: 'man'; targetId: ID; technique: 'trail' | 'cushion'; cushion: number }
@@ -47,6 +56,8 @@ export function createRuleDefender(opts: {
   let onBase = true;
   const fired = new Set<ID>();
   let heldSince: Record<ID, number> = {};
+  /** D-52: backpedal target while backpedaling, else null. */
+  let backpedalTo: Point | null = null;
   const technique: 'trail' | 'cushion' = opts.initial.kind === 'man' ? opts.initial.technique : 'trail';
   const cushion = opts.initial.kind === 'man' ? opts.initial.cushion : 0;
 
@@ -67,7 +78,12 @@ export function createRuleDefender(opts: {
     if (released.size === 0) return areaIgnore;
     return new Set([...released, ...areaIgnore]);
   };
-  const makeZone = (polygon: Point[], dropPoint: Point, deep: boolean, base = false): DefenderAgent =>
+  const makeZone = (
+    polygon: Point[],
+    dropPoint: Point,
+    deep: boolean,
+    holdDepth: number | undefined = undefined,
+  ): DefenderAgent =>
     createZoneDefender({
       id,
       polygon,
@@ -77,18 +93,24 @@ export function createRuleDefender(opts: {
       ...(anticipation ? { anticipation } : {}),
       carry: () => carryId,
       ignore: ignored,
-      ...(base && lane ? { holdDepth: lane.hold.y } : {}),
+      ...(holdDepth !== undefined ? { holdDepth } : {}),
     });
   const makePreset = (zone: ZonePresetId): DefenderAgent => {
     const shape = zonePreset(zone, info.field);
     return makeZone(shape.polygon, shape.dropPoint, isDeepZone(zone));
   };
 
-  let current: DefenderAgent =
-    opts.initial.kind === 'man'
-      ? makeMan(opts.initial.targetId)
-      : makeZone(opts.initial.polygon, lane ? lane.hold : opts.initial.dropPoint, opts.initial.deep, true);
-  if (opts.initial.kind === 'man') onBase = false;
+  const initial = opts.initial;
+  const makeBase = (at?: Point): DefenderAgent => {
+    if (initial.kind === 'man') return makeMan(initial.targetId);
+    const drop = lane ? lane.hold : initial.dropPoint;
+    if (!at) return makeZone(initial.polygon, drop, initial.deep, lane ? lane.hold.y : undefined);
+    // D-52: after the backpedal its depth is the hold depth; a lane member holds where it stopped.
+    const dropPoint = lane ? { x: at.x, y: at.y } : { x: drop.x, y: Math.max(drop.y, at.y) };
+    return makeZone(initial.polygon, dropPoint, initial.deep, at.y);
+  };
+  let current: DefenderAgent = makeBase();
+  if (initial.kind === 'man') onBase = false;
 
   /** Apply a fired rule's outcome; returns the ruleFired event. */
   const apply = (
@@ -96,6 +118,11 @@ export function createRuleDefender(opts: {
     o: RuleOutcome,
     self: { pos: Point },
   ): NonNullable<AgentIntent['events']>[number] => {
+    if (o.type === 'backpedal') {
+      backpedalTo = { x: self.pos.x, y: self.pos.y + o.yards };
+      return { type: 'ruleFired', data: { ruleId: rule.id, outcome: o.type } };
+    }
+    if (o.type === 'man' || o.type === 'manTrigger' || o.type === 'zone') backpedalTo = null;
     if (o.type === 'man' || o.type === 'manTrigger') {
       carryId = null;
       released = new Set();
@@ -119,6 +146,7 @@ export function createRuleDefender(opts: {
       released = new Set(released).add(o.receiverId);
       if (carryId === o.receiverId) carryId = null;
     } else if (current.targetId === o.receiverId) {
+      backpedalTo = null;
       carryId = null;
       released = new Set([o.receiverId]);
       onBase = false;
@@ -160,7 +188,9 @@ export function createRuleDefender(opts: {
                 ? { type: 'man', targetId: resolveRef(rule.then.target) ?? receiverId }
                 : rule.then.type === 'zone'
                   ? { type: 'zone', zone: rule.then.zone }
-                  : { type: rule.then.type, receiverId };
+                  : rule.then.type === 'backpedal'
+                    ? { type: 'backpedal', yards: rule.then.yards }
+                    : { type: rule.then.type, receiverId };
           events.push(apply(rule, o, self));
         }
       }
@@ -183,7 +213,23 @@ export function createRuleDefender(opts: {
           events.push(apply(res.fired.rule, res.fired.outcome, self));
         }
       }
-      const intent = current.step(self, p, dt, rng);
+      let intent: AgentIntent | undefined;
+      if (backpedalTo) {
+        const ball = ballResponse(self, p);
+        if (ball) {
+          backpedalTo = null;
+        } else if (Math.hypot(backpedalTo.x - self.pos.x, backpedalTo.y - self.pos.y) > BACKPEDAL_DONE) {
+          const to = backpedalTo;
+          intent = {
+            ...seek(self.pos, to, self.stats.speed * BACKPEDAL_FACTOR, BACKPEDAL_ARRIVE),
+            state: 'backpedal',
+          };
+        } else {
+          if (onBase) current = makeBase(backpedalTo);
+          backpedalTo = null;
+        }
+      }
+      intent ??= current.step(self, p, dt, rng);
       return events.length > 0 ? { ...intent, events: [...(intent.events ?? []), ...events] } : intent;
     },
   };

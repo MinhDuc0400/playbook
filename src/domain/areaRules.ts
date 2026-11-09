@@ -82,8 +82,45 @@ export function insideRules(idGen: () => ID, teammateId: ID | null): MatchRule[]
   ];
 }
 
-/** Which Bunch Killer template the rules are, by structure only (never ids or the teammate). */
-export function matchTemplate(rules: readonly MatchRule[] | undefined): 'corner' | 'inside' | null {
+/** D-52 default backpedal at the snap (yd). */
+export const BACKPEDAL_YARDS = 3;
+
+/** D-52: Khi [bóng snap] thì [Lùi 3 yd]. */
+export function snapBackpedalRule(idGen: () => ID, yards = BACKPEDAL_YARDS): MatchRule {
+  return {
+    id: idGen(),
+    priority: 0,
+    when: { receiver: { kind: 'any' }, event: 'snap' },
+    then: { type: 'backpedal', yards },
+  };
+}
+
+export function isSnapBackpedal(r: MatchRule): boolean {
+  return r.when.event === 'snap' && r.then.type === 'backpedal';
+}
+
+export function hasSnapBackpedal(rules: readonly MatchRule[] | undefined): boolean {
+  return (rules ?? []).some(isSnapBackpedal);
+}
+
+/**
+ * D-52: rules (run order) with the snap backpedal first (`on`) or without it. Priorities re-packed 0..n-1;
+ * the same array when nothing changes.
+ */
+export function withSnapBackpedal(rules: readonly MatchRule[], on: boolean, idGen: () => ID): MatchRule[] {
+  const ordered = rules.slice().sort((a, b) => a.priority - b.priority);
+  if (on === hasSnapBackpedal(ordered)) return rules as MatchRule[];
+  const rest = ordered.filter((r) => !isSnapBackpedal(r));
+  const next = on ? [snapBackpedalRule(idGen), ...rest] : rest;
+  return next.map((r, i) => (r.priority === i ? r : { ...r, priority: i }));
+}
+
+/**
+ * Which Bunch Killer template the rules are, by structure only (never ids or the teammate). A D-52 snap
+ * backpedal next to it does not change the template.
+ */
+export function matchTemplate(all: readonly MatchRule[] | undefined): 'corner' | 'inside' | null {
+  const rules = all?.filter((r) => !isSnapBackpedal(r));
   if (!rules || rules.length !== 1) return null;
   const { when, then } = rules[0]!;
   if (then.type !== 'manTrigger' || when.event !== 'entersArea' || when.receiver.kind !== 'nth') return null;

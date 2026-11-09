@@ -2,6 +2,7 @@
  * FR-DEF-07: per-defender rule list "Khi [receiver] [sự kiện] [sâu ≥ n yd] thì [phản ứng]", drag to reorder
  * (priority = list order), add / edit / delete. D-48: the "Mẫu" select fills in the Bunch Killer (Bangkok)
  * corner / inside rule; rules may watch an alignment lane ("vào khu vực của") and man the trigger.
+ * D-52: "Lùi khi bóng snap" puts "Khi bóng snap thì Lùi 3 yd" on top of the rules (templates keep it).
  */
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
@@ -18,12 +19,16 @@ import {
   type ZonePresetId,
 } from '@/domain/types';
 import {
+  BACKPEDAL_YARDS,
   canCover,
   cornerRules,
+  hasSnapBackpedal,
   insideRules,
   insideTeammate,
   isReceiverRef,
+  isSnapBackpedal,
   matchTemplate,
+  withSnapBackpedal,
 } from '@/domain/areaRules';
 import { createDefaultFields } from '@/domain/field';
 import { t } from '@/i18n/vi';
@@ -41,9 +46,20 @@ const DEFAULT_FIELD = createDefaultFields()['5v5'];
 
 const r = t.rules;
 
-const EVENTS: readonly MatchEvent[] = ['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea'];
-const REACTIONS = ['man', 'manTrigger', 'zone', 'carry', 'passOff'] as const;
+const EVENTS: readonly MatchEvent[] = [
+  'vertical',
+  'out',
+  'in',
+  'under',
+  'release',
+  'stop',
+  'entersArea',
+  'snap',
+];
+const REACTIONS = ['man', 'manTrigger', 'zone', 'carry', 'passOff', 'backpedal'] as const;
 type Reaction = (typeof REACTIONS)[number];
+/** D-52: reactions that act on the receiver that made the rule fire; a snap rule has none. */
+const TRIGGER_REACTIONS: readonly Reaction[] = ['manTrigger', 'carry', 'passOff'];
 
 /** Option value <-> ReceiverRef: "strong-1", "weak-3", "RB". */
 const REFS: readonly ReceiverRef[] = [
@@ -76,6 +92,12 @@ const isReaction = (v: string): v is Reaction => (REACTIONS as readonly string[]
 const isZone = (v: string): v is ZonePresetId => (ZONE_PRESET_IDS as readonly string[]).includes(v);
 
 const DEFAULT_ZONE: ZonePresetId = 'hook-M';
+
+/** Backpedal yards input -> value; undefined when empty / invalid / not positive. */
+function parseYards(raw: string): number | undefined {
+  const n = parseOptional(raw);
+  return n !== undefined && n > 0 ? n : undefined;
+}
 
 /** Number input text -> value; undefined when empty / invalid / negative. */
 function parseOptional(raw: string): number | undefined {
@@ -123,6 +145,7 @@ function RuleRow({
     apply('match rule', updateRule(slotId, id, { when }));
   const setThen = (then: MatchRule['then']): void => apply('match rule', updateRule(slotId, id, { then }));
   const area = rule.when.event === 'entersArea';
+  const snap = rule.when.event === 'snap';
   const a = rule.when.area;
   const areaKey =
     a?.kind === 'teammate' ? (teammates.some((m) => m.id === a.slotId) ? a.slotId : '') : 'self';
@@ -131,6 +154,7 @@ function RuleRow({
     if (v === 'man') setThen({ type: 'man', target: { kind: 'number', side: 'strong', number: 1 } });
     else if (v === 'manTrigger') setThen({ type: 'manTrigger' });
     else if (v === 'zone') setThen({ type: 'zone', zone: DEFAULT_ZONE });
+    else if (v === 'backpedal') setThen({ type: 'backpedal', yards: BACKPEDAL_YARDS });
     else setThen({ type: v });
   };
 
@@ -155,24 +179,26 @@ function RuleRow({
         ⠿
       </span>
       <span className="pb-1">{r.when}</span>
-      <Select
-        label={r.receiver}
-        data-testid={`rule-receiver-${id}`}
-        value={receiverKey(rule.when.receiver)}
-        onChange={(e) => {
-          const rcv = parseReceiver(e.target.value);
-          if (rcv) patchWhen({ receiver: rcv });
-        }}
-      >
-        <option value="any">{r.any}</option>
-        {area ? (
-          <>
-            <option value="nth-1">{r.nth[1]}</option>
-            <option value="nth-2">{r.nth[2]}</option>
-          </>
-        ) : null}
-        <ReceiverOptions />
-      </Select>
+      {snap ? null : (
+        <Select
+          label={r.receiver}
+          data-testid={`rule-receiver-${id}`}
+          value={receiverKey(rule.when.receiver)}
+          onChange={(e) => {
+            const rcv = parseReceiver(e.target.value);
+            if (rcv) patchWhen({ receiver: rcv });
+          }}
+        >
+          <option value="any">{r.any}</option>
+          {area ? (
+            <>
+              <option value="nth-1">{r.nth[1]}</option>
+              <option value="nth-2">{r.nth[2]}</option>
+            </>
+          ) : null}
+          <ReceiverOptions />
+        </Select>
+      )}
       <Select
         label={r.event}
         data-testid={`rule-event-${id}`}
@@ -181,7 +207,24 @@ function RuleRow({
           const ev = e.target.value;
           if (!isEvent(ev)) return;
           if (ev === 'entersArea') patchWhen({ event: ev, area: rule.when.area ?? { kind: 'self' } });
-          else
+          else if (ev === 'snap') {
+            const then: MatchRule['then'] = (TRIGGER_REACTIONS as readonly string[]).includes(rule.then.type)
+              ? { type: 'backpedal', yards: BACKPEDAL_YARDS }
+              : rule.then;
+            apply(
+              'match rule',
+              updateRule(slotId, id, {
+                when: {
+                  event: ev,
+                  receiver: { kind: 'any' },
+                  area: undefined,
+                  minDepth: undefined,
+                  beforeTime: undefined,
+                },
+                then,
+              }),
+            );
+          } else
             patchWhen({
               event: ev,
               area: undefined,
@@ -215,30 +258,34 @@ function RuleRow({
           ))}
         </Select>
       ) : null}
-      <label className="flex flex-col gap-1 font-medium">
-        {r.depth}
-        <input
-          type="number"
-          min={0}
-          step={1}
-          className={numberInputClass()}
-          data-testid={`rule-depth-${id}`}
-          value={rule.when.minDepth ?? ''}
-          onChange={(e) => patchWhen({ minDepth: parseOptional(e.target.value) })}
-        />
-      </label>
-      <label className="flex flex-col gap-1 font-medium">
-        {`${r.before} (${r.beforeUnit})`}
-        <input
-          type="number"
-          min={0}
-          step={0.5}
-          className={numberInputClass()}
-          data-testid={`rule-before-${id}`}
-          value={rule.when.beforeTime ?? ''}
-          onChange={(e) => patchWhen({ beforeTime: parseOptional(e.target.value) })}
-        />
-      </label>
+      {snap ? null : (
+        <>
+          <label className="flex flex-col gap-1 font-medium">
+            {r.depth}
+            <input
+              type="number"
+              min={0}
+              step={1}
+              className={numberInputClass()}
+              data-testid={`rule-depth-${id}`}
+              value={rule.when.minDepth ?? ''}
+              onChange={(e) => patchWhen({ minDepth: parseOptional(e.target.value) })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 font-medium">
+            {`${r.before} (${r.beforeUnit})`}
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              className={numberInputClass()}
+              data-testid={`rule-before-${id}`}
+              value={rule.when.beforeTime ?? ''}
+              onChange={(e) => patchWhen({ beforeTime: parseOptional(e.target.value) })}
+            />
+          </label>
+        </>
+      )}
       <span className="pb-1">{r.then}</span>
       <Select
         label={r.reaction}
@@ -248,7 +295,7 @@ function RuleRow({
           if (isReaction(e.target.value)) onReaction(e.target.value);
         }}
       >
-        {REACTIONS.map((k) => (
+        {REACTIONS.filter((k) => !snap || !TRIGGER_REACTIONS.includes(k)).map((k) => (
           <option key={k} value={k}>
             {r.reactions[k]}
           </option>
@@ -266,6 +313,24 @@ function RuleRow({
         >
           <ReceiverOptions />
         </Select>
+      ) : null}
+      {rule.then.type === 'backpedal' ? (
+        <label className="flex flex-col gap-1 font-medium">
+          {r.yards}
+          <input
+            type="number"
+            min={0.5}
+            step={0.5}
+            className={numberInputClass()}
+            data-testid={`rule-yards-${id}`}
+            defaultValue={rule.then.yards}
+            key={rule.then.yards}
+            onChange={(e) => {
+              const yards = parseYards(e.target.value);
+              if (yards !== undefined) setThen({ type: 'backpedal', yards });
+            }}
+          />
+        </label>
       ) : null}
       {rule.then.type === 'zone' ? (
         <Select
@@ -314,12 +379,16 @@ function RuleRow({
 /** D-48: Bunch Killer template select. Picking a template replaces this slot's rules (one undo step). */
 function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfig }): JSX.Element {
   const current = matchTemplate(slot.matchRules) ?? 'rules';
+  const backpedal = hasSnapBackpedal(slot.matchRules);
   const onTemplate = (v: string): void => {
     if (v !== 'corner' && v !== 'inside') return;
     const ruleId = () => nanoid();
+    // D-52: the snap backpedal stays on top of the template.
+    const keep = (slot.matchRules ?? []).filter(isSnapBackpedal);
     useEditorStore.getState().apply('rule template', (play) => {
-      if (v === 'corner') return setRules(slot.id, cornerRules(ruleId))(play);
-      const withRules = setRules(slot.id, insideRules(ruleId, insideTeammate(play.players, slot.id)))(play);
+      if (v === 'corner') return setRules(slot.id, [...keep, ...cornerRules(ruleId)])(play);
+      const inside = insideRules(ruleId, insideTeammate(play.players, slot.id));
+      const withRules = setRules(slot.id, [...keep, ...inside])(play);
       const s = withRules.players.find((p) => p.id === slot.id);
       const covers = s?.actions.some(
         (x) => x.type === 'zone' || x.type === 'man' || x.type === 'spy' || x.type === 'rush',
@@ -346,6 +415,24 @@ function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfi
           {current === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
         </p>
       ) : null}
+      <label className="flex items-center gap-2 text-sm" title={r.snapBackpedalHint}>
+        <input
+          type="checkbox"
+          data-testid="rule-snap-backpedal"
+          checked={backpedal}
+          onChange={(e) => {
+            const on = e.target.checked;
+            useEditorStore.getState().apply(
+              'snap backpedal',
+              setRules(
+                slot.id,
+                withSnapBackpedal(slot.matchRules ?? [], on, () => nanoid()),
+              ),
+            );
+          }}
+        />
+        {r.snapBackpedal}
+      </label>
     </>
   );
 }

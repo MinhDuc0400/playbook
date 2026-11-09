@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cornerRules, insideRules, laneRectangle } from '@/domain/areaRules';
+import { cornerRules, insideRules, laneRectangle, withSnapBackpedal } from '@/domain/areaRules';
 import { createDefaultFields } from '@/domain/field';
 import { flipPlay } from '@/domain/flip';
 import type { Action, PlayerSlot, SimEvent, SimInput } from '@/domain/types';
@@ -260,5 +260,61 @@ describe('D-48 Bunch Killer on rules in the sim (ports T-AM)', () => {
     expect(c['cb2']).toMatchObject({ receiverId: 'c', reason: 'first' });
     expect(c['ss']?.receiverId).not.toBe('c');
     expect(c['cb1']?.receiverId).not.toBe('b');
+  });
+
+  it('D-52 backpedal at the snap: CB1 drops 3 yd straight back, then holds that depth', () => {
+    const d = bangkokRulesPlay();
+    d.players = d.players.map((p) =>
+      p.id === 'b-cb1'
+        ? { ...p, matchRules: withSnapBackpedal(p.matchRules ?? [], true, () => 'cb1-bp') }
+        : p,
+    );
+    const r = simulate(input(bunchTightPlay({ x: 'hitch', c: 'hitch', y: 'go', z: 'slant' }), d));
+    expect(r.events.some((e) => e.type === 'ruleFired' && e.data?.outcome === 'backpedal')).toBe(true);
+    // Until he reacts to the ball: straight back, never past 3 yd, then he holds the new depth.
+    const end = r.frames.findIndex((f) => f.t > 0 && f.players['b-cb1']!.state === 'ball');
+    const frames = r.frames.slice(0, end).filter((f) => f.t > 0);
+    const states = frames.map((f) => f.players['b-cb1']!.state);
+    expect(states).toContain('backpedal');
+    for (const f of frames) {
+      const p = f.players['b-cb1']!.pos;
+      expect(Math.abs(p.x - 9)).toBeLessThan(0.05);
+      expect(p.y).toBeLessThan(3.5 + 3 + 0.1);
+    }
+    const last = frames[frames.length - 1]!.players['b-cb1']!;
+    expect(last.state).toBe('zone');
+    expect(last.pos.y).toBeCloseTo(6.5, 1);
+  });
+
+  it('D-52 without the backpedal rule nothing changes (same frames as the plain template)', () => {
+    const off = bunchTightPlay({ x: 'hitch', c: 'hitch', y: 'go', z: 'slant' });
+    const plain = bangkokRulesPlay();
+    const off2 = bangkokRulesPlay();
+    off2.players = off2.players.map((p) =>
+      p.id === 'b-cb1'
+        ? {
+            ...p,
+            matchRules: withSnapBackpedal(
+              withSnapBackpedal(p.matchRules ?? [], true, () => 'x'),
+              false,
+              () => 'y',
+            ),
+          }
+        : p,
+    );
+    expect(simulate(input(off, off2)).frames).toEqual(simulate(input(off, plain)).frames);
+  });
+
+  it('D-52 a receiver coming into his area during the backpedal still gets picked up', () => {
+    const d = bangkokRulesPlay();
+    d.players = d.players.map((p) =>
+      p.id === 'b-cb1' || p.id === 'b-s'
+        ? { ...p, matchRules: withSnapBackpedal(p.matchRules ?? [], true, () => `${p.id}-bp`) }
+        : p,
+    );
+    const off = bunchTightPlay({ x: 'slant', c: 'hitch', y: 'flat', z: 'out', depths: { z: 2 } });
+    const c = claims(simulate(input(off, d)).events);
+    expect(c['b-cb1']).toMatchObject({ receiverId: 'bt-z', reason: 'first' });
+    expect(c['b-s']).toMatchObject({ receiverId: 'bt-y', reason: 'second' });
   });
 });

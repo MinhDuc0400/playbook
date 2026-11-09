@@ -14,7 +14,7 @@ import {
   type PlayerSlot,
   type Point,
 } from '@/domain/types';
-import { cornerRules, insideRules } from '@/domain/areaRules';
+import { cornerRules, insideRules, templateRuleIds } from '@/domain/areaRules';
 import { center, offensePlay, SEED_IDS, slot, wr } from './samplePlays';
 
 export const BANGKOK_IDS = {
@@ -81,7 +81,8 @@ function coverage(playId: ID): PlayerSlot[] {
   );
   const cb1 = slot(playId, 'CB', 'CB1', { x: 9, y: 3.5 }, [], 'outside');
   // D-48: Bunch Killer as area rules (ids `${slot.id}-bk`, as the conversion writes them).
-  const bk = (slot: PlayerSlot) => () => `${slot.id}-bk`;
+  // Distinct ids: the inside template has two rules (D-53).
+  const bk = (slot: PlayerSlot) => templateRuleIds(slot.id);
   return [
     { ...cb2, matchRules: cornerRules(bk(cb2)) },
     { ...lb, matchRules: insideRules(bk(lb), cb2.id) },

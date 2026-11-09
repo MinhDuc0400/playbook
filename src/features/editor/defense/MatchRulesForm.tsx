@@ -21,6 +21,7 @@ import {
 } from '@/domain/types';
 import {
   BACKPEDAL_YARDS,
+  LEFTOVER_DEPTH,
   canCover,
   cornerRules,
   insideRules,
@@ -55,6 +56,7 @@ const EVENTS: readonly MatchEvent[] = [
   'stop',
   'entersArea',
   'snap',
+  'unclaimed',
 ];
 const REACTIONS = ['man', 'manTrigger', 'zone', 'carry', 'passOff', 'backpedal'] as const;
 type Reaction = (typeof REACTIONS)[number];
@@ -150,6 +152,8 @@ function RuleRow({
   const setThen = (then: MatchRule['then']): void => apply('match rule', updateRule(slotId, id, { then }));
   const area = rule.when.event === 'entersArea';
   const snap = rule.when.event === 'snap';
+  /** D-53 "chưa ai nhận": any receiver, man that one. */
+  const leftover = rule.when.event === 'unclaimed';
   const a = rule.when.area;
   const areaKey =
     a?.kind === 'teammate' ? (teammates.some((m) => m.id === a.slotId) ? a.slotId : '') : 'self';
@@ -183,7 +187,7 @@ function RuleRow({
         ⠿
       </span>
       <span className="pb-1">{r.when}</span>
-      {snap ? null : (
+      {snap || leftover ? null : (
         <Select
           label={r.receiver}
           data-testid={`rule-receiver-${id}`}
@@ -211,6 +215,19 @@ function RuleRow({
           const ev = e.target.value;
           if (!isEvent(ev)) return;
           if (ev === 'entersArea') patchWhen({ event: ev, area: rule.when.area ?? { kind: 'self' } });
+          else if (ev === 'unclaimed')
+            apply(
+              'match rule',
+              updateRule(slotId, id, {
+                when: {
+                  event: ev,
+                  receiver: { kind: 'any' },
+                  area: undefined,
+                  minDepth: rule.when.minDepth ?? LEFTOVER_DEPTH,
+                },
+                then: { type: 'manTrigger' },
+              }),
+            );
           else
             patchWhen({
               event: ev,
@@ -283,7 +300,9 @@ function RuleRow({
           if (isReaction(e.target.value)) onReaction(e.target.value);
         }}
       >
-        {REACTIONS.filter((k) => !snap || !TRIGGER_REACTIONS.includes(k)).map((k) => (
+        {REACTIONS.filter(
+          (k) => (!snap || !TRIGGER_REACTIONS.includes(k)) && (!leftover || k === 'manTrigger'),
+        ).map((k) => (
           <option key={k} value={k}>
             {r.reactions[k]}
           </option>

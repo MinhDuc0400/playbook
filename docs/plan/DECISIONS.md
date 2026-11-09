@@ -488,3 +488,23 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - UI follow-up (user: "gộp lại 1 controller dễ sử dụng hơn"): the checkbox and the rule card are one control,
   "☑ Lùi khi bóng snap [3] yard". The snap backpedal rule has no card in the list (it always runs first), and the
   event select no longer offers "bóng được snap" (it still shows on an old snap rule with another reaction).
+
+## D-53 Pick whoever is left: "chưa ai nhận" past a depth (user request 2026-11-09)
+- Context: the coaching text says LB and S "pick whoever is left" when there is no second threat outside. On the
+  user's quarter board both crossers went to the corners first, the two verticals (C, Z) had no rule to take them,
+  and FS and SS both shadowed them in the middle at their alignment depth. A first idea ("only while nobody has
+  gone out", "only in my own zone") would not have fired there: the corners already had their crossers, and both
+  verticals started in FS's zone.
+- Decision (user: "khi qua độ sâu", then approved the corrected design): new rule event "chưa ai nhận"
+  (`unclaimed`). A receiver nobody took who is at least `minDepth` deep (default 5 yd) is a leftover; members still
+  free with such a rule take leftovers nearest first, by distance from their alignment spot (then lane, then
+  receiver id), one each, anywhere on the field. It runs in the area coordinator after the area rules, so a
+  second-out pick on the same tick wins. The Inside template is now [Người thứ 2 · vào khu vực của corner → Man
+  người đó] + [Bất kỳ · chưa ai nhận · sâu ≥ 5 → Man người đó]; the form hides the receiver and only offers
+  "Man người đó" for it.
+- Data: no migration. A saved inside with only the old rule shows as "Luật tự đặt" and keeps zoning; picking
+  Inside again (or adding the rule) gives it the leftover rule. Template rule ids are now `<slot>-bk`,
+  `<slot>-bk2`… (seed, old-data conversion), since a slot's rule ids must be distinct.
+- Cost: a seam past 5 yd before the second one gets outside is taken first, and the late outside one is left to the
+  corner. Picks are made once and kept, so two leftovers whose routes cross (C corner, Z post) make FS and SS cross
+  too.

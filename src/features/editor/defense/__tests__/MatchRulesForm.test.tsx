@@ -311,3 +311,40 @@ describe('D-52 backpedal at the snap: one control', () => {
     expect(box().checked).toBe(true);
   });
 });
+
+describe('D-53 "chưa ai nhận" (pick whoever is left)', () => {
+  beforeEach(() => act(() => store().load(null)));
+
+  it('template Inside writes the second-out rule and the leftover rule (sâu ≥ 5); the card hides the receiver', () => {
+    setup();
+    change('rule-template', 'inside');
+    const rs = rules();
+    expect(rs).toHaveLength(2);
+    expect(rs[1]).toMatchObject({
+      priority: 1,
+      when: { receiver: { kind: 'any' }, event: 'unclaimed', minDepth: 5 },
+      then: { type: 'manTrigger' },
+    });
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('inside');
+    const id = rs[1]!.id;
+    expect(screen.queryByTestId(`rule-receiver-${id}`)).toBeNull();
+    expect((screen.getByTestId(`rule-depth-${id}`) as HTMLInputElement).value).toBe('5');
+    change(`rule-depth-${id}`, '7');
+    expect(rules()[1]!.when.minDepth).toBe(7);
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('inside');
+  });
+
+  it('switching a rule to "chưa ai nhận" makes it any · sâu ≥ 5 → Man người đó, the only reaction offered', () => {
+    setup([rule('a', 0)]);
+    change('rule-event-a', 'unclaimed');
+    expect(rules()[0]).toEqual({
+      id: 'a',
+      priority: 0,
+      when: { receiver: { kind: 'any' }, event: 'unclaimed', minDepth: 5 },
+      then: { type: 'manTrigger' },
+    });
+    const then = screen.getByTestId('rule-then-a') as HTMLSelectElement;
+    expect([...then.options].map((o) => o.value)).toEqual(['manTrigger']);
+    expect(screen.getByTestId('rule-event-a')).toHaveDisplayValue(t.rules.events.unclaimed);
+  });
+});

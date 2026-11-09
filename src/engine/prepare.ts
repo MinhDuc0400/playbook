@@ -243,7 +243,8 @@ function bindLaneMembers(
     if (!members.has(slot.id)) continue;
     // D-51: a defender with a zone uses its outline as his area.
     const zone = zoneArea(slot, slots, field);
-    out.push(zone ? { id: slot.id, rules: valid, area: zone } : { id: slot.id, rules: valid });
+    const at = { x: slot.start.x, y: slot.start.y };
+    out.push(zone ? { id: slot.id, rules: valid, area: zone, at } : { id: slot.id, rules: valid, at });
   }
   return out;
 }

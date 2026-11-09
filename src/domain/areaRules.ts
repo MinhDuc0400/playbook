@@ -20,8 +20,9 @@ import { zonePolygon } from './zones';
 /** Lane rectangle depth (yd past the LOS), as the D-40 base zone. */
 export const LANE_ZONE_DEPTH = 10;
 
+/** Rules the area coordinator runs: "vào khu vực của" (D-48) and "chưa ai nhận" (D-53). */
 export function isAreaRule(r: MatchRule): boolean {
-  return r.when.event === 'entersArea';
+  return r.when.event === 'entersArea' || r.when.event === 'unclaimed';
 }
 
 export function isReceiverRef(r: RuleReceiver): r is ReceiverRef {
@@ -66,7 +67,29 @@ export function cornerRules(idGen: () => ID): MatchRule[] {
   ];
 }
 
-/** Bunch Killer inside: Khi [Người thứ 2] [vào khu vực của] [teammate] thì [Man người đó]. */
+/** Template rule ids for a slot: `<slot>-bk`, then `<slot>-bk2`, `<slot>-bk3`… (unique per slot). */
+export function templateRuleIds(slotId: ID): () => ID {
+  let i = 0;
+  return () => (++i === 1 ? `${slotId}-bk` : `${slotId}-bk${i}`);
+}
+
+/** D-53 default depth (yd) past which a receiver nobody took is a leftover. */
+export const LEFTOVER_DEPTH = 5;
+
+/** D-53: Khi [Bất kỳ] [chưa ai nhận] [sâu ≥ 5] thì [Man người đó]. */
+export function leftoverRule(idGen: () => ID, priority = 0, minDepth = LEFTOVER_DEPTH): MatchRule {
+  return {
+    id: idGen(),
+    priority,
+    when: { receiver: { kind: 'any' }, event: 'unclaimed', minDepth },
+    then: { type: 'manTrigger' },
+  };
+}
+
+/**
+ * Bunch Killer inside: Khi [Người thứ 2] [vào khu vực của] [teammate] thì [Man người đó]; then (D-53) "pick
+ * whoever is left": Khi [Bất kỳ] [chưa ai nhận] [sâu ≥ 5] thì [Man người đó].
+ */
 export function insideRules(idGen: () => ID, teammateId: ID | null): MatchRule[] {
   return [
     {
@@ -79,6 +102,7 @@ export function insideRules(idGen: () => ID, teammateId: ID | null): MatchRule[]
       },
       then: { type: 'manTrigger' },
     },
+    leftoverRule(idGen, 1),
   ];
 }
 
@@ -121,13 +145,19 @@ export function withSnapBackpedal(rules: readonly MatchRule[], on: boolean, idGe
  */
 export function matchTemplate(all: readonly MatchRule[] | undefined): 'corner' | 'inside' | null {
   const rules = all?.filter((r) => !isSnapBackpedal(r));
-  if (!rules || rules.length !== 1) return null;
+  if (!rules || rules.length === 0 || rules.length > 2) return null;
   const { when, then } = rules[0]!;
   if (then.type !== 'manTrigger' || when.event !== 'entersArea' || when.receiver.kind !== 'nth') return null;
   if (when.minDepth !== undefined || when.beforeTime !== undefined) return null;
-  if (when.receiver.n === 1 && when.area?.kind === 'self') return 'corner';
-  if (when.receiver.n === 2 && when.area?.kind === 'teammate') return 'inside';
-  return null;
+  if (rules.length === 1) return when.receiver.n === 1 && when.area?.kind === 'self' ? 'corner' : null;
+  // D-53: the inside template is the second-out rule plus the leftover rule (its depth may be edited).
+  const left = rules[1]!;
+  const isLeftover =
+    left.when.event === 'unclaimed' &&
+    left.when.receiver.kind === 'any' &&
+    left.when.beforeTime === undefined &&
+    left.then.type === 'manTrigger';
+  return when.receiver.n === 2 && when.area?.kind === 'teammate' && isLeftover ? 'inside' : null;
 }
 
 /** Lane members plus `slotId`, left → right. */

@@ -250,6 +250,16 @@ describe('Bunch Killer (Bangkok) content (D-42)', () => {
     ]);
   });
 
+  it('D-53 every Bangkok defender has distinct rule ids (the inside template has two rules)', () => {
+    for (const d of [c.plays[1]!, c.plays[2]!]) {
+      for (const s of d.players) {
+        const ids = (s.matchRules ?? []).map((r) => r.id);
+        expect(new Set(ids).size).toBe(ids.length);
+      }
+      expect(d.players.find((s) => s.label === 'S')!.matchRules).toHaveLength(2);
+    }
+  });
+
   it('area-match roles and starts follow the diagram', () => {
     for (const d of [c.plays[1]!, c.plays[2]!]) {
       const roles = Object.fromEntries(d.players.map((s) => [s.label, matchTemplate(s.matchRules)]));

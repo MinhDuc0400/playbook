@@ -1,5 +1,5 @@
 /** Shared engine test fixtures (no @/db imports: shapes copied from the seed plays). */
-import { cornerRules, insideRules } from '@/domain/areaRules';
+import { cornerRules, insideRules, templateRuleIds } from '@/domain/areaRules';
 import { createDefaultFields, DEFAULT_BALL_SPOT } from '@/domain/field';
 import { DEFAULT_TUNING } from '@/domain/defaults';
 import { DEFAULT_PRESETS } from '@/domain/presets';
@@ -154,7 +154,9 @@ export function bangkokRulesPlay(variant: 'rush' | 'spy' = 'rush'): Play {
   ): PlayerSlot => ({
     ...slot(id, role, label, { x, y: 3.5 }, actions, am === 'corner' ? 'outside' : 'inside'),
     matchRules:
-      am === 'corner' ? cornerRules(() => `${id}-bk`) : insideRules(() => `${id}-bk`, teammate[id] ?? null),
+      am === 'corner'
+        ? cornerRules(templateRuleIds(id))
+        : insideRules(templateRuleIds(id), teammate[id] ?? null),
   });
   const r =
     variant === 'rush'

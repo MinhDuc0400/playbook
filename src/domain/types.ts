@@ -222,8 +222,12 @@ export interface SpyAction {
 // ---------- §5.4 pattern match rules ----------
 
 /** `entersArea` (D-48): the receiver enters an alignment lane (`when.area`). */
-/** D-52: `snap` = the ball is snapped (no receiver; over once another rule has fired). */
-export type MatchEvent = 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap';
+/**
+ * D-52: `snap` = the ball is snapped (no receiver; over once another rule has fired).
+ * D-53: `unclaimed` = a receiver nobody took ("chưa ai nhận", with minDepth); free members take the nearest.
+ */
+export type MatchEvent =
+  'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap' | 'unclaimed';
 
 /** D-48: whose lane an `entersArea` rule watches. */
 export type AreaRef = { kind: 'self' } | { kind: 'teammate'; slotId: ID };

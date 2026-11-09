@@ -15,7 +15,7 @@ export const rules = {
     inside: 'Bunch Killer (Bangkok): Inside (LB/S)',
     cornerHint: 'Nhận receiver đầu tiên vào làn của mình. Không ai vào thì đứng yên ở vị trí của mình.',
     insideHint:
-      'Bỏ qua receiver đầu tiên ra làn corner, nhận người thứ hai. Không ai ra ngoài thì đá zone với người còn lại.',
+      'Bỏ qua receiver đầu tiên ra làn corner, nhận người thứ hai. Receiver chưa ai nhận chạy sâu quá 5 yard thì LB/S còn rảnh nhận người gần mình nhất.',
   },
   /** D-52. */
   snapBackpedal: 'Lùi khi bóng snap',
@@ -49,6 +49,7 @@ export const rules = {
     stop: 'dừng (stop)',
     entersArea: 'vào khu vực của',
     snap: 'bóng được snap',
+    unclaimed: 'chưa ai nhận',
   },
   reactions: {
     man: 'Man',

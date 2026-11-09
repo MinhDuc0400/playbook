@@ -7,6 +7,7 @@ import {
   laneMemberIds,
   laneRectangle,
   matchTemplate,
+  templateRuleIds,
 } from '../areaRules';
 import { createDefaultFields } from '../field';
 import type { MatchRule, PlayerSlot } from '../types';
@@ -100,5 +101,20 @@ describe('D-48 area rules (domain)', () => {
     expect(Math.max(...xs)).toBeCloseTo(6.5);
     expect(Math.min(...ys)).toBe(0);
     expect(Math.max(...ys)).toBe(10);
+  });
+});
+
+describe('D-53 inside template = second-out + leftover', () => {
+  let k = 0;
+  const ids = () => `t${++k}`;
+  it('the old one-rule inside is no longer the template (pick Inside again to add the leftover rule)', () => {
+    const [second] = insideRules(ids, 'CB1');
+    expect(matchTemplate([second!])).toBeNull();
+    expect(matchTemplate(insideRules(ids, 'CB1'))).toBe('inside');
+  });
+
+  it('template rule ids are distinct per slot and keep the first id', () => {
+    const gen = templateRuleIds('S');
+    expect([gen(), gen(), gen()]).toEqual(['S-bk', 'S-bk2', 'S-bk3']);
   });
 });

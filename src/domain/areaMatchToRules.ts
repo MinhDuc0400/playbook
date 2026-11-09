@@ -9,7 +9,7 @@
  * Returns the same object when no slot has `areaMatch`.
  */
 import { computeLanes } from './areaLanes';
-import { canCover, cornerRules, insideRules } from './areaRules';
+import { canCover, cornerRules, insideRules, templateRuleIds } from './areaRules';
 import type { ID, Play, PlayerSlot } from './types';
 
 export const CONVERTED_NOTE = 'Đã chuyển Bunch Killer sang luật pattern match (D-48).';
@@ -49,7 +49,7 @@ export function areaMatchToRules(play: Play): Play {
   const ruled = play.players.map((slot): PlayerSlot => {
     const base = withoutAreaKey(slot);
     if (!active.has(slot.id)) return base;
-    const id = () => `${slot.id}-bk`;
+    const id = templateRuleIds(slot.id);
     if (roleOf.get(slot.id) === 'corner') {
       return { ...base, actions: base.actions.filter((a) => a.type !== 'zone'), matchRules: cornerRules(id) };
     }

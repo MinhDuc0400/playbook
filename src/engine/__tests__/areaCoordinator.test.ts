@@ -68,7 +68,7 @@ describe('D-48 area coordinator (ports T-AM claim tracker)', () => {
     expect(again.manId).toBe('Z');
   });
 
-  it('T-AM-02 nobody out: the corner stays with no man however long it takes; S stays in zone', () => {
+  it('T-AM-02 nobody out: the corner stays with no man however long it takes; S zones, then (D-53) takes the seam past 5 yd', () => {
     const { cb1, s } = coords();
     const at = (t: number) => [
       rec('Z', { x: 5 - 4 * t, y: 1 + t }, { x: -5, y: 1 }),
@@ -77,8 +77,8 @@ describe('D-48 area coordinator (ports T-AM claim tracker)', () => {
     for (const t of [0.4, 0.5, 1, 2, 3]) {
       expect(cb1.update(t, at(t)).manId).toBeNull();
       const sv = s.update(t, at(t));
-      expect(sv.manId).toBeNull();
-      expect(sv.ignore.has('Y')).toBe(false);
+      // Y is 2.9 / 3.5 yd deep at 0.4 / 0.5 s, 6.5 yd at 1 s; the drag Z never gets 5 yd deep.
+      expect(sv.manId).toBe(t < 1 ? null : 'Y');
     }
   });
 
@@ -235,5 +235,80 @@ describe('D-48 area coordinator (ports T-AM claim tracker)', () => {
       expect(c.update(0.2, [rec('X', { x: -12, y: 3 }, { x: 0, y: 5 })]).manId).toBeNull();
       expect(c.update(0.6, [rec('X', { x: -12, y: 11 }, { x: 0, y: 5 })]).manId).toBe('X');
     });
+  });
+});
+
+describe('D-53 leftover: "chưa ai nhận" past a depth', () => {
+  // The user's quarter board: CB1 −11, FS −3.5, SS 4, CB2 11.5 (lanes, no zones here).
+  const board = [
+    def('CB1', -11, cornerRules(idGen)),
+    def('FS', -3.5, insideRules(idGen, 'CB1')),
+    def('SS', 4, insideRules(idGen, 'CB2')),
+    def('CB2', 11.5, cornerRules(idGen)),
+  ];
+  const lanesB = computeRuleLanes(board)!;
+  const membersB: LaneMember[] = board.map((s) => ({ id: s.id, rules: s.matchRules ?? [], at: s.start }));
+  const make = (selfId: string) =>
+    createAreaCoordinator({ lanes: lanesB, members: membersB, selfId, minX: -15, maxX: 15 });
+  const up = { x: 0, y: 6 };
+  /** Run all four coordinators over the same frames; return each one's last view. */
+  function run(frames: [number, PerceivedPlayer[]][]) {
+    const c = { CB1: make('CB1'), FS: make('FS'), SS: make('SS'), CB2: make('CB2') };
+    const last: Record<string, ReturnType<typeof c.FS.update>> = {};
+    for (const [t, seen] of frames) for (const [id, k] of Object.entries(c)) last[id] = k.update(t, seen);
+    return last;
+  }
+
+  it('the inside template carries the leftover rule: any · chưa ai nhận · sâu ≥ 5 → Man người đó', () => {
+    const rules = insideRules(idGen, 'CB1');
+    expect(rules).toHaveLength(2);
+    expect(rules[1]).toMatchObject({
+      priority: 1,
+      when: { receiver: { kind: 'any' }, event: 'unclaimed', minDepth: 5 },
+      then: { type: 'manTrigger' },
+    });
+  });
+
+  it('two verticals in the middle nobody took: FS takes the nearer Z, SS takes C, once they pass 5 yd', () => {
+    const at = (y: number): PerceivedPlayer[] => [rec('C', { x: 0, y }, up), rec('Z', { x: -1.5, y }, up)];
+    const shallow = run([
+      [0.2, at(1)],
+      [0.6, at(4.9)],
+    ]);
+    expect(shallow.FS!.manId).toBeNull();
+    expect(shallow.SS!.manId).toBeNull();
+    const deep = run([
+      [0.2, at(1)],
+      [0.6, at(4.9)],
+      [0.8, at(5.2)],
+    ]);
+    expect(deep.FS!.manId).toBe('Z');
+    expect(deep.SS!.manId).toBe('C');
+    expect(deep.FS!.ignore.has('C')).toBe(true);
+    expect(deep.SS!.fired?.rule.when.event).toBe('unclaimed');
+  });
+
+  it('a receiver a corner took is never a leftover; one leftover goes to the nearest only', () => {
+    const v = run([
+      [0.2, [rec('X', { x: 8, y: 1 }, { x: -6, y: 0 }), rec('C', { x: 0, y: 1 }, up)]],
+      [0.4, [rec('X', { x: 7.6, y: 1 }, { x: -6, y: 0 }), rec('C', { x: 0, y: 3 }, up)]],
+      [0.8, [rec('X', { x: 5, y: 1.5 }, { x: -6, y: 0 }), rec('C', { x: 0, y: 6 }, up)]],
+    ]);
+    // X starts in CB2's lane (x ≥ 7.75): CB2 has him.
+    expect(v.CB2!.manId).toBe('X');
+    // From the alignment spots (y 3.5), FS at −3.5 is nearer C (0, 6) than SS at 4: FS only.
+    expect(v.FS!.manId).toBe('C');
+    expect(v.SS!.manId).toBeNull();
+  });
+
+  it('the second one out still goes first: SS takes the second into CB2 lane, not the deep one', () => {
+    const v = run([
+      [0.2, [rec('Z', { x: 9, y: 1 }, { x: 6, y: 0 }), rec('Y', { x: 6, y: 1 }, { x: 6, y: 0 })]],
+      [0.5, [rec('Z', { x: 10, y: 1 }, { x: 6, y: 0 }), rec('Y', { x: 8, y: 1.5 }, { x: 6, y: 0 })]],
+      [1.0, [rec('Z', { x: 11, y: 1 }, { x: 6, y: 0 }), rec('Y', { x: 9, y: 6 }, up)]],
+    ]);
+    expect(v.CB2!.manId).toBe('Z');
+    expect(v.SS!.manId).toBe('Y');
+    expect(v.SS!.fired === null || v.SS!.fired.rule.when.event !== 'unclaimed').toBe(true);
   });
 });

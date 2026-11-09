@@ -16,9 +16,13 @@
  *    - any: the first untaken receiver in A's entries.
  *    - minDepth / beforeTime apply to the trigger. No iq delay.
  *    - `manTrigger` takes the trigger for that member (sticky). Other reactions fire for self only.
+ * 3. D-53 leftovers ("chưa ai nhận"): members still free with an `unclaimed` rule take receivers nobody took
+ *    once they are at least `minDepth` deep: pairs by distance from the member's alignment spot (`at`), nearest
+ *    first (then lane, then receiver id), one receiver per member. Runs after the area rules, so a second-out
+ *    pick on the same tick wins.
  * The view lists receivers taken by other members in `ignore`.
  */
-import { laneOf, type Lanes } from '@/domain/areaLanes';
+import { laneOf, laneSpan, type Lanes } from '@/domain/areaLanes';
 import { pointInPolygon } from '@/domain/geometry';
 import type { ID, MatchRule, Point } from '@/domain/types';
 import type { PerceivedPlayer } from './types';
@@ -29,6 +33,8 @@ export interface LaneMember {
   rules: readonly MatchRule[];
   /** D-51: his zone outline, which is his area; absent = his lane between the midlines. */
   area?: readonly Point[];
+  /** D-53: alignment spot, for leftover distances; absent = his lane's middle on the LOS. */
+  at?: Point;
 }
 
 /** In `area`; a point behind the LOS is taken level with a zone whose bottom is at or behind the LOS. */
@@ -77,7 +83,7 @@ export function createAreaCoordinator(opts: {
     .flatMap((m) =>
       [...m.rules]
         .map((rule, k) => ({ member: m.id, rule, k }))
-        .filter(({ rule }) => groupOf(rule) < 3 && laneIndex.has(m.id)),
+        .filter(({ rule }) => groupOf(rule) < 3 && rule.when.event === 'entersArea' && laneIndex.has(m.id)),
     )
     .sort(
       (a, b) =>
@@ -86,6 +92,21 @@ export function createAreaCoordinator(opts: {
         a.rule.priority - b.rule.priority ||
         a.k - b.k,
     );
+
+  /** D-53: members' leftover rules (priority order) and alignment spots. */
+  const leftover = members
+    .filter((m) => laneIndex.has(m.id))
+    .map((m) => {
+      const lane = laneIndex.get(m.id)!;
+      const [left, right] = laneSpan(lanes, lane, minX, maxX);
+      return {
+        id: m.id,
+        lane,
+        at: m.at ?? { x: (left + right) / 2, y: 0 },
+        rules: m.rules.filter((r) => r.when.event === 'unclaimed').sort((a, b) => a.priority - b.priority),
+      };
+    })
+    .filter((m) => m.rules.length > 0);
 
   const sidelineDist = (x: number): number => Math.min(x - minX, maxX - x);
   const takenBy = (rid: ID): ID | undefined => {
@@ -134,6 +155,38 @@ export function createAreaCoordinator(opts: {
         } else if (member === selfId && !mine) {
           fired.add(key(member, rule));
           mine = { rule, receiverId: pick };
+        }
+      }
+
+      if (t > 0 && leftover.length > 0) {
+        const takenIds = new Set(taken.values());
+        const pairs: { member: (typeof leftover)[number]; rule: MatchRule; id: ID; d: number }[] = [];
+        for (const m of leftover) {
+          if (taken.has(m.id)) continue;
+          const rule = m.rules.find(
+            (r) => !fired.has(key(m.id, r)) && (r.when.beforeTime === undefined || t < r.when.beforeTime),
+          );
+          if (!rule) continue;
+          for (const p of seen) {
+            if (takenIds.has(p.id) || p.pos.y < (rule.when.minDepth ?? 0)) continue;
+            pairs.push({ member: m, rule, id: p.id, d: Math.hypot(p.pos.x - m.at.x, p.pos.y - m.at.y) });
+          }
+        }
+        pairs.sort((a, b) => a.d - b.d || a.member.lane - b.member.lane || (a.id < b.id ? -1 : 1));
+        const usedM = new Set<ID>();
+        const usedR = new Set<ID>();
+        for (const { member, rule, id } of pairs) {
+          if (usedM.has(member.id) || usedR.has(id)) continue;
+          usedM.add(member.id);
+          usedR.add(id);
+          if (rule.then.type === 'manTrigger') {
+            fired.add(key(member.id, rule));
+            taken.set(member.id, id);
+            if (member.id === selfId && !mine) mine = { rule, receiverId: id };
+          } else if (member.id === selfId && !mine) {
+            fired.add(key(member.id, rule));
+            mine = { rule, receiverId: id };
+          }
         }
       }
 

@@ -105,6 +105,11 @@ Live tracker. Status: todo / in progress / review / done.
   rules (templates keep it). Engine backpedals straight back at 0.8 × speed, still reading rules, then holds the
   new depth. One control "☑ Lùi khi bóng snap [3] yard"; the rule has no card of its own. 1679 unit tests.
 
+## 2026-11-09 Pick whoever is left (D-53)
+- New `unclaimed` rule event ("chưa ai nhận", sâu ≥ 5): free LB/S take leftover receivers nearest first, after
+  the area rules. Inside template has it as a second rule; old one-rule insides show as "Luật tự đặt". Template
+  rule ids made distinct per slot. 1689 unit tests.
+
 ## Open questions / blockers
 
 None.

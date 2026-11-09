@@ -254,13 +254,15 @@ describe('D-48 Bunch Killer template and area options', () => {
   });
 });
 
-describe('D-52 backpedal at the snap', () => {
+describe('D-52 backpedal at the snap: one control', () => {
   beforeEach(() => act(() => store().load(null)));
   const box = () => screen.getByTestId('rule-snap-backpedal') as HTMLInputElement;
+  const yards = () => screen.getByTestId('rule-snap-yards') as HTMLInputElement;
 
-  it('the checkbox puts "Khi bóng snap thì Lùi 3 yd" on top in one undo step; unticking removes it', () => {
+  it('ticking puts "Khi bóng snap thì Lùi 3 yd" on top in one undo step, with no rule card of its own', () => {
     setup([rule('a', 0)]);
     expect(box().checked).toBe(false);
+    expect(yards().disabled).toBe(true);
     fireEvent.click(box());
     expect(past()).toBe(1);
     expect(rules().map((x) => x.when.event)).toEqual(['snap', 'out']);
@@ -270,41 +272,41 @@ describe('D-52 backpedal at the snap', () => {
       then: { type: 'backpedal', yards: 3 },
     });
     expect(box().checked).toBe(true);
+    expect(yards().disabled).toBe(false);
+    expect(yards().value).toBe('3');
+    expect(screen.queryByTestId(`rule-${rules()[0]!.id}`)).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
     fireEvent.click(box());
     expect(rules().map((x) => x.id)).toEqual(['a']);
   });
 
-  it('the snap row edits the yards and hides receiver, depth and time', () => {
+  it('the yards field next to it edits the backpedal', () => {
     setup();
     fireEvent.click(box());
-    const id = rules()[0]!.id;
-    expect(screen.queryByTestId(`rule-receiver-${id}`)).toBeNull();
-    expect(screen.queryByTestId(`rule-depth-${id}`)).toBeNull();
-    expect(screen.queryByTestId(`rule-before-${id}`)).toBeNull();
-    change(`rule-yards-${id}`, '4.5');
+    change('rule-snap-yards', '4.5');
     expect(rules()[0]!.then).toEqual({ type: 'backpedal', yards: 4.5 });
-    change(`rule-yards-${id}`, '');
+    change('rule-snap-yards', '');
     expect(rules()[0]!.then).toEqual({ type: 'backpedal', yards: 4.5 });
-    const then = screen.getByTestId(`rule-then-${id}`) as HTMLSelectElement;
-    expect([...then.options].map((o) => o.value)).toEqual(['man', 'zone', 'backpedal']);
   });
 
-  it('switching a rule to the snap event drops what needs a receiver', () => {
-    setup([rule('a', 0)]);
-    change('rule-event-a', 'snap');
-    expect(rules()[0]).toEqual({
-      id: 'a',
-      priority: 0,
-      when: { receiver: { kind: 'any' }, event: 'snap' },
-      then: { type: 'backpedal', yards: 3 },
-    });
+  it('the rule list offers no snap event; the first card below it cannot move up, the others still move', () => {
+    setup([rule('a', 0), rule('b', 1)]);
+    fireEvent.click(box());
+    const ev = screen.getByTestId('rule-event-a') as HTMLSelectElement;
+    expect([...ev.options].map((o) => o.value)).not.toContain('snap');
+    expect((screen.getByTestId('rule-up-a') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('rule-up-b'));
+    expect(rules().map((x) => x.id)).toEqual([rules()[0]!.id, 'b', 'a']);
+    expect(rules()[0]!.when.event).toBe('snap');
   });
 
   it('picking a template keeps the backpedal on top and still shows the template', () => {
     setup();
     fireEvent.click(box());
+    change('rule-snap-yards', '5');
     change('rule-template', 'corner');
     expect(rules().map((x) => x.when.event)).toEqual(['snap', 'entersArea']);
+    expect(rules()[0]!.then).toEqual({ type: 'backpedal', yards: 5 });
     expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('corner');
     expect(box().checked).toBe(true);
   });

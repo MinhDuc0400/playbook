@@ -2,7 +2,8 @@
  * FR-DEF-07: per-defender rule list "Khi [receiver] [sự kiện] [sâu ≥ n yd] thì [phản ứng]", drag to reorder
  * (priority = list order), add / edit / delete. D-48: the "Mẫu" select fills in the Bunch Killer (Bangkok)
  * corner / inside rule; rules may watch an alignment lane ("vào khu vực của") and man the trigger.
- * D-52: "Lùi khi bóng snap" puts "Khi bóng snap thì Lùi 3 yd" on top of the rules (templates keep it).
+ * D-52: one control "☑ Lùi khi bóng snap [3] yard" puts "Khi bóng snap thì Lùi n yd" on top of the rules
+ * (templates keep it); that rule has no card of its own in the list.
  */
 import { nanoid } from 'nanoid';
 import { useState } from 'react';
@@ -22,7 +23,6 @@ import {
   BACKPEDAL_YARDS,
   canCover,
   cornerRules,
-  hasSnapBackpedal,
   insideRules,
   insideTeammate,
   isReceiverRef,
@@ -126,6 +126,7 @@ function RuleRow({
   slotId,
   rule,
   index,
+  first,
   count,
   dragId,
   setDragId,
@@ -134,7 +135,10 @@ function RuleRow({
   slotId: ID;
   teammates: readonly { id: ID; label: string }[];
   rule: MatchRule;
+  /** Index in the full rule list (run order). */
   index: number;
+  /** Index of the first card shown (a D-52 snap backpedal above it has no card). */
+  first: number;
   count: number;
   dragId: ID | null;
   setDragId: (id: ID | null) => void;
@@ -207,24 +211,7 @@ function RuleRow({
           const ev = e.target.value;
           if (!isEvent(ev)) return;
           if (ev === 'entersArea') patchWhen({ event: ev, area: rule.when.area ?? { kind: 'self' } });
-          else if (ev === 'snap') {
-            const then: MatchRule['then'] = (TRIGGER_REACTIONS as readonly string[]).includes(rule.then.type)
-              ? { type: 'backpedal', yards: BACKPEDAL_YARDS }
-              : rule.then;
-            apply(
-              'match rule',
-              updateRule(slotId, id, {
-                when: {
-                  event: ev,
-                  receiver: { kind: 'any' },
-                  area: undefined,
-                  minDepth: undefined,
-                  beforeTime: undefined,
-                },
-                then,
-              }),
-            );
-          } else
+          else
             patchWhen({
               event: ev,
               area: undefined,
@@ -232,7 +219,8 @@ function RuleRow({
             });
         }}
       >
-        {EVENTS.map((ev) => (
+        {/* D-52: the snap event lives in the "Lùi khi bóng snap" control; shown here only on an old snap rule. */}
+        {EVENTS.filter((ev) => ev !== 'snap' || snap).map((ev) => (
           <option key={ev} value={ev}>
             {r.events[ev]}
           </option>
@@ -351,7 +339,7 @@ function RuleRow({
       <IconButton
         label={r.moveUp}
         data-testid={`rule-up-${id}`}
-        disabled={index === 0}
+        disabled={index <= first}
         onClick={() => apply('move rule', moveRule(slotId, id, index - 1))}
       >
         ↑
@@ -379,7 +367,8 @@ function RuleRow({
 /** D-48: Bunch Killer template select. Picking a template replaces this slot's rules (one undo step). */
 function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfig }): JSX.Element {
   const current = matchTemplate(slot.matchRules) ?? 'rules';
-  const backpedal = hasSnapBackpedal(slot.matchRules);
+  const snapRule = (slot.matchRules ?? []).find(isSnapBackpedal);
+  const yards = snapRule?.then.type === 'backpedal' ? snapRule.then.yards : BACKPEDAL_YARDS;
   const onTemplate = (v: string): void => {
     if (v !== 'corner' && v !== 'inside') return;
     const ruleId = () => nanoid();
@@ -415,24 +404,49 @@ function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfi
           {current === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
         </p>
       ) : null}
-      <label className="flex items-center gap-2 text-sm" title={r.snapBackpedalHint}>
+      <div className="flex items-center gap-2 text-sm" title={r.snapBackpedalHint}>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            data-testid="rule-snap-backpedal"
+            checked={snapRule !== undefined}
+            onChange={(e) => {
+              const on = e.target.checked;
+              useEditorStore.getState().apply(
+                'snap backpedal',
+                setRules(
+                  slot.id,
+                  withSnapBackpedal(slot.matchRules ?? [], on, () => nanoid()),
+                ),
+              );
+            }}
+          />
+          {r.snapBackpedal}
+        </label>
         <input
-          type="checkbox"
-          data-testid="rule-snap-backpedal"
-          checked={backpedal}
+          type="number"
+          min={0.5}
+          step={0.5}
+          aria-label={`${r.snapBackpedal} (${r.yards})`}
+          className={numberInputClass()}
+          data-testid="rule-snap-yards"
+          disabled={!snapRule}
+          defaultValue={yards}
+          key={`${snapRule?.id ?? 'off'}-${yards}`}
           onChange={(e) => {
-            const on = e.target.checked;
-            useEditorStore.getState().apply(
-              'snap backpedal',
-              setRules(
-                slot.id,
-                withSnapBackpedal(slot.matchRules ?? [], on, () => nanoid()),
-              ),
-            );
+            const v = parseYards(e.target.value);
+            if (snapRule && v !== undefined) {
+              useEditorStore
+                .getState()
+                .apply(
+                  'match rule',
+                  updateRule(slot.id, snapRule.id, { then: { type: 'backpedal', yards: v } }),
+                );
+            }
           }}
         />
-        {r.snapBackpedal}
-      </label>
+        <span>{r.yards}</span>
+      </div>
     </>
   );
 }
@@ -447,20 +461,23 @@ export function MatchRulesForm({ slotId, field = DEFAULT_FIELD }: MatchRulesForm
     .map((p) => ({ id: p.id, label: p.label }));
   const rules = (slot.matchRules ?? []).slice().sort((a, b) => a.priority - b.priority);
   const rusher = slot.actions.some((a) => a.type === 'rush');
+  // D-52: the snap backpedal is edited in its own control above, not as a card (rushers have no control).
+  const cards = rules.map((rule, i) => ({ rule, i })).filter(({ rule }) => rusher || !isSnapBackpedal(rule));
 
   return (
     <section aria-label={r.title} className="flex flex-col gap-2">
       <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{r.title}</h4>
       {!rusher ? <TemplateControls slot={slot} field={field} /> : null}
       <>
-        {rules.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">{r.empty}</p> : null}
+        {cards.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400">{r.empty}</p> : null}
         <ol data-testid="rules-list" className="flex flex-col gap-2">
-          {rules.map((rule, i) => (
+          {cards.map(({ rule, i }) => (
             <RuleRow
               key={rule.id}
               slotId={slotId}
               rule={rule}
               index={i}
+              first={cards[0]?.i ?? 0}
               count={rules.length}
               dragId={dragId}
               setDragId={setDragId}

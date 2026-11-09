@@ -485,3 +485,6 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Data: no schema bump (new union members only); older app versions reject files that use them.
 - Cost: the backpedal is straight back only, with no sideways mirroring while he drops. This may replace the
   "no press under x yards" option asked earlier; that one is not built.
+- UI follow-up (user: "gộp lại 1 controller dễ sử dụng hơn"): the checkbox and the rule card are one control,
+  "☑ Lùi khi bóng snap [3] yard". The snap backpedal rule has no card in the list (it always runs first), and the
+  event select no longer offers "bóng được snap" (it still shows on an old snap rule with another reaction).

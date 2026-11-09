@@ -103,7 +103,7 @@ Live tracker. Status: todo / in progress / review / done.
 ## 2026-11-09 Backpedal at the snap (D-52)
 - New `snap` event and `backpedal` reaction; "Lùi khi bóng snap" checkbox puts [snap → Lùi 3 yd] on top of the
   rules (templates keep it). Engine backpedals straight back at 0.8 × speed, still reading rules, then holds the
-  new depth. 1679 unit tests.
+  new depth. One control "☑ Lùi khi bóng snap [3] yard"; the rule has no card of its own. 1679 unit tests.
 
 ## Open questions / blockers
 

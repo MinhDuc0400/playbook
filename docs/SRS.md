@@ -700,7 +700,7 @@ Khu vực của một defender (D-51): có zone (preset hoặc tự vẽ) thì k
 
 **Mẫu Bunch Killer (Bangkok):** Corner = [Người thứ 1 · vào khu vực của · tôi → Man người đó]; Inside (LB/S) = [Người thứ 2 · vào khu vực của · corner cạnh bên → Man người đó], còn lại đá zone (không có zone thì nhận zone "Làn của tôi", luôn khớp vạch đứt). Play cũ có `areaMatch` được chuyển sang luật khi mở DB, khi import file schemaVersion 1 và khi đọc nháp Freestyle.
 
-**Lùi khi bóng snap (D-52):** ô "Lùi khi bóng snap" dưới "Mẫu" đặt luật [bóng được snap → Lùi 3 yd] lên đầu danh sách (chọn mẫu Bunch Killer vẫn giữ luật này). Defender lùi thẳng về sau từ chỗ đang đứng với 0.8 × speed, vừa lùi vừa đọc các luật bên dưới; luật đổi coverage hoặc bóng bay thì dừng lùi. Lùi xong, độ sâu mới thay cho độ sâu ban đầu (zone gốc hoặc đứng yên); defender man thì quay lại kèm người của mình.
+**Lùi khi bóng snap (D-52):** một điều khiển dưới "Mẫu": "☑ Lùi khi bóng snap [3] yard". Tích vào thì đặt luật [bóng được snap → Lùi n yd] lên đầu danh sách; luật này không hiện thành thẻ riêng, sửa số yard ngay cạnh ô tích (chọn mẫu Bunch Killer vẫn giữ luật này). Defender lùi thẳng về sau từ chỗ đang đứng với 0.8 × speed, vừa lùi vừa đọc các luật bên dưới; luật đổi coverage hoặc bóng bay thì dừng lùi. Lùi xong, độ sâu mới thay cho độ sâu ban đầu (zone gốc hoặc đứng yên); defender man thì quay lại kèm người của mình.
 
 **Khi bóng được ném:** defender thấy `throwStarted` (sau reaction) thì chuyển sang lao về điểm bóng rơi.
 

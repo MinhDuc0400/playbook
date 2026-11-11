@@ -348,3 +348,68 @@ describe('D-53 "chưa ai nhận" (pick whoever is left)', () => {
     expect(screen.getByTestId('rule-event-a')).toHaveDisplayValue(t.rules.events.unclaimed);
   });
 });
+
+describe('D-54 template "Đọc 2 người (LB/S)"', () => {
+  const at = (id: string, x: number, extra: Partial<Play['players'][number]> = {}) => ({
+    id,
+    role: 'CB' as const,
+    label: id.toUpperCase(),
+    start: { x, y: 3.5 },
+    actions: [],
+    ...extra,
+  });
+  const get = (id: string) => store().play!.players.find((p) => p.id === id)!;
+  function open(): void {
+    const corner: MatchRule = {
+      id: 'k',
+      priority: 0,
+      when: { receiver: { kind: 'nth', n: 1 }, event: 'entersArea', area: { kind: 'self' } },
+      then: { type: 'manTrigger' },
+    };
+    act(() =>
+      store().load({
+        ...mk(),
+        players: [at('cb2', -8, { matchRules: [corner] }), at('lb', -1.5), at('cb1', 9)],
+      }),
+    );
+    render(<MatchRulesForm slotId="lb" />);
+  }
+
+  it('writes one pairRead rule beside the corner (người 1 / người 2 editable, sâu 5), shows the template and hint', () => {
+    open();
+    change('rule-template', 'pair');
+    const rs = get('lb').matchRules!;
+    expect(rs).toHaveLength(1);
+    expect(rs[0]).toMatchObject({
+      when: {
+        receiver: { kind: 'number', side: 'strong', number: 1 },
+        event: 'pairRead',
+        second: { kind: 'number', side: 'strong', number: 2 },
+        area: { kind: 'teammate', slotId: 'cb2' },
+        minDepth: 5,
+      },
+      then: { type: 'manTrigger' },
+    });
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('pair');
+    expect(screen.getByTestId('rule-area-hint')).toHaveTextContent(t.rules.areaMatch.pairHint);
+    const id = rs[0]!.id;
+    change(`rule-receiver-${id}`, 'weak-1');
+    change(`rule-second-${id}`, 'C');
+    const w = get('lb').matchRules![0]!.when;
+    expect(w.receiver).toEqual({ kind: 'number', side: 'weak', number: 1 });
+    expect(w.second).toEqual({ kind: 'role', role: 'C' });
+    expect((screen.getByTestId('rule-template') as HTMLSelectElement).value).toBe('pair');
+    const recv = screen.getByTestId(`rule-receiver-${id}`) as HTMLSelectElement;
+    expect([...recv.options].map((o) => o.value)).not.toContain('any');
+    expect(screen.getByTestId(`rule-area-${id}`)).toHaveValue('cb2');
+    const then = screen.getByTestId(`rule-then-${id}`) as HTMLSelectElement;
+    expect([...then.options].map((o) => o.value)).toEqual(['manTrigger']);
+    expect(screen.queryByTestId(`rule-before-${id}`)).toBeNull();
+  });
+
+  it('a zone-less LB gets the live lane zone, like Inside', () => {
+    open();
+    change('rule-template', 'pair');
+    expect(get('lb').actions.find((a) => a.type === 'zone')).toMatchObject({ zone: 'lane' });
+  });
+});

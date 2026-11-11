@@ -22,6 +22,8 @@ import {
 import {
   BACKPEDAL_YARDS,
   LEFTOVER_DEPTH,
+  PAIR_READ_DEPTH,
+  pairReadRules,
   canCover,
   cornerRules,
   insideRules,
@@ -57,6 +59,7 @@ const EVENTS: readonly MatchEvent[] = [
   'entersArea',
   'snap',
   'unclaimed',
+  'pairRead',
 ];
 const REACTIONS = ['man', 'manTrigger', 'zone', 'carry', 'passOff', 'backpedal'] as const;
 type Reaction = (typeof REACTIONS)[number];
@@ -154,6 +157,10 @@ function RuleRow({
   const snap = rule.when.event === 'snap';
   /** D-53 "chưa ai nhận": any receiver, man that one. */
   const leftover = rule.when.event === 'unclaimed';
+  /** D-54 "Đọc 2 người": người 1 (receiver) and người 2 (second), corner beside (area teammate). */
+  const pair = rule.when.event === 'pairRead';
+  const STRONG_1: ReceiverRef = { kind: 'number', side: 'strong', number: 1 };
+  const STRONG_2: ReceiverRef = { kind: 'number', side: 'strong', number: 2 };
   const a = rule.when.area;
   const areaKey =
     a?.kind === 'teammate' ? (teammates.some((m) => m.id === a.slotId) ? a.slotId : '') : 'self';
@@ -189,7 +196,7 @@ function RuleRow({
       <span className="pb-1">{r.when}</span>
       {snap || leftover ? null : (
         <Select
-          label={r.receiver}
+          label={pair ? r.first : r.receiver}
           data-testid={`rule-receiver-${id}`}
           value={receiverKey(rule.when.receiver)}
           onChange={(e) => {
@@ -197,7 +204,7 @@ function RuleRow({
             if (rcv) patchWhen({ receiver: rcv });
           }}
         >
-          <option value="any">{r.any}</option>
+          {pair ? null : <option value="any">{r.any}</option>}
           {area ? (
             <>
               <option value="nth-1">{r.nth[1]}</option>
@@ -215,6 +222,24 @@ function RuleRow({
           const ev = e.target.value;
           if (!isEvent(ev)) return;
           if (ev === 'entersArea') patchWhen({ event: ev, area: rule.when.area ?? { kind: 'self' } });
+          else if (ev === 'pairRead')
+            apply(
+              'match rule',
+              updateRule(slotId, id, {
+                when: {
+                  event: ev,
+                  receiver: isReceiverRef(rule.when.receiver) ? rule.when.receiver : STRONG_1,
+                  second: rule.when.second ?? STRONG_2,
+                  area:
+                    rule.when.area?.kind === 'teammate'
+                      ? rule.when.area
+                      : { kind: 'teammate', slotId: teammates[0]?.id ?? '' },
+                  minDepth: rule.when.minDepth ?? PAIR_READ_DEPTH,
+                  beforeTime: undefined,
+                },
+                then: { type: 'manTrigger' },
+              }),
+            );
           else if (ev === 'unclaimed')
             apply(
               'match rule',
@@ -223,6 +248,7 @@ function RuleRow({
                   event: ev,
                   receiver: { kind: 'any' },
                   area: undefined,
+                  second: undefined,
                   minDepth: rule.when.minDepth ?? LEFTOVER_DEPTH,
                 },
                 then: { type: 'manTrigger' },
@@ -232,6 +258,7 @@ function RuleRow({
             patchWhen({
               event: ev,
               area: undefined,
+              second: undefined,
               ...(rule.when.receiver.kind === 'nth' ? { receiver: { kind: 'any' } } : {}),
             });
         }}
@@ -243,9 +270,22 @@ function RuleRow({
           </option>
         ))}
       </Select>
-      {area ? (
+      {pair ? (
         <Select
-          label={r.areaOf}
+          label={r.second}
+          data-testid={`rule-second-${id}`}
+          value={refKey(rule.when.second ?? STRONG_2)}
+          onChange={(e) => {
+            const ref = parseRef(e.target.value);
+            if (ref) patchWhen({ second: ref });
+          }}
+        >
+          <ReceiverOptions />
+        </Select>
+      ) : null}
+      {area || pair ? (
+        <Select
+          label={pair ? r.pairCorner : r.areaOf}
           data-testid={`rule-area-${id}`}
           value={areaKey}
           onChange={(e) => {
@@ -255,7 +295,7 @@ function RuleRow({
           }}
         >
           {areaKey === '' ? <option value="">{r.noTeammate}</option> : null}
-          <option value="self">{r.self}</option>
+          {pair ? null : <option value="self">{r.self}</option>}
           {teammates.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -277,18 +317,20 @@ function RuleRow({
               onChange={(e) => patchWhen({ minDepth: parseOptional(e.target.value) })}
             />
           </label>
-          <label className="flex flex-col gap-1 font-medium">
-            {`${r.before} (${r.beforeUnit})`}
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              className={numberInputClass()}
-              data-testid={`rule-before-${id}`}
-              value={rule.when.beforeTime ?? ''}
-              onChange={(e) => patchWhen({ beforeTime: parseOptional(e.target.value) })}
-            />
-          </label>
+          {pair ? null : (
+            <label className="flex flex-col gap-1 font-medium">
+              {`${r.before} (${r.beforeUnit})`}
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                className={numberInputClass()}
+                data-testid={`rule-before-${id}`}
+                value={rule.when.beforeTime ?? ''}
+                onChange={(e) => patchWhen({ beforeTime: parseOptional(e.target.value) })}
+              />
+            </label>
+          )}
         </>
       )}
       <span className="pb-1">{r.then}</span>
@@ -301,7 +343,7 @@ function RuleRow({
         }}
       >
         {REACTIONS.filter(
-          (k) => (!snap || !TRIGGER_REACTIONS.includes(k)) && (!leftover || k === 'manTrigger'),
+          (k) => (!snap || !TRIGGER_REACTIONS.includes(k)) && (!(leftover || pair) || k === 'manTrigger'),
         ).map((k) => (
           <option key={k} value={k}>
             {r.reactions[k]}
@@ -389,20 +431,29 @@ function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfi
   const snapRule = (slot.matchRules ?? []).find(isSnapBackpedal);
   const yards = snapRule?.then.type === 'backpedal' ? snapRule.then.yards : BACKPEDAL_YARDS;
   const onTemplate = (v: string): void => {
-    if (v !== 'corner' && v !== 'inside') return;
+    if (v !== 'corner' && v !== 'inside' && v !== 'pair') return;
     const ruleId = () => nanoid();
     // D-52: the snap backpedal stays on top of the template.
     const keep = (slot.matchRules ?? []).filter(isSnapBackpedal);
     useEditorStore.getState().apply('rule template', (play) => {
       if (v === 'corner') return setRules(slot.id, [...keep, ...cornerRules(ruleId)])(play);
-      const inside = insideRules(ruleId, insideTeammate(play.players, slot.id));
+      const mate = insideTeammate(play.players, slot.id);
+      const inside =
+        v === 'pair'
+          ? pairReadRules(
+              ruleId,
+              { kind: 'number', side: 'strong', number: 1 },
+              { kind: 'number', side: 'strong', number: 2 },
+              mate,
+            )
+          : insideRules(ruleId, mate);
       const withRules = setRules(slot.id, [...keep, ...inside])(play);
       const s = withRules.players.find((p) => p.id === slot.id);
       const covers = s?.actions.some(
         (x) => x.type === 'zone' || x.type === 'man' || x.type === 'spy' || x.type === 'rush',
       );
       if (!s || covers) return withRules;
-      // A zone-less inside defender keeps zoning its lane: the live lane zone (D-51).
+      // A zone-less inside (or D-54 pair-read) defender keeps zoning its lane: the live lane zone (D-51).
       return setZone(slot.id, 'lane', field)(withRules);
     });
   };
@@ -417,10 +468,15 @@ function TemplateControls({ slot, field }: { slot: PlayerSlot; field: FieldConfi
         <option value="rules">{r.areaMatch.rules}</option>
         <option value="corner">{r.areaMatch.corner}</option>
         <option value="inside">{r.areaMatch.inside}</option>
+        <option value="pair">{r.areaMatch.pair}</option>
       </Select>
       {current !== 'rules' ? (
         <p data-testid="rule-area-hint" className="text-xs text-slate-500 dark:text-slate-400">
-          {current === 'corner' ? r.areaMatch.cornerHint : r.areaMatch.insideHint}
+          {current === 'corner'
+            ? r.areaMatch.cornerHint
+            : current === 'pair'
+              ? r.areaMatch.pairHint
+              : r.areaMatch.insideHint}
         </p>
       ) : null}
       <div className="flex items-center gap-2 text-sm" title={r.snapBackpedalHint}>

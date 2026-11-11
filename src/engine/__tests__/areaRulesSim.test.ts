@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cornerRules,
   insideRules,
+  pairReadRules,
   laneRectangle,
   templateRuleIds,
   withSnapBackpedal,
@@ -386,5 +387,80 @@ describe('D-48 Bunch Killer on rules in the sim (ports T-AM)', () => {
     expect(c['cb1']).toMatchObject({ receiverId: 'b' });
     expect(c['fs']).toMatchObject({ receiverId: 'z', reason: 'manTrigger' });
     expect(c['ss']).toMatchObject({ receiverId: 'c', reason: 'manTrigger' });
+  });
+
+  it('D-54 user board with "Đọc 2 người": SS reads X/C, FS reads B/Z → SS on C, FS on Z, corners on the crossers', () => {
+    const route = (path: { x: number; y: number }[]): Action => ({
+      type: 'route',
+      path,
+      endBehavior: 'continue',
+    });
+    const quarter = (zone: string, x: number, y: number): Action =>
+      ({ type: 'zone', zone, dropPoint: { x, y }, offset: { x: 0.25, y: 0 } }) as Action;
+    const off = makePlay('offense', [
+      slot('q', 'QB', 'Q', { x: 0, y: -2.5 }, [{ type: 'qbDrop', depth: 2, style: 'shotgun' }]),
+      slot('c', 'C', 'C', { x: 0, y: -0.5 }, [
+        route([
+          { x: 0, y: 6.5 },
+          { x: -7, y: 13.5 },
+        ]),
+      ]),
+      slot('x', 'WR', 'X', { x: 8, y: 0 }, [
+        route([
+          { x: 7, y: 1 },
+          { x: -14, y: 4.5 },
+        ]),
+      ]),
+      slot('z', 'WR', 'Z', { x: -1.5, y: -0.5 }, [
+        route([
+          { x: -1.5, y: 9.5 },
+          { x: 6.5, y: 17.5 },
+        ]),
+      ]),
+      slot('b', 'RB', 'B', { x: -7.5, y: -0.5 }, [
+        route([
+          { x: -6.5, y: 2.5 },
+          { x: 16.5, y: 4.5 },
+        ]),
+      ]),
+    ]);
+    off.strength = 'left';
+    const id = templateRuleIds;
+    const d = makePlay('defense', [
+      slot('r1', 'R', 'R1', { x: -8, y: 7 }, [{ type: 'rush', path: [{ x: 0, y: -5 }], delay: 0 }]),
+      {
+        ...slot('cb1', 'CB', 'CB1', { x: -11, y: 5 }, [quarter('quarter-out-L', -11, 5)]),
+        matchRules: cornerRules(id('cb1')),
+      },
+      {
+        ...slot('cb2', 'CB', 'CB2', { x: 11.5, y: 5 }, [quarter('quarter-out-R', 11.5, 5)]),
+        matchRules: cornerRules(id('cb2')),
+      },
+      {
+        ...slot('ss', 'S', 'SS', { x: 4, y: 4 }, [quarter('quarter-mid-R', 4, 4)]),
+        matchRules: pairReadRules(
+          id('ss'),
+          { kind: 'number', side: 'weak', number: 1 },
+          { kind: 'role', role: 'C' },
+          'cb2',
+        ),
+      },
+      {
+        ...slot('fs', 'S', 'FS', { x: -3.5, y: 5 }, [quarter('quarter-mid-L', -3.5, 5)]),
+        matchRules: pairReadRules(
+          id('fs'),
+          { kind: 'number', side: 'strong', number: 1 },
+          { kind: 'number', side: 'strong', number: 2 },
+          'cb1',
+        ),
+      },
+    ]);
+    const i = makeInput(off, d, { ballSpot: RED_ZONE });
+    expect(prepareSim(i).warnings).toEqual([]);
+    const c = claims(simulate(i).events);
+    expect(c['cb2']).toMatchObject({ receiverId: 'x' });
+    expect(c['cb1']).toMatchObject({ receiverId: 'b' });
+    expect(c['ss']).toMatchObject({ receiverId: 'c' });
+    expect(c['fs']).toMatchObject({ receiverId: 'z' });
   });
 });

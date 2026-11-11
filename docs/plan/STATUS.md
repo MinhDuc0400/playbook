@@ -110,6 +110,10 @@ Live tracker. Status: todo / in progress / review / done.
   the area rules. Inside template has it as a second rule; old one-rule insides show as "Luật tự đặt". Template
   rule ids made distinct per slot. 1689 unit tests.
 
+## 2026-11-11 "Đọc 2 người" for LB/S (D-54)
+- New `pairRead` rule event and template: người 1 / người 2 / corner bên cạnh; five reads in the area
+  coordinator (out first ×2, người 1 cuts in, both deep → deeper + corner shallower, both short → press nearer).
+
 ## Open questions / blockers
 
 None.

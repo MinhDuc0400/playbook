@@ -16,7 +16,13 @@
  *    - any: the first untaken receiver in A's entries.
  *    - minDepth / beforeTime apply to the trigger. No iq delay.
  *    - `manTrigger` takes the trigger for that member (sticky). Other reactions fire for self only.
- * 3. D-53 leftovers ("chưa ai nhận"): members still free with an `unclaimed` rule take receivers nobody took
+ * 3. D-54 "Đọc 2 người" (`pairRead`, per member in lane order; first case that holds decides, once):
+ *    a. người 1 or người 2 in the corner's entry log (out first) → take the other one;
+ *    b. người 1 cuts inside (`in` / `under` on his perceived velocity) → take người 2;
+ *    c. both at least `minDepth` deep → take the deeper; the corner (if free) takes the shallower;
+ *    d. both stopped (`stop`) short of `minDepth` → take (press) the one nearer his alignment spot.
+ *    Receivers resolve through `resolveRef`; one already taken by someone else is not taken.
+ * 4. D-53 leftovers ("chưa ai nhận"): members still free with an `unclaimed` rule take receivers nobody took
  *    once they are at least `minDepth` deep: pairs by distance from the member's alignment spot (`at`), nearest
  *    first (then lane, then receiver id), one receiver per member. Runs after the area rules, so a second-out
  *    pick on the same tick wins.
@@ -24,7 +30,8 @@
  */
 import { laneOf, laneSpan, type Lanes } from '@/domain/areaLanes';
 import { pointInPolygon } from '@/domain/geometry';
-import type { ID, MatchRule, Point } from '@/domain/types';
+import type { ID, MatchRule, Point, ReceiverRef } from '@/domain/types';
+import { eventHolds } from './matchRules';
 import type { PerceivedPlayer } from './types';
 
 /** A lane member and its (valid) area rules. */
@@ -65,8 +72,13 @@ export function createAreaCoordinator(opts: {
   selfId: ID;
   minX: number;
   maxX: number;
+  /** D-54: receiver ref → slot id (snap numbering); absent = "Đọc 2 người" rules are inert. */
+  resolveRef?: (ref: ReceiverRef) => ID | null;
+  /** D-54: strong-side sign for on-ball receivers' "inside" (default 1). */
+  strongSign?: 1 | -1;
 }): AreaCoordinator {
   const { lanes, members, selfId, minX, maxX } = opts;
+  const strongSign = opts.strongSign ?? 1;
   const laneIndex = new Map(lanes.order.map((id, i) => [id, i]));
   /** Owner member id → receivers who entered his area, in order. */
   const entries = new Map<ID, ID[]>(members.map((m) => [m.id, []]));
@@ -92,6 +104,22 @@ export function createAreaCoordinator(opts: {
         a.rule.priority - b.rule.priority ||
         a.k - b.k,
     );
+
+  /** D-54: "Đọc 2 người" rules, in lane order. */
+  const pairReads = members
+    .filter((m) => laneIndex.has(m.id))
+    .sort((a, b) => laneIndex.get(a.id)! - laneIndex.get(b.id)!)
+    .flatMap((m) =>
+      m.rules
+        .filter((r) => r.when.event === 'pairRead')
+        .sort((a, b) => a.priority - b.priority)
+        .map((rule) => ({ member: m, rule })),
+    );
+  const atOf = (m: LaneMember): Point => {
+    if (m.at) return m.at;
+    const [left, right] = laneSpan(lanes, laneIndex.get(m.id)!, minX, maxX);
+    return { x: (left + right) / 2, y: 0 };
+  };
 
   /** D-53: members' leftover rules (priority order) and alignment spots. */
   const leftover = members
@@ -155,6 +183,58 @@ export function createAreaCoordinator(opts: {
         } else if (member === selfId && !mine) {
           fired.add(key(member, rule));
           mine = { rule, receiverId: pick };
+        }
+      }
+
+      if (t > 0 && opts.resolveRef) {
+        for (const { member, rule } of pairReads) {
+          if (fired.has(key(member.id, rule)) || taken.has(member.id)) continue;
+          const { when } = rule;
+          if (when.beforeTime !== undefined && t >= when.beforeTime) continue;
+          const corner = when.area?.kind === 'teammate' ? when.area.slotId : null;
+          if (!corner || corner === member.id || !laneIndex.has(corner) || !when.second) continue;
+          if (when.receiver.kind !== 'number' && when.receiver.kind !== 'role') continue;
+          const id1 = opts.resolveRef(when.receiver);
+          const id2 = opts.resolveRef(when.second);
+          if (id1 === null || id2 === null || id1 === id2) continue;
+          const s1 = seen.find((p) => p.id === id1);
+          const s2 = seen.find((p) => p.id === id2);
+          const depth = when.minDepth ?? 0;
+          const log = entries.get(corner)!;
+          const i1 = log.indexOf(id1);
+          const i2 = log.indexOf(id2);
+          const holds = (ev: 'in' | 'under' | 'stop', p: PerceivedPlayer): boolean =>
+            eventHolds(ev, p, { strongSign });
+          let pick: ID | null = null;
+          let cornerPick: ID | null = null;
+          if (i1 >= 0 || i2 >= 0) {
+            pick = i1 >= 0 && (i2 < 0 || i1 < i2) ? id2 : id1;
+          } else if (s1 && (holds('in', s1) || holds('under', s1))) {
+            pick = id2;
+          } else if (s1 && s2 && s1.pos.y >= depth && s2.pos.y >= depth) {
+            const deep1 = s1.pos.y >= s2.pos.y;
+            pick = deep1 ? id1 : id2;
+            cornerPick = deep1 ? id2 : id1;
+          } else if (
+            s1 &&
+            s2 &&
+            s1.pos.y < depth &&
+            s2.pos.y < depth &&
+            holds('stop', s1) &&
+            holds('stop', s2)
+          ) {
+            const at = atOf(member);
+            const d = (p: PerceivedPlayer) => Math.hypot(p.pos.x - at.x, p.pos.y - at.y);
+            pick = d(s1) <= d(s2) ? id1 : id2;
+          }
+          if (pick === null || takenBy(pick) !== undefined) continue;
+          fired.add(key(member.id, rule));
+          taken.set(member.id, pick);
+          if (member.id === selfId && !mine) mine = { rule, receiverId: pick };
+          if (cornerPick !== null && !taken.has(corner) && takenBy(cornerPick) === undefined) {
+            taken.set(corner, cornerPick);
+            if (corner === selfId && !mine) mine = { rule, receiverId: cornerPick };
+          }
         }
       }
 

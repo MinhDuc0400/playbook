@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeRuleLanes, cornerRules, insideRules } from '@/domain/areaRules';
+import { computeRuleLanes, cornerRules, insideRules, pairReadRules } from '@/domain/areaRules';
 import type { MatchRule, PlayerSlot, Point } from '@/domain/types';
 import { createAreaCoordinator, type LaneMember } from '../areaCoordinator';
 import type { PerceivedPlayer } from '../types';
@@ -310,5 +310,107 @@ describe('D-53 leftover: "chưa ai nhận" past a depth', () => {
     expect(v.CB2!.manId).toBe('Z');
     expect(v.SS!.manId).toBe('Y');
     expect(v.SS!.fired === null || v.SS!.fired.rule.when.event !== 'unclaimed').toBe(true);
+  });
+});
+
+describe('D-54 "Đọc 2 người": LB reads người 1 (X) and người 2 (C) with CB2 beside him', () => {
+  const X: MatchRule['when']['receiver'] = { kind: 'number', side: 'weak', number: 1 };
+  const C: MatchRule['when']['receiver'] = { kind: 'role', role: 'C' };
+  const board = [
+    def('CB2', -8, cornerRules(idGen)),
+    def('LB', -1.5, pairReadRules(idGen, X as never, C as never, 'CB2')),
+    def('S', 4, insideRules(idGen, 'CB1')),
+    def('CB1', 9, cornerRules(idGen)),
+  ];
+  const lanesP = computeRuleLanes(board)!;
+  const membersP: LaneMember[] = board.map((s) => ({ id: s.id, rules: s.matchRules ?? [], at: s.start }));
+  const resolveRef = (r: MatchRule['when']['receiver']) =>
+    r.kind === 'role' ? r.role : r.kind === 'number' && r.side === 'weak' && r.number === 1 ? 'X' : null;
+  const make = (selfId: string) =>
+    createAreaCoordinator({
+      lanes: lanesP,
+      members: membersP,
+      selfId,
+      minX: -12.5,
+      maxX: 12.5,
+      resolveRef: resolveRef as never,
+      strongSign: 1,
+    });
+  function run(frames: [number, PerceivedPlayer[]][]) {
+    const c = { CB2: make('CB2'), LB: make('LB'), S: make('S'), CB1: make('CB1') };
+    const last: Record<string, ReturnType<typeof c.LB.update>> = {};
+    for (const [t, seen] of frames) for (const [id, k] of Object.entries(c)) last[id] = k.update(t, seen);
+    return last;
+  }
+  const up = { x: 0, y: 6 };
+  const still = { x: 0, y: 0 };
+
+  it('the template rule: Khi [Người 1] [đọc 2 người với Người 2] (corner bên cạnh, sâu 5) thì Man người đó', () => {
+    const [rule] = pairReadRules(() => 'p', X as never, C as never, 'CB2');
+    expect(rule).toEqual({
+      id: 'p',
+      priority: 0,
+      when: {
+        receiver: X,
+        event: 'pairRead',
+        second: C,
+        area: { kind: 'teammate', slotId: 'CB2' },
+        minDepth: 5,
+      },
+      then: { type: 'manTrigger' },
+    });
+  });
+
+  it('nothing read yet (both shallow, still running): LB has nobody', () => {
+    const v = run([[0.2, [rec('X', { x: -4, y: 1 }, up), rec('C', { x: -1, y: 1 }, up)]]]);
+    expect(v.LB!.manId).toBeNull();
+  });
+
+  it('1. người 1 out first: CB2 takes X, LB takes C', () => {
+    const v = run([
+      [0.2, [rec('X', { x: -4, y: 1 }, { x: -6, y: 0 }), rec('C', { x: -1, y: 1 }, up)]],
+      [0.4, [rec('X', { x: -5.2, y: 1 }, { x: -6, y: 0 }), rec('C', { x: -1, y: 2 }, up)]],
+    ]);
+    expect(v.CB2!.manId).toBe('X');
+    expect(v.LB!.manId).toBe('C');
+    expect(v.LB!.fired?.rule.when.event).toBe('pairRead');
+  });
+
+  it('2. người 2 out first: CB2 takes C, LB takes X', () => {
+    const v = run([
+      [0.2, [rec('X', { x: -4, y: 1 }, up), rec('C', { x: -3, y: 1 }, { x: -6, y: 0 })]],
+      [0.5, [rec('X', { x: -4, y: 3 }, up), rec('C', { x: -5.5, y: 1 }, { x: -6, y: 0 })]],
+    ]);
+    expect(v.CB2!.manId).toBe('C');
+    expect(v.LB!.manId).toBe('X');
+  });
+
+  it('3. người 1 cuts inside: LB lets him go and takes C', () => {
+    const v = run([
+      [0.2, [rec('X', { x: -4, y: 1 }, up), rec('C', { x: -1, y: 1 }, up)]],
+      [0.5, [rec('X', { x: -3, y: 2 }, { x: 6, y: 0.5 }), rec('C', { x: -1, y: 2.5 }, up)]],
+    ]);
+    expect(v.LB!.manId).toBe('C');
+    expect(v.CB2!.manId).toBeNull();
+  });
+
+  it('4. both vertical past 5 yd: LB takes the deeper (C), CB2 takes the shallower (X) outside his lane', () => {
+    const v = run([
+      [0.2, [rec('X', { x: -4, y: 1 }, up), rec('C', { x: -1, y: 1.5 }, up)]],
+      [0.6, [rec('X', { x: -4, y: 4 }, up), rec('C', { x: -1, y: 4.5 }, up)]],
+      [0.8, [rec('X', { x: -4, y: 5.1 }, up), rec('C', { x: -1, y: 6 }, up)]],
+    ]);
+    expect(v.LB!.manId).toBe('C');
+    expect(v.CB2!.manId).toBe('X');
+    expect(v.CB2!.fired).toMatchObject({ receiverId: 'X' });
+  });
+
+  it('5. both stopped short of 5 yd: LB presses the nearer one (C)', () => {
+    const v = run([
+      [0.2, [rec('X', { x: -4, y: 1 }, up), rec('C', { x: -1, y: 1 }, up)]],
+      [0.8, [rec('X', { x: -4, y: 3 }, still), rec('C', { x: -1, y: 3 }, still)]],
+    ]);
+    expect(v.LB!.manId).toBe('C');
+    expect(v.CB2!.manId).toBeNull();
   });
 });

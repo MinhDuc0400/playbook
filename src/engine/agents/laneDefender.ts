@@ -30,6 +30,8 @@ export function createLaneDefender(opts: {
     selfId: id,
     minX: info.minX,
     maxX: info.maxX,
+    resolveRef: opts.resolveRef,
+    strongSign: opts.strongSign,
   });
   let base = binding.base;
   if (!base) {

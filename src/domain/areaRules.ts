@@ -20,9 +20,9 @@ import { zonePolygon } from './zones';
 /** Lane rectangle depth (yd past the LOS), as the D-40 base zone. */
 export const LANE_ZONE_DEPTH = 10;
 
-/** Rules the area coordinator runs: "vào khu vực của" (D-48) and "chưa ai nhận" (D-53). */
+/** Rules the area coordinator runs: "vào khu vực của" (D-48), "chưa ai nhận" (D-53), "Đọc 2 người" (D-54). */
 export function isAreaRule(r: MatchRule): boolean {
-  return r.when.event === 'entersArea' || r.when.event === 'unclaimed';
+  return r.when.event === 'entersArea' || r.when.event === 'unclaimed' || r.when.event === 'pairRead';
 }
 
 export function isReceiverRef(r: RuleReceiver): r is ReceiverRef {
@@ -71,6 +71,35 @@ export function cornerRules(idGen: () => ID): MatchRule[] {
 export function templateRuleIds(slotId: ID): () => ID {
   let i = 0;
   return () => (++i === 1 ? `${slotId}-bk` : `${slotId}-bk${i}`);
+}
+
+/** D-54 default depth (yd) at which "Đọc 2 người" calls both verticals (or both short). */
+export const PAIR_READ_DEPTH = 5;
+
+/**
+ * D-54 "Đọc 2 người" (LB/S): Khi [Người 1] [đọc 2 người với] [Người 2], corner bên cạnh, sâu 5 thì Man người đó.
+ */
+export function pairReadRules(
+  idGen: () => ID,
+  first: ReceiverRef,
+  second: ReceiverRef,
+  cornerId: ID | null,
+  minDepth = PAIR_READ_DEPTH,
+): MatchRule[] {
+  return [
+    {
+      id: idGen(),
+      priority: 0,
+      when: {
+        receiver: first,
+        event: 'pairRead',
+        second,
+        area: { kind: 'teammate', slotId: cornerId ?? '' },
+        minDepth,
+      },
+      then: { type: 'manTrigger' },
+    },
+  ];
 }
 
 /** D-53 default depth (yd) past which a receiver nobody took is a leftover. */
@@ -143,9 +172,13 @@ export function withSnapBackpedal(rules: readonly MatchRule[], on: boolean, idGe
  * Which Bunch Killer template the rules are, by structure only (never ids or the teammate). A D-52 snap
  * backpedal next to it does not change the template.
  */
-export function matchTemplate(all: readonly MatchRule[] | undefined): 'corner' | 'inside' | null {
+export function matchTemplate(all: readonly MatchRule[] | undefined): 'corner' | 'inside' | 'pair' | null {
   const rules = all?.filter((r) => !isSnapBackpedal(r));
   if (!rules || rules.length === 0 || rules.length > 2) return null;
+  // D-54: one "Đọc 2 người" rule (its people, corner and depth may be edited).
+  if (rules.length === 1 && rules[0]!.when.event === 'pairRead' && rules[0]!.then.type === 'manTrigger') {
+    return rules[0]!.when.beforeTime === undefined ? 'pair' : null;
+  }
   const { when, then } = rules[0]!;
   if (then.type !== 'manTrigger' || when.event !== 'entersArea' || when.receiver.kind !== 'nth') return null;
   if (when.minDepth !== undefined || when.beforeTime !== undefined) return null;

@@ -225,9 +225,11 @@ export interface SpyAction {
 /**
  * D-52: `snap` = the ball is snapped (no receiver; over once another rule has fired).
  * D-53: `unclaimed` = a receiver nobody took ("chưa ai nhận", with minDepth); free members take the nearest.
+ * D-54: `pairRead` = "Đọc 2 người": read người 1 (`receiver`) and người 2 (`second`) with the corner beside
+ * (`area` teammate) and `minDepth`.
  */
 export type MatchEvent =
-  'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap' | 'unclaimed';
+  'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap' | 'unclaimed' | 'pairRead';
 
 /** D-48: whose lane an `entersArea` rule watches. */
 export type AreaRef = { kind: 'self' } | { kind: 'teammate'; slotId: ID };
@@ -248,6 +250,8 @@ export interface MatchRule {
     area?: AreaRef;
     minDepth?: number; // yd from LOS
     beforeTime?: number; // s
+    /** D-54: người 2 of a `pairRead` rule (người 1 is `receiver`). */
+    second?: ReceiverRef;
   };
   then:
     | { type: 'man'; target: ReceiverRef }

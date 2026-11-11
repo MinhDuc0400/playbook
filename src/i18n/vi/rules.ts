@@ -7,12 +7,20 @@ export const rules = {
   any: 'Bất kỳ',
   nth: { 1: 'Người thứ 1', 2: 'Người thứ 2' },
   areaOf: 'Khu vực của',
+  /** D-54 "Đọc 2 người". */
+  first: 'Người 1',
+  second: 'Người 2',
+  pairCorner: 'Corner bên cạnh',
   self: 'tôi',
   noTeammate: '— chọn —',
   areaMatch: {
     rules: 'Luật tự đặt',
     corner: 'Bunch Killer (Bangkok): Corner',
     inside: 'Bunch Killer (Bangkok): Inside (LB/S)',
+    /** D-54. */
+    pair: 'Đọc 2 người (LB/S)',
+    pairHint:
+      'Người 1 ra ngoài thì nhận người 2; người 2 ra ngoài thì nhận người 1; người 1 cắt vào trong thì nhận người 2. Cả hai chạy dọc qua 5 yard: nhận người sâu hơn, corner bên cạnh nhận người nông hơn. Cả hai dừng ngắn: press người gần hơn.',
     cornerHint: 'Nhận receiver đầu tiên vào làn của mình. Không ai vào thì đứng yên ở vị trí của mình.',
     insideHint:
       'Bỏ qua receiver đầu tiên ra làn corner, nhận người thứ hai. Receiver chưa ai nhận chạy sâu quá 5 yard thì LB/S còn rảnh nhận người gần mình nhất.',
@@ -50,6 +58,7 @@ export const rules = {
     entersArea: 'vào khu vực của',
     snap: 'bóng được snap',
     unclaimed: 'chưa ai nhận',
+    pairRead: 'đọc 2 người với',
   },
   reactions: {
     man: 'Man',

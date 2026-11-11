@@ -508,3 +508,21 @@ Editor ≥ 1024 px limit of NFR-UX-01)
 - Cost: a seam past 5 yd before the second one gets outside is taken first, and the late outside one is left to the
   corner. Picks are made once and kept, so two leftovers whose routes cross (C corner, Z post) make FS and SS cross
   too.
+
+## D-54 "Đọc 2 người" template for LB/S (user request 2026-11-11)
+- Context: coaching line "LB only focuses on the X and the C. If the X goes outside, [he] locks in on the C". The
+  user then set every case (approved playback).
+- Decision: new template "Đọc 2 người (LB/S)" = one rule with event `pairRead` ("đọc 2 người với"): người 1
+  (`receiver`, a number or role ref), người 2 (`when.second`), the corner beside (`area` teammate, picked like the
+  Inside teammate) and `minDepth` (default 5). Run in the area coordinator after the area rules, once per
+  defender, first case that holds wins:
+  1. người 1 in the corner's entry log first → LB takes người 2; 2. người 2 first → LB takes người 1;
+  3. người 1 cuts inside (`in`/`under` on his perceived velocity) → LB takes người 2 and lets người 1 go to
+     whoever's rules take him; 4. both at least 5 yd deep → LB takes the deeper, the corner (if free) the shallower,
+     even outside the corner's area; 5. both stopped short of 5 yd → LB presses the one nearer his alignment spot.
+  Before a read the LB zones (a zone-less LB gets the live lane zone, like Inside). "Press" is "Man người đó"
+  (trail, no cushion); there is no jam at the line.
+- Calls made for the user (marked as guesses in the playback, not corrected): cut inside = the existing in/under
+  event; both short = both "dừng"; press target = the nearer one; the other one is left to the other rules.
+- Cost: người 1 who aligns inside the corner's area is "out" at the snap (case 1), so case 3 needs him to start
+  outside it. Reads are made once and kept.

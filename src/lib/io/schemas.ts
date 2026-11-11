@@ -116,10 +116,22 @@ export const MatchRuleSchema: z.ZodType<MatchRule> = z.object({
   priority: num,
   when: z.object({
     receiver: RuleReceiverSchema,
-    event: z.enum(['vertical', 'out', 'in', 'under', 'release', 'stop', 'entersArea', 'snap', 'unclaimed']),
+    event: z.enum([
+      'vertical',
+      'out',
+      'in',
+      'under',
+      'release',
+      'stop',
+      'entersArea',
+      'snap',
+      'unclaimed',
+      'pairRead',
+    ]),
     area: AreaRefSchema.optional(),
     minDepth: num.optional(),
     beforeTime: num.optional(),
+    second: ReceiverRefSchema.optional(),
   }),
   then: z.union([
     z.object({ type: z.literal('man'), target: ReceiverRefSchema }),

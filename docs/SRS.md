@@ -323,10 +323,11 @@ interface MatchRule {
   priority: number;                  // nhỏ chạy trước
   when: {
     receiver: ReceiverRef | { kind: 'any' } | { kind: 'nth'; n: 1 | 2 }; // D-48: Bất kỳ / Người thứ N
-    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap' | 'unclaimed'; // D-52 snap: bóng được snap; D-53 unclaimed: chưa ai nhận
+    event: 'vertical' | 'out' | 'in' | 'under' | 'release' | 'stop' | 'entersArea' | 'snap' | 'unclaimed' | 'pairRead'; // D-52 snap; D-53 unclaimed: chưa ai nhận; D-54 pairRead: đọc 2 người
     area?: { kind: 'self' } | { kind: 'teammate'; slotId: ID }; // D-48: "vào khu vực của" tôi / đồng đội
     minDepth?: number;               // yd tính từ LOS
     beforeTime?: number;             // giây
+    second?: ReceiverRef;            // D-54: người 2 của luật "đọc 2 người"
   };
   then:
     | { type: 'man'; target: ReceiverRef }   // chuyển sang kèm người này
@@ -697,6 +698,8 @@ Khu vực của một defender (D-51): có zone (preset hoặc tự vẽ) thì k
 3. "Người thứ N vào khu vực của A": trong danh sách người vào làn A, bỏ những người đã bị defender khác (ngoài chủ làn A) nhận, lấy người thứ N nếu chưa ai nhận. "Bất kỳ": người đầu tiên chưa ai nhận.
 4. Luật khu vực kích hoạt ngay, không có độ trễ theo iq. "Man người đó" nhận người đó (man, trail) và giữ đến khi bóng được ném; event `ruleFired` có `targetId`.
 5. "Chưa ai nhận" (D-53, chạy sau các luật trên): receiver chưa ai nhận và sâu ≥ `minDepth` là người còn lại; các defender còn rảnh có luật này nhận người còn lại gần vị trí xếp hàng của mình nhất (rồi theo làn, rồi id), mỗi người một, ở bất kỳ đâu trên sân.
+**Đọc 2 người (D-54, mẫu "Đọc 2 người (LB/S)"):** luật `pairRead` có người 1, người 2 và corner bên cạnh, chạy sau luật khu vực, một lần; trường hợp nào đúng trước thì chốt: (1) người 1 vào khu vực của corner trước → nhận người 2; (2) người 2 vào trước → nhận người 1; (3) người 1 cắt vào trong (in/under) → nhận người 2; (4) cả hai sâu ≥ 5 yd → nhận người sâu hơn, corner (nếu rảnh) nhận người nông hơn; (5) cả hai dừng khi chưa tới 5 yd → press (man sát) người gần vị trí xếp hàng hơn. Trước đó đá zone.
+
 6. Chưa có luật nào kích hoạt: không lên press. Có zone action thì đá zone đó (giữ độ sâu ban đầu, bỏ qua receiver đồng đội đã nhận); không có thì đứng yên ở vị trí, chỉ phản ứng khi bóng bay.
 
 **Mẫu Bunch Killer (Bangkok):** Corner = [Người thứ 1 · vào khu vực của · tôi → Man người đó]; Inside (LB/S) = [Người thứ 2 · vào khu vực của · corner cạnh bên → Man người đó] + [Bất kỳ · chưa ai nhận · sâu ≥ 5 → Man người đó] (D-53), còn lại đá zone (không có zone thì nhận zone "Làn của tôi", luôn khớp vạch đứt). Play cũ có `areaMatch` được chuyển sang luật khi mở DB, khi import file schemaVersion 1 và khi đọc nháp Freestyle.
